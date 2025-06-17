@@ -1,0 +1,14 @@
+{
+  "llm": {
+    "type": "anthropic",
+    "model": "claude-sonnet-4-20250514"
+  },
+  "mcpServers": {
+    "pukeko-ui": {
+      "transport": "stdio",
+      "command": "node",
+      "args": ["../dist-server/stdio.js"]
+    }
+  },
+  "filesystem": "none"
+}
