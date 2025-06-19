@@ -62,7 +62,7 @@ export const createServer = () => {
 
   // Set up update interval for random log messages
   logsUpdateInterval = setInterval(() => {
-    let message = {
+    const message = {
       method: "notifications/message",
       params: messages[Math.floor(Math.random() * messages.length)],
     };
