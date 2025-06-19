@@ -15,17 +15,19 @@
     "lint": "run-s lint:*",
     "format": "prettier --write src/",
     "server-build": "tsc --project tsconfig.server.json",
-    "server-stdio": "npm run server-build && cd server && gth chat"
+    "server-stdio": "npm run server-build && cd server && gth chat",
+    "server-ws": "npm run server-build && node dist-server/websockets-server.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
+    "@types/ws": "^8.18.1",
     "express": "^4.21.1",
     "vue": "^3.5.13",
+    "ws": "^8.18.2",
     "zod": "^3.23.8",
     "zod-to-json-schema": "^3.23.5"
   },
   "devDependencies": {
-    "gaunt-sloth-assistant": "^0.6.1",
     "@tsconfig/node22": "^22.0.1",
     "@types/jsdom": "^21.1.7",
     "@types/node": "^22.14.0",
@@ -38,6 +40,7 @@
     "eslint": "^9.22.0",
     "eslint-plugin-oxlint": "^0.16.0",
     "eslint-plugin-vue": "~10.0.0",
+    "gaunt-sloth-assistant": "^0.6.1",
     "jiti": "^2.4.2",
     "jsdom": "^26.0.0",
     "npm-run-all2": "^7.0.2",
