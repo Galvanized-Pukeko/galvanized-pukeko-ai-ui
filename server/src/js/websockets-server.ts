@@ -1,6 +1,10 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
 
+/**
+ * Sends a bunch of random components to front-end every 10 seconds
+ */
+
 const PORT = 3001;
 
 const components = [
@@ -38,7 +42,7 @@ wss.on('connection', (ws: WebSocket) => {
       type: 'render-components',
       components: selectedComponents
     };
-    
+
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(message));
       console.log('Sent components:', selectedComponents);

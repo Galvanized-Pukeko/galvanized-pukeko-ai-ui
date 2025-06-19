@@ -9,6 +9,8 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import {z} from "zod";
 import {zodToJsonSchema} from "zod-to-json-schema";
+import { WebSocketServer, WebSocket } from 'ws';
+import { createServer as createHttpServer } from 'http';
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
@@ -75,11 +77,47 @@ enum ToolName {
   PK_SELECT = "pk_select",
 }
 
+// Set up WebSocket server (dirty stuff, doing it on file load)
+console.log('Setting up WebSocket server...');
+const WS_PORT = 3001;
+const httpServer = createHttpServer();
+const wss = new WebSocketServer({ server: httpServer });
+const connectedClients = new Set<WebSocket>();
+
+wss.on('connection', (ws: WebSocket) => {
+  console.log('Client connected to WebSocket');
+  connectedClients.add(ws);
+
+  ws.on('close', () => {
+    console.log('Client disconnected from WebSocket');
+    connectedClients.delete(ws);
+  });
+
+  ws.on('error', (error) => {
+    console.error('WebSocket error:', error);
+    connectedClients.delete(ws);
+  });
+});
+
+httpServer.listen(WS_PORT, () => {
+  console.log(`WebSocket server running on ws://localhost:${WS_PORT}`);
+});
+
+// Function to broadcast messages to all connected clients
+const broadcastToClients = (message: any) => {
+  const messageStr = JSON.stringify(message);
+  connectedClients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(messageStr);
+    }
+  });
+};
+
 export const createServer = () => {
   const server = new Server(
     {
-      name: "example-servers/everything",
-      version: "1.0.0",
+      name: "galvanized-pukeko",
+      version: "0.0.1",
     },
     {
       capabilities: {
@@ -180,6 +218,13 @@ export const createServer = () => {
 
     if (name === ToolName.ECHO) {
       const validatedArgs = EchoSchema.parse(args);
+      broadcastToClients({
+        type: 'render-component',
+        component: {
+          name: 'Echo',
+          props: { message: validatedArgs.message }
+        }
+      });
       return {
         content: [{ type: "text", text: `Echo: ${validatedArgs.message}` }],
       };
@@ -187,6 +232,17 @@ export const createServer = () => {
 
     if (name === ToolName.PK_BUTTON) {
       const validatedArgs = PkButtonSchema.parse(args);
+      broadcastToClients({
+        type: 'render-component',
+        component: {
+          name: 'Button',
+          props: {
+            text: validatedArgs.text,
+            type: validatedArgs.type || 'primary',
+            disabled: validatedArgs.disabled || false
+          }
+        }
+      });
       return {
         content: [{ type: "text", text: `PkButton: text="${validatedArgs.text}", type="${validatedArgs.type || 'primary'}", disabled=${validatedArgs.disabled || false}` }],
       };
@@ -194,6 +250,17 @@ export const createServer = () => {
 
     if (name === ToolName.PK_CHECKBOX) {
       const validatedArgs = PkCheckboxSchema.parse(args);
+      broadcastToClients({
+        type: 'render-component',
+        component: {
+          name: 'Checkbox',
+          props: {
+            label: validatedArgs.label,
+            checked: validatedArgs.checked || false,
+            disabled: validatedArgs.disabled || false
+          }
+        }
+      });
       return {
         content: [{ type: "text", text: `PkCheckbox: label="${validatedArgs.label}", checked=${validatedArgs.checked || false}, disabled=${validatedArgs.disabled || false}` }],
       };
@@ -201,6 +268,16 @@ export const createServer = () => {
 
     if (name === ToolName.PK_FORM) {
       const validatedArgs = PkFormSchema.parse(args);
+      broadcastToClients({
+        type: 'render-component',
+        component: {
+          name: 'Form',
+          props: {
+            fields: validatedArgs.fields,
+            submitText: validatedArgs.submitText || 'Submit'
+          }
+        }
+      });
       return {
         content: [{ type: "text", text: `PkForm: fields=${JSON.stringify(validatedArgs.fields)}, submitText="${validatedArgs.submitText || 'Submit'}"` }],
       };
@@ -208,6 +285,18 @@ export const createServer = () => {
 
     if (name === ToolName.PK_INPUT) {
       const validatedArgs = PkInputSchema.parse(args);
+      broadcastToClients({
+        type: 'render-component',
+        component: {
+          name: 'Input',
+          props: {
+            placeholder: validatedArgs.placeholder || '',
+            value: validatedArgs.value || '',
+            type: validatedArgs.type || 'text',
+            disabled: validatedArgs.disabled || false
+          }
+        }
+      });
       return {
         content: [{ type: "text", text: `PkInput: placeholder="${validatedArgs.placeholder || ''}", value="${validatedArgs.value || ''}", type="${validatedArgs.type || 'text'}", disabled=${validatedArgs.disabled || false}` }],
       };
@@ -215,6 +304,18 @@ export const createServer = () => {
 
     if (name === ToolName.PK_RADIO) {
       const validatedArgs = PkRadioSchema.parse(args);
+      broadcastToClients({
+        type: 'render-component',
+        component: {
+          name: 'Radio',
+          props: {
+            name: validatedArgs.name,
+            options: validatedArgs.options,
+            selected: validatedArgs.selected || '',
+            disabled: validatedArgs.disabled || false
+          }
+        }
+      });
       return {
         content: [{ type: "text", text: `PkRadio: name="${validatedArgs.name}", options=${JSON.stringify(validatedArgs.options)}, selected="${validatedArgs.selected || ''}", disabled=${validatedArgs.disabled || false}` }],
       };
@@ -222,6 +323,18 @@ export const createServer = () => {
 
     if (name === ToolName.PK_SELECT) {
       const validatedArgs = PkSelectSchema.parse(args);
+      broadcastToClients({
+        type: 'render-component',
+        component: {
+          name: 'Select',
+          props: {
+            options: validatedArgs.options,
+            placeholder: validatedArgs.placeholder || '',
+            selected: validatedArgs.selected || '',
+            disabled: validatedArgs.disabled || false
+          }
+        }
+      });
       return {
         content: [{ type: "text", text: `PkSelect: options=${JSON.stringify(validatedArgs.options)}, placeholder="${validatedArgs.placeholder || ''}", selected="${validatedArgs.selected || ''}", disabled=${validatedArgs.disabled || false}` }],
       };
@@ -249,8 +362,20 @@ export const createServer = () => {
   });
 
   const cleanup = async () => {
-    if (logsUpdateInterval) clearInterval(logsUpdateInterval);
-    if (stdErrUpdateInterval) clearInterval(stdErrUpdateInterval);
+    // Close all WebSocket connections
+    connectedClients.forEach((client) => {
+      client.close();
+    });
+
+    // Close the WebSocket server
+    wss.close(() => {
+      console.log('WebSocket server closed');
+    });
+
+    // Close the HTTP server
+    httpServer.close(() => {
+      console.log('HTTP server closed');
+    });
   };
 
   return { server, cleanup };

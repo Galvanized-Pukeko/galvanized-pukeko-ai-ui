@@ -5,8 +5,9 @@
   },
   "mcpServers": {
     "pukeko-ui": {
-      "transport": "http",
-      "url": "http://localhost:3002/mcp"
+      "transport": "stdio",
+      "command": "node",
+      "args": ["../dist-server/stdio.js"]
     }
   },
   "filesystem": "none"
