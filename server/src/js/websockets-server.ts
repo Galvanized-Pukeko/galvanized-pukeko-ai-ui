@@ -8,21 +8,21 @@ import { createServer } from 'http';
 const PORT = 3001;
 
 const components = [
-  { name: 'Input', label: 'Enter your name' },
-  { name: 'Input', label: 'Enter your email' },
-  { name: 'Input', label: 'Enter your phone' },
-  { name: 'Checkbox', label: 'Subscribe to newsletter' },
-  { name: 'Checkbox', label: 'Accept terms and conditions' },
-  { name: 'Checkbox', label: 'Enable notifications' },
-  { name: 'Select', label: 'Select your country' },
-  { name: 'Select', label: 'Choose your language' },
-  { name: 'Select', label: 'Pick your timezone' },
-  { name: 'Radio', label: 'Select gender' },
-  { name: 'Radio', label: 'Choose subscription plan' },
-  { name: 'Radio', label: 'Select delivery method' },
-  { name: 'Button', label: 'Submit' },
-  { name: 'Button', label: 'Cancel' },
-  { name: 'Button', label: 'Save' }
+  { type: 'input', label: 'Enter your name' },
+  { type: 'input', label: 'Enter your email' },
+  { type: 'input', label: 'Enter your phone' },
+  { type: 'checkbox', label: 'Subscribe to newsletter' },
+  { type: 'checkbox', label: 'Accept terms and conditions' },
+  { type: 'checkbox', label: 'Enable notifications' },
+  { type: 'select', label: 'Select your country' },
+  { type: 'select', label: 'Choose your language' },
+  { type: 'select', label: 'Pick your timezone' },
+  { type: 'radio', label: 'Select gender' },
+  { type: 'radio', label: 'Choose subscription plan' },
+  { type: 'radio', label: 'Select delivery method' },
+  { type: 'button', label: 'Submit' },
+  { type: 'button', label: 'Cancel' },
+  { type: 'button', label: 'Save' }
 ];
 
 function getRandomComponents(count: number) {

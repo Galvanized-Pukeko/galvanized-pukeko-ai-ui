@@ -8,7 +8,7 @@ import PkSelect from './components/PkSelect.vue'
 import PkButton from './components/PkButton.vue'
 
 interface ComponentConfig {
-  name: string
+  type: string
   label: string
 }
 
@@ -25,11 +25,11 @@ const radioValues = ref<Record<string, string>>({})
 const selectValues = ref<Record<string, string>>({})
 
 const componentMap = markRaw({
-  Input: PkInput,
-  Checkbox: PkCheckbox,
-  Radio: PkRadio,
-  Select: PkSelect,
-  Button: PkButton
+  input: PkInput,
+  checkbox: PkCheckbox,
+  radio: PkRadio,
+  select: PkSelect,
+  button: PkButton
 })
 
 let ws: WebSocket | null = null
@@ -53,20 +53,20 @@ const connectWebSocket = () => {
         checkboxValues.value = {}
         radioValues.value = {}
         selectValues.value = {}
-        
+
         message.components.forEach((comp, index) => {
-          const key = `${comp.name}_${index}`
-          switch (comp.name) {
-            case 'Input':
+          const key = `${comp.type}_${index}`
+          switch (comp.type) {
+            case 'input':
               inputValues.value[key] = ''
               break
-            case 'Checkbox':
+            case 'checkbox':
               checkboxValues.value[key] = false
               break
-            case 'Radio':
+            case 'radio':
               radioValues.value[key] = 'option1'
               break
-            case 'Select':
+            case 'select':
               selectValues.value[key] = ''
               break
           }
@@ -114,9 +114,9 @@ onUnmounted(() => {
 <template>
   <div class="app">
     <h1>Pukeko UI Components Demo</h1>
-    
+
     <div class="status">
-      WebSocket Status: 
+      WebSocket Status:
       <span :class="['status-badge', `status-${wsStatus}`]">
         {{ wsStatus }}
       </span>
@@ -128,41 +128,41 @@ onUnmounted(() => {
 
     <PkForm v-else @submit="handleSubmit" class="dynamic-form">
       <h2>Server-Requested Form</h2>
-      <p class="form-info">Form updates every 10 seconds with new components from server</p>
-      
-      <div v-for="(component, index) in serverComponents" :key="`${component.name}_${index}`" class="form-group">
+      <p class="form-info">server-rendered form</p>
+
+      <div v-for="(component, index) in serverComponents" :key="`${component.type}_${index}`" class="form-group">
         <component
-          :is="componentMap[component.name]"
-          v-if="component.name === 'Input'"
-          :modelValue="inputValues[`${component.name}_${index}`]"
-          @update:modelValue="(val: string | number) => inputValues[`${component.name}_${index}`] = String(val)"
+          :is="componentMap[component.type]"
+          v-if="component.type === 'input'"
+          :modelValue="inputValues[`${component.type}_${index}`]"
+          @update:modelValue="(val: string | number) => inputValues[`${component.type}_${index}`] = String(val)"
           :placeholder="component.label"
         />
-        
+
         <component
-          :is="componentMap[component.name]"
-          v-else-if="component.name === 'Checkbox'"
-          :modelValue="checkboxValues[`${component.name}_${index}`]"
-          @update:modelValue="(val: boolean) => checkboxValues[`${component.name}_${index}`] = val"
+          :is="componentMap[component.type]"
+          v-else-if="component.type === 'checkbox'"
+          :modelValue="checkboxValues[`${component.type}_${index}`]"
+          @update:modelValue="(val: boolean) => checkboxValues[`${component.type}_${index}`] = val"
           :label="component.label"
         />
-        
+
         <component
-          :is="componentMap[component.name]"
-          v-else-if="component.name === 'Radio'"
-          :modelValue="radioValues[`${component.name}_${index}`]"
-          @update:modelValue="(val: string | number) => radioValues[`${component.name}_${index}`] = String(val)"
+          :is="componentMap[component.type]"
+          v-else-if="component.type === 'radio'"
+          :modelValue="radioValues[`${component.type}_${index}`]"
+          @update:modelValue="(val: string | number) => radioValues[`${component.type}_${index}`] = String(val)"
           :name="`radio_${index}`"
           value="option1"
           :label="component.label"
         />
-        
-        <div v-else-if="component.name === 'Select'">
+
+        <div v-else-if="component.type === 'select'">
           <label>{{ component.label }}:</label>
           <component
-            :is="componentMap[component.name]"
-            :modelValue="selectValues[`${component.name}_${index}`]"
-            @update:modelValue="(val: string | number) => selectValues[`${component.name}_${index}`] = String(val)"
+            :is="componentMap[component.type]"
+            :modelValue="selectValues[`${component.type}_${index}`]"
+            @update:modelValue="(val: string | number) => selectValues[`${component.type}_${index}`] = String(val)"
           >
             <option value="">Select an option</option>
             <option value="option1">Option 1</option>
@@ -170,10 +170,10 @@ onUnmounted(() => {
             <option value="option3">Option 3</option>
           </component>
         </div>
-        
+
         <component
-          :is="componentMap[component.name]"
-          v-else-if="component.name === 'Button'"
+          :is="componentMap[component.type]"
+          v-else-if="component.type === 'button'"
           type="submit"
         >
           {{ component.label }}
