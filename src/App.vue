@@ -68,12 +68,12 @@ const handleSubmit = (event: Event) => {
 
 onMounted(() => {
   connectionService.connect()
-  
+
   unsubscribeStatus = connectionService.subscribeToStatus((status) => {
     wsStatus.value = status
   })
-  
-  unsubscribeMessage = connectionService.subscribeToMessage('render-components', handleRenderComponents)
+
+  unsubscribeMessage = connectionService.subscribeToMessage('form', handleRenderComponents)
 })
 
 onUnmounted(() => {

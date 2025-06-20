@@ -39,7 +39,7 @@ wss.on('connection', (ws: WebSocket) => {
   const sendRandomComponents = () => {
     const selectedComponents = getRandomComponents(3);
     const message = {
-      type: 'render-components',
+      type: 'form',
       components: selectedComponents
     };
 

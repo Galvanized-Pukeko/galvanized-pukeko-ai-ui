@@ -170,12 +170,12 @@ export const createServer = () => {
     const { name, arguments: args } = request.params;
 
     const { label } = SimpleUIComponentSchema.parse(args);
-    
+
     // Derive type from tool name (remove pk_ prefix if present and convert to lowercase)
     const type = name.replace('pk_', '').toLowerCase();
 
     broadcastToClients({
-      type: 'render-components',
+      type: 'form',
       components: [{ type, label }]
     });
 

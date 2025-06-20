@@ -17,7 +17,8 @@
     "server-build": "tsc --project tsconfig.server.json",
     "server-stdio": "npm run server-build && cd server && gth chat",
     "server-random-components": "npm run server-build && node dist-server/websockets-server.js",
-    "server-http": "npm run server-build && node dist-server/http-server.js"
+    "server": "npm run server-build && node dist-server/http-server.js",
+    "chat": "cd server && gth chat"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
