@@ -33,5 +33,5 @@ CLAUDE.md
 *.tsbuildinfo
 
 # Tools
-./.gsloth/gth_*
+.gsloth/gth_*
 server/gth_*

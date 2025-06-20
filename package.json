@@ -15,9 +15,8 @@
     "lint": "oxlint . --fix -D correctness --ignore-path .gitignore && eslint . --fix",
     "format": "prettier --write src/",
     "server-build": "tsc --project tsconfig.server.json",
-    "server-stdio": "npm run server-build && cd server && gth chat",
-    "server-random-components": "npm run server-build && node dist-server/websockets-server.js",
-    "server": "npm run server-build && node dist-server/http-server.js",
+    "server-random-components": "npm run server-build && node dist-server/random-server.js",
+    "server": "npm run server-build && node dist-server/mcp-http.js",
     "chat": "cd server && gth chat"
   },
   "dependencies": {
