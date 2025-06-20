@@ -16,7 +16,7 @@
     "format": "prettier --write src/",
     "server-build": "tsc --project tsconfig.server.json",
     "server-stdio": "npm run server-build && cd server && gth chat",
-    "server-ws": "npm run server-build && node dist-server/websockets-server.js",
+    "server-random-components": "npm run server-build && node dist-server/websockets-server.js",
     "server-http": "npm run server-build && node dist-server/http-server.js"
   },
   "dependencies": {

@@ -6,19 +6,10 @@ import PkCheckbox from './components/PkCheckbox.vue'
 import PkRadio from './components/PkRadio.vue'
 import PkSelect from './components/PkSelect.vue'
 import PkButton from './components/PkButton.vue'
-
-interface ComponentConfig {
-  type: string
-  label: string
-}
-
-interface WebSocketMessage {
-  type: string
-  components: ComponentConfig[]
-}
+import { connectionService, type ConnectionStatus, type ComponentConfig, type WebSocketMessage } from './services/connectionService'
 
 const serverComponents = ref<ComponentConfig[]>([])
-const wsStatus = ref<'connecting' | 'connected' | 'disconnected'>('disconnected')
+const wsStatus = ref<ConnectionStatus>('disconnected')
 const inputValues = ref<Record<string, string>>({})
 const checkboxValues = ref<Record<string, boolean>>({})
 const radioValues = ref<Record<string, string>>({})
@@ -32,60 +23,35 @@ const componentMap = markRaw({
   button: PkButton
 })
 
-let ws: WebSocket | null = null
+let unsubscribeStatus: (() => void) | null = null
+let unsubscribeMessage: (() => void) | null = null
 
-const connectWebSocket = () => {
-  wsStatus.value = 'connecting'
-  ws = new WebSocket('ws://localhost:3001')
+const handleRenderComponents = (message: WebSocketMessage) => {
+  if (message.components) {
+    serverComponents.value = message.components
+    // Reset form values when new components arrive
+    inputValues.value = {}
+    checkboxValues.value = {}
+    radioValues.value = {}
+    selectValues.value = {}
 
-  ws.onopen = () => {
-    console.log('Connected to WebSocket server')
-    wsStatus.value = 'connected'
-  }
-
-  ws.onmessage = (event) => {
-    try {
-      const message: WebSocketMessage = JSON.parse(event.data)
-      if (message.type === 'render-components') {
-        serverComponents.value = message.components
-        // Reset form values when new components arrive
-        inputValues.value = {}
-        checkboxValues.value = {}
-        radioValues.value = {}
-        selectValues.value = {}
-
-        message.components.forEach((comp, index) => {
-          const key = `${comp.type}_${index}`
-          switch (comp.type) {
-            case 'input':
-              inputValues.value[key] = ''
-              break
-            case 'checkbox':
-              checkboxValues.value[key] = false
-              break
-            case 'radio':
-              radioValues.value[key] = 'option1'
-              break
-            case 'select':
-              selectValues.value[key] = ''
-              break
-          }
-        })
+    message.components.forEach((comp, index) => {
+      const key = `${comp.type}_${index}`
+      switch (comp.type) {
+        case 'input':
+          inputValues.value[key] = ''
+          break
+        case 'checkbox':
+          checkboxValues.value[key] = false
+          break
+        case 'radio':
+          radioValues.value[key] = 'option1'
+          break
+        case 'select':
+          selectValues.value[key] = ''
+          break
       }
-    } catch (error) {
-      console.error('Error parsing WebSocket message:', error)
-    }
-  }
-
-  ws.onclose = () => {
-    console.log('Disconnected from WebSocket server')
-    wsStatus.value = 'disconnected'
-    // Attempt to reconnect after 3 seconds
-    setTimeout(connectWebSocket, 3000)
-  }
-
-  ws.onerror = (error) => {
-    console.error('WebSocket error:', error)
+    })
   }
 }
 
@@ -101,13 +67,23 @@ const handleSubmit = (event: Event) => {
 }
 
 onMounted(() => {
-  connectWebSocket()
+  connectionService.connect()
+  
+  unsubscribeStatus = connectionService.subscribeToStatus((status) => {
+    wsStatus.value = status
+  })
+  
+  unsubscribeMessage = connectionService.subscribeToMessage('render-components', handleRenderComponents)
 })
 
 onUnmounted(() => {
-  if (ws) {
-    ws.close()
+  if (unsubscribeStatus) {
+    unsubscribeStatus()
   }
+  if (unsubscribeMessage) {
+    unsubscribeMessage()
+  }
+  connectionService.disconnect()
 })
 </script>
 
