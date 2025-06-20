@@ -16,18 +16,18 @@ const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
 
 /* Input schemas for tools implemented in this server */
-const SimpleUIComponentSchema = z.object({
+
+const ComponentSchema = z.object({
+  type: z.enum(['button', 'checkbox', 'input', 'radio', 'select']).describe("Component type"),
   label: z.string().describe("Component label"),
 });
 
+const FormSchema = z.object({
+  components: z.array(ComponentSchema).describe("Array of form components"),
+});
+
 enum ToolName {
-  ECHO = "echo",
-  PK_BUTTON = "pk_button",
-  PK_CHECKBOX = "pk_checkbox",
   PK_FORM = "pk_form",
-  PK_INPUT = "pk_input",
-  PK_RADIO = "pk_radio",
-  PK_SELECT = "pk_select",
 }
 
 // Set up WebSocket server (dirty stuff, doing it on file load)
@@ -101,65 +101,12 @@ export const createServer = () => {
     return messageLevel < currentLevel;
   };
 
-  // Set up update interval for random log messages
-  const logsUpdateInterval = setInterval(() => {
-    const message = {
-      method: "notifications/message",
-      params: messages[Math.floor(Math.random() * messages.length)],
-    };
-    if (!isMessageIgnored(message.params.level as LoggingLevel))
-      server.notification(message);
-  }, 20000);
-
-  // Set up update interval for stderr messages
-  const stdErrUpdateInterval = setInterval(() => {
-    const shortTimestamp = new Date().toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-    server.notification({
-      method: "notifications/stderr",
-      params: { content: `${shortTimestamp}: A stderr message` },
-    });
-  }, 30000);
-
  server.setRequestHandler(ListToolsRequestSchema, async () => {
     const tools: Tool[] = [
       {
-        name: ToolName.ECHO,
-        description: "Echoes back the input",
-        inputSchema: zodToJsonSchema(SimpleUIComponentSchema) as ToolInput,
-      },
-      {
-        name: ToolName.PK_BUTTON,
-        description: "Renders a clickable button element with customizable text and styling",
-        inputSchema: zodToJsonSchema(SimpleUIComponentSchema) as ToolInput,
-      },
-      {
-        name: ToolName.PK_CHECKBOX,
-        description: "Renders a checkbox input that allows users to select or deselect an option",
-        inputSchema: zodToJsonSchema(SimpleUIComponentSchema) as ToolInput,
-      },
-      {
         name: ToolName.PK_FORM,
-        description: "Renders a form container that can hold multiple input fields and a submit button",
-        inputSchema: zodToJsonSchema(SimpleUIComponentSchema) as ToolInput,
-      },
-      {
-        name: ToolName.PK_INPUT,
-        description: "Renders an input field into which user can input plain text value or number",
-        inputSchema: zodToJsonSchema(SimpleUIComponentSchema) as ToolInput,
-      },
-      {
-        name: ToolName.PK_RADIO,
-        description: "Renders a group of radio buttons where only one option can be selected at a time",
-        inputSchema: zodToJsonSchema(SimpleUIComponentSchema) as ToolInput,
-      },
-      {
-        name: ToolName.PK_SELECT,
-        description: "Renders a dropdown select element that allows users to choose one option from a list",
-        inputSchema: zodToJsonSchema(SimpleUIComponentSchema) as ToolInput,
+        description: "Renders a form with multiple components (button, checkbox, input, radio, select)",
+        inputSchema: zodToJsonSchema(FormSchema) as ToolInput,
       }
     ];
 
@@ -169,18 +116,19 @@ export const createServer = () => {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
 
-    const { label } = SimpleUIComponentSchema.parse(args);
+    if (name !== ToolName.PK_FORM) {
+      throw new Error(`Unknown tool: ${name}`);
+    }
 
-    // Derive type from tool name (remove pk_ prefix if present and convert to lowercase)
-    const type = name.replace('pk_', '').toLowerCase();
+    const { components } = FormSchema.parse(args);
 
     broadcastToClients({
       type: 'form',
-      components: [{ type, label }]
+      components: components
     });
 
     return {
-      content: [{ type: "text", text: `${type} component sent successfully` }],
+      content: [{ type: "text", text: `Form with ${components.length} component(s) sent successfully` }],
     };
   });
 
