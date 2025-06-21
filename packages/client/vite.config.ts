@@ -10,9 +10,14 @@ export default defineConfig({
     vue(),
     vueDevTools(),
   ],
+  build: {
+    outDir: fileURLToPath(new URL('dist/client', import.meta.url)),
+    emptyOutDir: true
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
+    preserveSymlinks: true
   },
 })

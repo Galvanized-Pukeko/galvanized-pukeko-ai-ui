@@ -18,9 +18,9 @@ Start MCP and Websockets server
 npm run server
 ```
 
-Start Vue app
+Start Vue app in a separate console
 ```bash
-npm run dev
+npm run client
 ```
 
 Server should be running on port 3002, now you can connect your client to this:
@@ -38,7 +38,9 @@ You can use [Gaunt Sloth](https://github.com/andruhon/gaunt-sloth-assistant) ins
 npm run chat
 ```
 
+In the chat ask it to render a form to collect user data.
+
 
 ## Contributing
 
-Contributions are welcome. Feel free to create an issue to contact us. 
+Contributions are welcome. Feel free to create an issue to contact us.

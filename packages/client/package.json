@@ -1,0 +1,21 @@
+{
+  "name": "@galvanized-pukeko-ai-ui/client",
+  "version": "0.0.1",
+  "main": "index.js",
+  "devDependencies": {},
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run type-check && npm run build-only",
+    "preview": "vite preview",
+    "test:unit": "vitest",
+    "build-only": "vite build",
+    "type-check": "vue-tsc --build",
+    "lint:oxlint": "oxlint . --fix -D correctness --ignore-path .gitignore",
+    "lint:eslint": "eslint . --fix",
+    "lint": "oxlint . --fix -D correctness --ignore-path .gitignore && eslint . --fix",
+    "format": "prettier --write packages/client/src/"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}

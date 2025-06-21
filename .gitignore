@@ -34,4 +34,4 @@ CLAUDE.md
 
 # Tools
 .gsloth/gth_*
-server/gth_*
+packages/server-js/gth_*

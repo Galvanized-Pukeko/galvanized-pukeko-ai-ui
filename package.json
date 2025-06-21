@@ -4,20 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "npm run type-check && npm run build-only",
-    "preview": "vite preview",
-    "test:unit": "vitest",
-    "build-only": "vite build",
-    "type-check": "vue-tsc --build",
-    "lint:oxlint": "oxlint . --fix -D correctness --ignore-path .gitignore",
-    "lint:eslint": "eslint . --fix",
-    "lint": "oxlint . --fix -D correctness --ignore-path .gitignore && eslint . --fix",
-    "format": "prettier --write src/",
-    "server-build": "tsc --project tsconfig.server.json",
-    "server-random-components": "npm run server-build && node dist-server/random-server.js",
-    "server": "npm run server-build && node dist-server/mcp-http.js",
-    "chat": "cd server && gth chat"
+    "client": "npm run dev -w packages/client",
+    "server": "npm run dev -w packages/server-js",
+    "chat": "npm run chat -w packages/server-js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
@@ -41,7 +30,6 @@
     "eslint": "^9.22.0",
     "eslint-plugin-oxlint": "^0.16.0",
     "eslint-plugin-vue": "~10.0.0",
-    "gaunt-sloth-assistant": "^0.6.1",
     "jiti": "^2.4.2",
     "jsdom": "^26.0.0",
     "oxlint": "^0.16.0",
@@ -51,5 +39,9 @@
     "vite-plugin-vue-devtools": "^7.7.2",
     "vitest": "^3.1.1",
     "vue-tsc": "^2.2.8"
-  }
+  },
+  "workspaces": [
+    "packages/client",
+    "packages/server-js"
+  ]
 }

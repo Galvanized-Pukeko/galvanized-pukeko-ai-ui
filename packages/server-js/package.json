@@ -1,0 +1,19 @@
+{
+  "name": "@galvanized-pukeko-ai-ui/server-js",
+  "version": "0.0.1",
+  "main": "index.js",
+  "devDependencies": {},
+  "scripts": {
+    "build": "tsc",
+    "dev": "npm run build && node dist/mcp-http.js",
+    "dev-server-randomp": " npm run build && node dist/random-server.js",
+    "chat": "gth chat",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "gaunt-sloth-assistant": "^0.6.1"
+  }
+}
