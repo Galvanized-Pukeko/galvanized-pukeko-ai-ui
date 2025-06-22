@@ -6,7 +6,8 @@
   "scripts": {
     "client": "npm run dev -w packages/client",
     "server": "npm run dev -w packages/server-js",
-    "chat": "npm run chat -w packages/server-js"
+    "chat": "npm run chat -w packages/server-js",
+    "sink": "npm run sink -w packages/client"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",

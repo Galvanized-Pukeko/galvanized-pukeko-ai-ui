@@ -8,7 +8,7 @@ interface ComponentConfig {
 interface WebSocketMessage {
   type: string
   components?: ComponentConfig[]
-  [key: string]: any
+  [key: string]: unknown
 }
 
 type MessageHandler = (message: WebSocketMessage) => void
@@ -98,7 +98,7 @@ class ConnectionService {
     }
   }
 
-  sendMessage(message: any): void {
+  sendMessage(message: unknown): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message))
     } else {

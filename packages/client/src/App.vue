@@ -57,7 +57,7 @@ const handleRenderComponents = (message: WebSocketMessage) => {
 
 const handleSubmit = (event: Event) => {
   event.preventDefault()
-  const allValues: Record<string, any> = {
+  const allValues: Record<string, string | boolean | number> = {
     ...inputValues.value,
     ...checkboxValues.value,
     ...radioValues.value,
@@ -160,98 +160,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.app {
-  max-width: 600px;
-  margin: 2rem auto;
-  padding: 2rem;
-  font-family: Arial, sans-serif;
-}
-
-h1 {
-  color: #333;
-  margin-bottom: 1rem;
-}
-
-h2 {
-  color: #444;
-  margin-bottom: 0.5rem;
-}
-
-.status {
-  margin-bottom: 2rem;
-  font-size: 0.9rem;
-}
-
-.status-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  font-weight: bold;
-  text-transform: uppercase;
-  font-size: 0.8rem;
-}
-
-.status-connecting {
-  background-color: #ffc107;
-  color: #000;
-}
-
-.status-connected {
-  background-color: #28a745;
-  color: #fff;
-}
-
-.status-disconnected {
-  background-color: #dc3545;
-  color: #fff;
-}
-
-.info {
-  text-align: center;
-  padding: 3rem;
-  color: #666;
-  background-color: #f8f9fa;
-  border-radius: 8px;
-}
-
-.dynamic-form {
-  background-color: #f8f9fa;
-  padding: 2rem;
-  border-radius: 8px;
-}
-
-.form-info {
-  color: #666;
-  margin-bottom: 1.5rem;
-  font-size: 0.9rem;
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: bold;
-  color: #555;
-}
-
-.form-group small {
-  display: block;
-  margin-top: 0.5rem;
-  color: #666;
-  font-style: italic;
-}
-
-.radio-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  margin-top: 2rem;
-}
+/* See packages/client/src/assets/global.css for global styles */
+/* Place only things specific to DevSite here */
 </style>

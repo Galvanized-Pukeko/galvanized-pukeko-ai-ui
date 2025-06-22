@@ -1,3 +1,136 @@
 :root {
+ /* Place CSS variables here */
+}
 
+/* Base styles extracted from App.vue */
+body {
+  margin: 0;
+  padding: 0;
+}
+
+.app {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 2rem;
+  font-family: Arial, sans-serif;
+}
+
+/* Typography */
+h1 {
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+h2 {
+  color: #444;
+  margin-bottom: 0.5rem;
+}
+
+h3 {
+  color: #555;
+  margin-bottom: 0.5rem;
+}
+
+/* Status badges */
+.status {
+  margin-bottom: 2rem;
+  font-size: 0.9rem;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+
+.status-connecting {
+  background-color: #ffc107;
+  color: #000;
+}
+
+.status-connected {
+  background-color: #28a745;
+  color: #fff;
+}
+
+.status-disconnected {
+  background-color: #dc3545;
+  color: #fff;
+}
+
+/* Info boxes */
+.info {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+/* Form styles */
+.dynamic-form {
+  background-color: #f8f9fa;
+  padding: 2rem;
+  border-radius: 8px;
+}
+
+.form-info {
+  color: #666;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+  color: #555;
+}
+
+.form-group small {
+  display: block;
+  margin-top: 0.5rem;
+  color: #666;
+  font-style: italic;
+}
+
+/* Kitchen sink specific styles */
+.component-section {
+  background-color: #f8f9fa;
+  padding: 2rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.component-grid {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.example-item {
+  padding: 1rem;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+.example-label {
+  font-size: 0.875rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+code {
+  background-color: #f4f4f4;
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.875rem;
 }

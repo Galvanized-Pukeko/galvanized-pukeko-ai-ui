@@ -40,6 +40,12 @@ npm run chat
 
 In the chat ask it to render a form to collect user data.
 
+## Development
+
+Kitchen Sink is a static collection of all components (for component inspection)
+```bash
+npm run sink
+```
 
 ## Contributing
 

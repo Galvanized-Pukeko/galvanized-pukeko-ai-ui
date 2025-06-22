@@ -9,6 +9,14 @@ export default defineConfig({
   plugins: [
     vue(),
     vueDevTools(),
+    {
+      name: 'print-kitchensink',
+      configureServer(server) {
+        if (server.config.server.open) {
+          console.log(`Kitchen sink: http://localhost:${server.config.server.port}${server.config.server.open}`);
+        }
+      }
+    }
   ],
   build: {
     outDir: fileURLToPath(new URL('dist/client', import.meta.url)),
@@ -20,4 +28,4 @@ export default defineConfig({
     },
     preserveSymlinks: true
   },
-})
+});

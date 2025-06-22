@@ -5,6 +5,7 @@
   "devDependencies": {},
   "scripts": {
     "dev": "vite",
+    "sink": "vite --open /sink/",
     "build": "npm run type-check && npm run build-only",
     "preview": "vite preview",
     "test:unit": "vitest",
