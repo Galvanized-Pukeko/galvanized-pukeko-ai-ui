@@ -8,7 +8,7 @@ The project is at a very early prototyping stage, so it is not very helpful yet.
 
 Running 
 ```bash
-git clone git@github.com:andruhon/galvanized-pukeko-ai-ui.git
+git clone https://github.com/andruhon/galvanized-pukeko-ai-ui.git
 cd galvanized-pukeko-ai-ui
 npm install
 ```
