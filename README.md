@@ -4,6 +4,8 @@ Galvanized Pukeko UI is a framework that allows LLM models (AI) to flexibly rend
 getting information from users. It eliminates the need to render entire HTML pages while maintaining consistent
 formatting and coherent branded interfaces.
 
+![galvanized-pukeko-logo.png](assets/galvanized-pukeko-logo.png)
+
 The project is at a very early prototyping stage, so it is not very helpful yet.
 
 Running 
