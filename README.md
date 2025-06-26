@@ -6,6 +6,38 @@ formatting and coherent branded interfaces.
 
 The project is at a very early prototyping stage, so it is not very helpful yet.
 
+```mermaid
+graph LR
+    AI((_ LLM _))
+
+    subgraph S[Galvanized Pukeko Server]
+        direction TB
+        PMCP[Galvanized Pukeko MCP Server] <--> PWS[Galvanized Pukeko Websockets Server]
+    end
+
+    subgraph BL[Business Logic]
+        direction TB
+        MCP1
+        MCP2
+        MCPn
+    end
+
+    subgraph Browser
+        CL["Galvanized Pukeko Web Client (Vue)"]
+    end
+    
+    AICL[AI Client]
+
+    AI --> BL
+    AI --> PMCP
+    PMCP --> AICL
+    PWS <--> | websockets | CL
+    BL --> AICL
+    AICL --> AI
+    AICL <--> PWS
+    
+```
+
 Running 
 ```bash
 git clone https://github.com/andruhon/galvanized-pukeko-ai-ui.git
