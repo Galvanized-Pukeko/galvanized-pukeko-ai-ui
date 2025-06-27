@@ -1,5 +1,28 @@
 :root {
  /* Place CSS variables here */
+
+ /* Spacing, paddings, margins, other gaps */
+ --nice-spacing-unit: 1.5rem;
+ --padding-full: var(--nice-spacing-unit);
+ --padding-half: calc(var(--padding-full) / 2);
+ --padding-small: 0.5rem;
+
+  /* Colour variables to be used scoped inside this block exclusively */
+  --grey-87: #ddd;
+
+  /* Colour variables for use anywhere */
+  --subtle-border: 1px solid var(--grey-87);
+  --border-radius-small-box: 0.38rem;
+}
+
+/* nice accessible fonts */
+@font-face {
+  font-family: Figtree;
+  src: url(fonts/Figtree-VariableFont_wght.ttf);
+}
+@font-face {
+  font-family: Figtree-italic;
+  src: url(fonts/Figtree-Italic-VariableFont_wght.ttf);
 }
 
 /* Base styles extracted from App.vue */
@@ -12,7 +35,7 @@ body {
   max-width: 900px;
   margin: 2rem auto;
   padding: 2rem;
-  font-family: Arial, sans-serif;
+  font-family: Figtree, Arial, sans-serif;
 }
 
 /* Typography */

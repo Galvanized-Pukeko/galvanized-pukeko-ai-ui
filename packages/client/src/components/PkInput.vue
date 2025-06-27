@@ -33,10 +33,13 @@ const handleInput = (event: Event) => {
 
 <style scoped>
 .pk-input {
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: var(--padding-small) var(--padding-half);
+  border: var(--subtle-border);
+  border-radius: var(--border-radius-small-box);
+  width: calc(100% - var(--padding-full));
+  height: var(--nice-spacing-unit);
   font-size: 1rem;
+  font-family: inherit;
 }
 
 .pk-input:focus {

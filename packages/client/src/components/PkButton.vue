@@ -37,6 +37,7 @@ const handleClick = (event: MouseEvent) => {
   background-color: #4CAF50;
   color: white;
   font-size: 1rem;
+  font-family: inherit;
   cursor: pointer;
   transition: background-color 0.3s;
 }

@@ -33,6 +33,7 @@ const handleChange = (event: Event) => {
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 1rem;
+  font-family: inherit;
   background-color: white;
   cursor: pointer;
 }
