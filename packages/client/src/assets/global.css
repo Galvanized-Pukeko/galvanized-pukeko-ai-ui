@@ -11,8 +11,10 @@
  --padding-twothird: 1rem;
  --padding-quarter: calc(var(--padding-full) / 4);
  --padding-sixth: calc(var(--padding-full) / 6);
+ --padding-oct: calc(var(--padding-full) / 8);
 
  --border-radius-small-box: var(--padding-quarter);
+ --border-radius-extra-small-box: var(--padding-oct);
 
   /* Colour variables to be used scoped inside this block exclusively */
   --white-pure: #fff;
@@ -35,13 +37,15 @@
 
   --line-separator-subtle: 1px solid #ebe6e7;
 
-  --border-input-idle: 1px solid var(--grey-87);
+  --border-input-idle: 1px solid var(--grey-70);
   --border-input-active: 1px solid var(--grey-20);
   --border-input-disabled: 1px solid var(--grey-87);
 
   --bg-input-active: var(--white-pure);
   --bg-input-idle: var(--bg-input-active);
   --bg-input-disabled: transparent;
+
+  --form-control-color: var(--grey-20);
 
   --bg-button-prim-idle: var(--grey-40);
   --bg-button-prim-active: var(--grey-20);
