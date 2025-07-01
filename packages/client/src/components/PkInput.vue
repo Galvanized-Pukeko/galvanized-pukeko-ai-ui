@@ -1,9 +1,9 @@
 <template>
-  <label for="inputId"><slot>{{ label }}</slot></label>
+  <label :for="inputId"><slot>{{ label }}</slot></label>
   <input
     :type="type"
     :value="modelValue"
-    id="inputId"
+    :id="inputId"
     :placeholder="placeholder"
     :disabled="disabled"
     @input="handleInput"

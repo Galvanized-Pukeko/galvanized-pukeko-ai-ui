@@ -1,8 +1,10 @@
 <template>
+  <label :for="selectId"> {{ label }}</label>
   <select
     :value="modelValue"
     :disabled="disabled"
     @change="handleChange"
+    :id="selectId"
     class="pk-select"
   >
     <slot></slot>
@@ -13,6 +15,9 @@
 interface Props {
   modelValue?: string | number
   disabled?: boolean
+  selectId?: string
+  label?: string
+
 }
 
 defineProps<Props>()

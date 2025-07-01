@@ -43,7 +43,7 @@ const handleButtonClick = () => {
         <PkInput
           :modelValue="inputValue"
           @update:modelValue="(val: string | number) => inputValue = String(val)"
-          inputId="inputId"
+          inputId="standardInput"
           placeholder="Enter some text"
           label="Input label"
         />
@@ -93,6 +93,8 @@ const handleButtonClick = () => {
         <PkSelect
           :modelValue="selectValue"
           @update:modelValue="(val: string | number) => selectValue = String(val)"
+          selectId="justSelect"
+          label="Assortment options"
         >
           <option value="">Select an option</option>
           <option value="option1">Option 1</option>

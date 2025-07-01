@@ -1,14 +1,14 @@
 <template>
-  <div class="pk-checkbox">
-    <input
-      type="checkbox"
-      :id="checkboxId"
-      :checked="modelValue"
-      :disabled="disabled"
-      @change="handleChange"
-    />
-    <label :for="checkboxId"><slot>{{ label }}</slot></label>
-  </div>
+    <label :for="checkboxId" class="pk-checkbox">
+      <input
+        type="checkbox"
+        :id="checkboxId"
+        :checked="modelValue"
+        :disabled="disabled"
+        @change="handleChange"
+      />
+      <span><slot>{{ label }}</slot></span>
+    </label>
 </template>
 
 <script setup lang="ts">
@@ -54,4 +54,5 @@ const handleChange = (event: Event) => {
 .pk-checkbox span {
   user-select: none;
 }
+
 </style>
