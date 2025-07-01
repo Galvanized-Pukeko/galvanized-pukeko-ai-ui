@@ -29,22 +29,31 @@ const handleChange = (event: Event) => {
 
 <style scoped>
 .pk-select {
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: var(--padding-third) var(--padding-half);
+  border: var(--border-input-idle);
+  border-radius: var(--border-radius-small-box);
+  background-color: var(--bg-input-idle);
+  width: calc(100% + 2px);
+  height: calc(calc(var(--padding-full) + calc(var(--padding-third) * 2)) + 2px);
+  /*additional 2px to width and height are because of border thickness */
   font-size: 1rem;
   font-family: inherit;
-  background-color: white;
+  box-shadow: none;
   cursor: pointer;
+  transition: var(--transition-normal);
 }
 
-.pk-select:focus {
+.pk-select:focus, .pk-select:hover:not(.pk-select--disabled){
   outline: none;
-  border-color: #4CAF50;
+  border: var(--border-input-active);
+  background-color: var(--bg-input-active);
+  box-shadow: var(--box-shadow-inner-active);
+  transition: var(--transition-normal);
 }
 
 .pk-select:disabled {
-  background-color: #f5f5f5;
+  background-color: var(--bg-input-disabled);
+  border: var(--border-input-disabled);
   cursor: not-allowed;
 }
 </style>

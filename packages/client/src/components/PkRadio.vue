@@ -41,12 +41,14 @@ const handleChange = (event: Event) => {
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
+  height: var(--padding-full);
 }
 
 .pk-radio input[type="radio"] {
   width: 1rem;
   height: 1rem;
   cursor: pointer;
+  margin: auto var(--padding-sixth);
 }
 
 .pk-radio input[type="radio"]:disabled {

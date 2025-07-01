@@ -39,33 +39,57 @@ const handleButtonClick = () => {
     <p class="form-info">A showcase of all available components without external dependencies</p>
 
     <PkForm @submit="handleFormSubmit" class="dynamic-form">
-      <div class="form-group">
+      <div class="form-group input-group">
         <PkInput
           :modelValue="inputValue"
           @update:modelValue="(val: string | number) => inputValue = String(val)"
+          inputId="inputId"
           placeholder="Enter some text"
+          label="Input label"
         />
       </div>
 
-      <div class="form-group">
+      <div class="form-group checkbox-group">
         <PkCheckbox
           :modelValue="checkboxValue"
           @update:modelValue="(val: boolean) => checkboxValue = val"
-          label="Checkbox Label"
+          checkboxId="tc"
+          label="Checkbox label, i.e. to confirm acceptance of Terms and Conditions"
+        />
+        <PkCheckbox
+          :modelValue="checkboxValue"
+          @update:modelValue="(val: boolean) => checkboxValue = val"
+          checkboxId="too"
+          label="tick this too :)"
         />
       </div>
 
-      <div class="form-group">
+      <h2>Select one option, i.e. for payment type</h2>
+      <div class="form-group radio-group">
         <PkRadio
           :modelValue="radioValue"
           @update:modelValue="(val: string | number) => radioValue = String(val)"
           name="options"
           value="option1"
-          label="Radio Label"
+          label="Radio Label for option 1"
+        />
+        <PkRadio
+          :modelValue="radioValue"
+          @update:modelValue="(val: string | number) => radioValue = String(val)"
+          name="options"
+          value="option2"
+          label="Radio Label for option 2"
+        />
+        <PkRadio
+          :modelValue="radioValue"
+          @update:modelValue="(val: string | number) => radioValue = String(val)"
+          name="options"
+          value="option3"
+          label="Radio Label for option 3"
         />
       </div>
 
-      <div class="form-group">
+      <div class="form-group input-group">
         <PkSelect
           :modelValue="selectValue"
           @update:modelValue="(val: string | number) => selectValue = String(val)"

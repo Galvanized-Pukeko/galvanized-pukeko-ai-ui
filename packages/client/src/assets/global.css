@@ -1,18 +1,58 @@
 :root {
  /* Place CSS variables here */
 
+ --transition-normal: all 0.3s ease-out;
+
  /* Spacing, paddings, margins, other gaps */
  --nice-spacing-unit: 1.5rem;
  --padding-full: var(--nice-spacing-unit);
  --padding-half: calc(var(--padding-full) / 2);
- --padding-small: 0.5rem;
+ --padding-third: calc(var(--padding-full) / 3);
+ --padding-twothird: 1rem;
+ --padding-quarter: calc(var(--padding-full) / 4);
+ --padding-sixth: calc(var(--padding-full) / 6);
+
+ --border-radius-small-box: var(--padding-quarter);
 
   /* Colour variables to be used scoped inside this block exclusively */
+  --white-pure: #fff;
+  --white-98: #fafafa;
   --grey-87: #ddd;
+  --grey-70: #b3b3b3;
+  --grey-50: #808080;
+  --grey-40: #666;
+  --grey-33: #555;
+  --grey-27: #444;
+  --grey-20: #333;
+
+
 
   /* Colour variables for use anywhere */
-  --subtle-border: 1px solid var(--grey-87);
-  --border-radius-small-box: 0.38rem;
+  --main-text-color: var(--grey-20);
+  --header-1: var(--main-text-color);
+  --header-2: var(--grey-27);
+  --header-3: var(--grey-27);
+
+  --line-separator-subtle: 1px solid #ebe6e7;
+
+  --border-input-idle: 1px solid var(--grey-87);
+  --border-input-active: 1px solid var(--grey-20);
+  --border-input-disabled: 1px solid var(--grey-87);
+
+  --bg-input-active: var(--white-pure);
+  --bg-input-idle: var(--bg-input-active);
+  --bg-input-disabled: transparent;
+
+  --bg-button-prim-idle: var(--grey-40);
+  --bg-button-prim-active: var(--grey-20);
+  --bg-button-prim-disabled: var(--grey-87);
+
+  --text-button-prim-idle: var(--white-pure);
+  --text-button-prim-active: var(--white-pure);
+  --text-button-prim-disabled: var(--white-98);
+
+  --box-shadow-inner-active: inset 0px 1px 2px 0px var(--grey-70);
+  --box-shadow-drop-active: 0px 1px 2px 1px var(--grey-70);
 }
 
 /* nice accessible fonts */
@@ -29,6 +69,7 @@
 body {
   margin: 0;
   padding: 0;
+  text-wrap: pretty;
 }
 
 .app {
@@ -36,22 +77,33 @@ body {
   margin: 2rem auto;
   padding: 2rem;
   font-family: Figtree, Arial, sans-serif;
+  font-size: 1rem;
 }
 
 /* Typography */
 h1 {
-  color: #333;
-  margin-bottom: 1rem;
+  font-size: 3.5rem;
+  font-weight: 400;
+  color: var(--header-1);
+  margin-bottom: var(--padding-twothird);
+  border-bottom: var(--line-separator-subtle);
+  padding-bottom: var(--padding-third);
 }
 
 h2 {
-  color: #444;
-  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--header-2);
+  margin-bottom: var(--padding-third);
+  border-bottom: var(--line-separator-subtle);
+  padding-bottom: var(--padding-third);
 }
 
 h3 {
-  color: #555;
-  margin-bottom: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--header-3);
+  margin-bottom: var(--padding-third);
 }
 
 /* Status badges */
@@ -109,13 +161,6 @@ h3 {
   margin-bottom: 1.5rem;
 }
 
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: bold;
-  color: #555;
-}
-
 .form-group small {
   display: block;
   margin-top: 0.5rem;
@@ -135,6 +180,23 @@ h3 {
   display: grid;
   gap: 1.5rem;
   margin-top: 1rem;
+}
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-half);
+}
+
+.radio-group {
+  display: flex;
+  gap: calc(var(--padding-full) + var(--padding-twothird));
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-sixth);
 }
 
 .example-item {

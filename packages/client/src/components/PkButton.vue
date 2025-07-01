@@ -31,28 +31,36 @@ const handleClick = (event: MouseEvent) => {
 
 <style scoped>
 .pk-button {
-  padding: 0.5rem 1rem;
-  border: 1px solid #4CAF50;
-  border-radius: 4px;
-  background-color: #4CAF50;
-  color: white;
+  padding: var(--padding-third) var(--padding-twothird);
+  border: 1px solid var(--bg-button-prim-idle);
+  border-radius: var(--border-radius-small-box);
+  background-color: var(--bg-button-prim-idle);
+  color: var(--text-button-prim-idle);
+  height: calc(calc(var(--nice-spacing-unit) + var(--padding-twothird)) + 2px);
   font-size: 1rem;
   font-family: inherit;
   cursor: pointer;
-  transition: background-color 0.3s;
+  box-shadow: none;
+  transition: var(--transition-normal);
 }
 
 .pk-button:hover:not(.pk-button--disabled) {
-  background-color: #45a049;
+  background-color: var(--bg-button-prim-active);
+  color: var(--text-button-prim-active);
+  box-shadow: var(--box-shadow-drop-active);
+  transition: var(--transition-normal);
 }
 
 .pk-button:active:not(.pk-button--disabled) {
-  background-color: #3d8b40;
+  background-color: var(--bg-button-prim-active);
+  color: var(--text-button-prim-active);
+  box-shadow: var(--box-shadow-drop-active);
+  transition: var(--transition-normal);
 }
 
 .pk-button--disabled {
-  background-color: #cccccc;
-  border-color: #cccccc;
+  background-color: var(--bg-button-prim-disabled);
+  border-color: var(--bg-button-prim-disabled);
   cursor: not-allowed;
 }
 </style>
