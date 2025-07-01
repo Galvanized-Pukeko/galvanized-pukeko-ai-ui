@@ -10,7 +10,8 @@ import PkButton from './components/PkButton.vue'
 // Component values
 const inputValue = ref('')
 const numberValue = ref(0)
-const checkboxValue = ref(false)
+const checkboxValue1 = ref(false)
+const checkboxValue2 = ref(false)
 const radioValue = ref('option1')
 const selectValue = ref('')
 
@@ -21,7 +22,8 @@ const handleFormSubmit = (event: Event) => {
   console.log('Form Values:', {
     input: inputValue.value,
     number: numberValue.value,
-    checkbox: checkboxValue.value,
+    checkbox: checkboxValue1.value,
+    checkbox: checkboxValue2.value,
     radio: radioValue.value,
     select: selectValue.value
   })
@@ -51,14 +53,14 @@ const handleButtonClick = () => {
 
       <div class="form-group checkbox-group">
         <PkCheckbox
-          :modelValue="checkboxValue"
-          @update:modelValue="(val: boolean) => checkboxValue = val"
+          :modelValue="checkboxValue1"
+          @update:modelValue="(val: boolean) => checkboxValue1 = val"
           checkboxId="tc"
           label="Checkbox label, i.e. to confirm acceptance of Terms and Conditions"
         />
         <PkCheckbox
-          :modelValue="checkboxValue"
-          @update:modelValue="(val: boolean) => checkboxValue = val"
+          :modelValue="checkboxValue2"
+          @update:modelValue="(val: boolean) => checkboxValue2 = val"
           checkboxId="too"
           label="tick this too :)"
         />
