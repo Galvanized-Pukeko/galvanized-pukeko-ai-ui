@@ -105,11 +105,62 @@ const handleButtonClick = () => {
         </PkSelect>
       </div>
 
+      <h2>Range of buttons</h2>
+
       <div class="form-group">
-        <PkButton type="submit">
-          Submit Form
+
+        <PkButton
+          type="submit"
+          class="pk-button-normal-size pk-button-prim"
+          >
+            Submit Form
+        </PkButton>
+
+        <PkButton
+          type="submit"
+          class="pk-button-normal-size pk-button-sec"
+          >
+            Submit Form
+        </PkButton>
+
+      </div>
+
+      <div class="form-group">
+
+        <PkButton
+          type="submit"
+          class="pk-button-normal-size pk-button-no-border"
+          >
+            Submit Form
+        </PkButton>
+
+        <PkButton
+          type="submit"
+          class="pk-button--disabled"
+          >
+            Submit Form
+        </PkButton>
+
+      </div>
+
+      <div class="form-group">
+        <PkButton
+          type="submit"
+          class="pk-button-full-size pk-button-prim"
+          >
+            Submit Form
         </PkButton>
       </div>
+
+      <div class="form-group">
+        <PkButton
+          type="submit"
+          class="pk-button-full-size pk-button-sec"
+          >
+            Submit Form
+        </PkButton>
+      </div>
+
     </PkForm>
   </div>
 </template>

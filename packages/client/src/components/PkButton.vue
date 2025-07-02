@@ -31,37 +31,105 @@ const handleClick = (event: MouseEvent) => {
 
 <style scoped>
 .pk-button {
-  padding: var(--padding-third) var(--padding-twothird);
-  border: 1px solid var(--border-button-prim-idle);
-  border-radius: var(--border-radius-small-box);
-  background-image: var(--bg-button-prim-idle);
-  color: var(--text-button-prim-idle);
+
   height: calc(calc(var(--nice-spacing-unit) + var(--padding-twothird)) + 2px);
   font-size: 1rem;
   font-family: inherit;
   cursor: pointer;
   box-shadow: none;
   transition: var(--transition-normal);
-}
 
-.pk-button:hover:not(.pk-button--disabled) {
-  border: 1px solid var(--border-button-prim-active);
-  background-image: var(--bg-button-prim-active);
-  color: var(--text-button-prim-active);
-  box-shadow: var(--box-shadow-drop-active);
-  transition: var(--transition-normal);
-}
+  &.pk-button-normal-size {
+    width: auto;
+  }
 
-.pk-button:active:not(.pk-button--disabled) {
-  background-image: var(--bg-button-prim-active);
-  color: var(--text-button-prim-active);
-  box-shadow: var(--box-shadow-drop-active);
-  transition: var(--transition-normal);
+  &.pk-button-full-size {
+    width: 100%;
+  }
+
+  &:hover:not(.pk-button--disabled),
+  &:active:not(.pk-button--disabled) {
+      border-radius: var(--border-radius-small-box);
+      padding: var(--padding-third) var(--padding-twothird);
+      transition: var(--transition-normal);
+  }
+
+  &.pk-button-prim {
+    /* for sharper look, we add gradient border */
+    background: var(--bg-button-prim-idle) padding-box,
+                var(--border-button-prim-idle) border-box;
+    border: 1px solid transparent;
+    border-radius: var(--border-radius-small-box);
+    padding: var(--padding-third) var(--padding-twothird);
+
+    color: var(--text-button-prim-idle);
+
+    &:hover:not(.pk-button--disabled),
+    &:active:not(.pk-button--disabled) {
+      /* for sharper look, we add gradient border */
+      background: var(--bg-button-prim-active) padding-box,
+                  var(--border-button-prim-active) border-box;
+      border: 1px solid transparent;
+      color: var(--text-button-prim-active);
+    }
+  }
+
+    &.pk-button-sec {
+      /* for sharper look, we add gradient border */
+      background: var(--bg-button-prim-idle) padding-box,
+                  var(--border-button-prim-idle) border-box;
+      border: 1px solid transparent;
+      border-radius: var(--border-radius-small-box);
+      padding: var(--padding-third) var(--padding-twothird);
+
+      color: var(--text-button-prim-idle);
+
+      &:hover:not(.pk-button--disabled),
+      &:active:not(.pk-button--disabled) {
+        /* for sharper look, we add gradient border */
+        background: var(--bg-button-prim-active) padding-box,
+                    var(--border-button-prim-active) border-box;
+        border: 1px solid transparent;
+        color: var(--text-button-prim-active);
+      }
+    }
+
+    &.pk-button-no-border {
+      /* for sharper look, we add gradient border */
+      background: var(--bg-button-prim-idle) padding-box,
+                  var(--border-button-prim-idle) border-box;
+      border: 1px solid transparent;
+      border-radius: var(--border-radius-small-box);
+      padding: var(--padding-third) var(--padding-twothird);
+
+      color: var(--text-button-prim-idle);
+
+      &:hover:not(.pk-button--disabled),
+      &:active:not(.pk-button--disabled) {
+        /* for sharper look, we add gradient border */
+        background: var(--bg-button-prim-active) padding-box,
+                    var(--border-button-prim-active) border-box;
+        border: 1px solid transparent;
+        color: var(--text-button-prim-active);
+      }
+    }
 }
 
 .pk-button--disabled {
-  background-image: var(--bg-button-prim-disabled);
-  border-color: var(--border-button-prim-disabled);
+
+  /* for sharper look, we add gradient border */
+  background: var(--bg-button-disabled) padding-box,
+              var(--border-button-disabled) border-box;
+  border: 1px solid transparent;
+  border-radius: var(--border-radius-small-box);
+  padding: var(--padding-third) var(--padding-twothird);
+
+  height: calc(calc(var(--nice-spacing-unit) + var(--padding-twothird)) + 2px);
+  font-size: 1rem;
+  font-family: inherit;
+  box-shadow: none;
+  color: var(--text-button-disabled);
   cursor: not-allowed;
+
 }
 </style>
