@@ -45,10 +45,44 @@ const handleChange = (event: Event) => {
 }
 
 .pk-radio input[type="radio"] {
+  /* Hide the Native Checkbox */
+  /* Add if not using autoprefixer */
+  -webkit-appearance: none;
+  appearance: none;
+  /* For iOS < 15 to remove gradient background */
+  background-color: #fff;
+  /* Not removed via appearance */
+  margin: 0;
+
+  /* New styles */
+  font: inherit;
+  color: currentColor;
   width: 1rem;
   height: 1rem;
+  border: var(--border-input-idle);
+  border-radius: 50%;
   cursor: pointer;
-  margin: auto var(--padding-sixth);
+
+  /* This is the quickest way to align the :before to the horizontal and vertical center of our custom control */
+  display: grid;
+  place-content: center;
+}
+
+.pk-radio input[type="radio"]::before {
+  content: "";
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  box-shadow: inset 1rem 1rem var(--form-control-color);
+}
+
+.pk-radio input[type="radio"]:checked::before {
+  transform: scale(1);
+}
+.pk-radio input[type="radio"]:checked{
+  border: var(--border-input-active);
 }
 
 .pk-radio input[type="radio"]:disabled {

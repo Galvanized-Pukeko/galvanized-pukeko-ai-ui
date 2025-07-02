@@ -3,6 +3,7 @@
       <input
         type="checkbox"
         :id="checkboxId"
+        :name="name"
         :checked="modelValue"
         :disabled="disabled"
         @change="handleChange"
@@ -15,6 +16,7 @@
 interface Props {
   checkboxId?: string
   modelValue?: boolean
+  name?: string
   label?: string
   disabled?: boolean
 }
@@ -41,6 +43,7 @@ const handleChange = (event: Event) => {
 }
 
 .pk-checkbox input[type="checkbox"] {
+  /* Hide the Native Checkbox */
   /* Add if not using autoprefixer */
   -webkit-appearance: none;
   appearance: none;
@@ -69,15 +72,18 @@ const handleChange = (event: Event) => {
 
 .pk-checkbox input[type="checkbox"]::before {
   content: "";
-  width: 0.65rem;
-  height: 0.65rem;
-  transform: scale(0);
+  width: 0.6rem;
+  height: 0.6rem;
+  transform: scale(0) translateY(0.03em);
   transition: 120ms transform ease-in-out;
-  box-shadow: inset 1em 1em var(--form-control-color);
+  box-shadow: inset 1rem 1rem var(--form-control-color);
+
+  /* Windows High Contrast Mode */
+    background-color: CanvasText;
 }
 
 .pk-checkbox input[type="checkbox"]:checked::before {
-  transform: scale(1);
+  transform: scale(1) translateY(0.03em);
 }
 
 

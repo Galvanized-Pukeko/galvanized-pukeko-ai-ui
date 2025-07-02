@@ -32,9 +32,9 @@ const handleClick = (event: MouseEvent) => {
 <style scoped>
 .pk-button {
   padding: var(--padding-third) var(--padding-twothird);
-  border: 1px solid var(--bg-button-prim-idle);
+  border: 1px solid var(--border-button-prim-idle);
   border-radius: var(--border-radius-small-box);
-  background-color: var(--bg-button-prim-idle);
+  background-image: var(--bg-button-prim-idle);
   color: var(--text-button-prim-idle);
   height: calc(calc(var(--nice-spacing-unit) + var(--padding-twothird)) + 2px);
   font-size: 1rem;
@@ -45,22 +45,23 @@ const handleClick = (event: MouseEvent) => {
 }
 
 .pk-button:hover:not(.pk-button--disabled) {
-  background-color: var(--bg-button-prim-active);
+  border: 1px solid var(--border-button-prim-active);
+  background-image: var(--bg-button-prim-active);
   color: var(--text-button-prim-active);
   box-shadow: var(--box-shadow-drop-active);
   transition: var(--transition-normal);
 }
 
 .pk-button:active:not(.pk-button--disabled) {
-  background-color: var(--bg-button-prim-active);
+  background-image: var(--bg-button-prim-active);
   color: var(--text-button-prim-active);
   box-shadow: var(--box-shadow-drop-active);
   transition: var(--transition-normal);
 }
 
 .pk-button--disabled {
-  background-color: var(--bg-button-prim-disabled);
-  border-color: var(--bg-button-prim-disabled);
+  background-image: var(--bg-button-prim-disabled);
+  border-color: var(--border-button-prim-disabled);
   cursor: not-allowed;
 }
 </style>

@@ -4,6 +4,7 @@
     :type="type"
     :value="modelValue"
     :id="inputId"
+    :name="name"
     :placeholder="placeholder"
     :disabled="disabled"
     @input="handleInput"
@@ -18,6 +19,7 @@ interface Props {
   type?: string
   placeholder?: string
   disabled?: boolean
+  name?: string
   label?: string
 }
 
@@ -41,8 +43,9 @@ const handleInput = (event: Event) => {
   border: var(--border-input-idle);
   border-radius: var(--border-radius-small-box);
   background-color: var(--bg-input-idle);
-  width: calc(calc(100% - calc(var(--padding-twothird) * 2)) - 2px);
-  height: var(--padding-full);
+  width: 100%;
+  /*additional 2px to width and height are because of border thickness */
+  height: calc(calc(var(--padding-full) + calc(var(--padding-third) * 2)) + 2px);
   font-size: 1rem;
   font-family: inherit;
   box-shadow: none;

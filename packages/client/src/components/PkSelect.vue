@@ -38,9 +38,9 @@ const handleChange = (event: Event) => {
   border: var(--border-input-idle);
   border-radius: var(--border-radius-small-box);
   background-color: var(--bg-input-idle);
-  width: calc(100% + 2px);
-  height: calc(calc(var(--padding-full) + calc(var(--padding-third) * 2)) + 2px);
+  width: 100%;
   /*additional 2px to width and height are because of border thickness */
+  height: calc(calc(var(--padding-full) + calc(var(--padding-third) * 2)) + 2px);
   font-size: 1rem;
   font-family: inherit;
   box-shadow: none;

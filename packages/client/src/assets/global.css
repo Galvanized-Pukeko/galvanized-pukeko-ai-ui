@@ -47,8 +47,12 @@
 
   --form-control-color: var(--grey-20);
 
-  --bg-button-prim-idle: var(--grey-40);
-  --bg-button-prim-active: var(--grey-20);
+  --border-button-prim-idle: var(--grey-33);
+  --border-button-prim-active: var(--grey-20);
+  --border-button-prim-disabled: var(--grey-87);
+
+  --bg-button-prim-idle: linear-gradient(var(--grey-40), var(--grey-33));
+  --bg-button-prim-active: linear-gradient(var(--grey-27), var(--grey-20));
   --bg-button-prim-disabled: var(--grey-87);
 
   --text-button-prim-idle: var(--white-pure);
@@ -67,6 +71,12 @@
 @font-face {
   font-family: Figtree-italic;
   src: url(fonts/Figtree-Italic-VariableFont_wght.ttf);
+}
+
+*,
+*:before,
+*:after {
+  box-sizing: border-box;
 }
 
 /* Base styles extracted from App.vue */
@@ -153,6 +163,7 @@ h3 {
   background-color: #f8f9fa;
   padding: 2rem;
   border-radius: 8px;
+  border: var(--line-separator-subtle);
 }
 
 .form-info {
@@ -194,6 +205,7 @@ h3 {
 
 .radio-group {
   display: flex;
+  flex-wrap: wrap;
   gap: calc(var(--padding-full) + var(--padding-twothird));
 }
 
