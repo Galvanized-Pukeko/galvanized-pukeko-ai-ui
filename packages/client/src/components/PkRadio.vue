@@ -70,8 +70,8 @@ const handleChange = (event: Event) => {
 
 .pk-radio input[type="radio"]::before {
   content: "";
-  width: 0.65rem;
-  height: 0.65rem;
+  width: 0.63rem;
+  height: 0.63rem;
   border-radius: 50%;
   transform: scale(0);
   transition: 120ms transform ease-in-out;

@@ -76,41 +76,40 @@ const handleClick = (event: MouseEvent) => {
 
     &.pk-button-sec {
       /* for sharper look, we add gradient border */
-      background: var(--bg-button-prim-idle) padding-box,
-                  var(--border-button-prim-idle) border-box;
+      background: var(--bg-button-sec-idle) padding-box,
+                  var(--border-button-sec-idle) border-box;
       border: 1px solid transparent;
       border-radius: var(--border-radius-small-box);
       padding: var(--padding-third) var(--padding-twothird);
 
-      color: var(--text-button-prim-idle);
+      color: var(--text-button-sec-idle);
 
       &:hover:not(.pk-button--disabled),
       &:active:not(.pk-button--disabled) {
         /* for sharper look, we add gradient border */
-        background: var(--bg-button-prim-active) padding-box,
-                    var(--border-button-prim-active) border-box;
+        background: var(--bg-button-sec-active) padding-box,
+                    var(--border-button-sec-active) border-box;
         border: 1px solid transparent;
-        color: var(--text-button-prim-active);
+        color: var(--text-button-sec-active);
       }
     }
 
     &.pk-button-no-border {
       /* for sharper look, we add gradient border */
-      background: var(--bg-button-prim-idle) padding-box,
-                  var(--border-button-prim-idle) border-box;
+      background: var(--bg-button-nob-idle) padding-box,
+                  var(--border-button-nob-idle) border-box;
       border: 1px solid transparent;
       border-radius: var(--border-radius-small-box);
       padding: var(--padding-third) var(--padding-twothird);
 
-      color: var(--text-button-prim-idle);
+      color: var(--text-button-nob-idle);
 
       &:hover:not(.pk-button--disabled),
       &:active:not(.pk-button--disabled) {
         /* for sharper look, we add gradient border */
-        background: var(--bg-button-prim-active) padding-box,
-                    var(--border-button-prim-active) border-box;
+        background: var(--bg-button-nob-active);
         border: 1px solid transparent;
-        color: var(--text-button-prim-active);
+        color: var(--text-button-nob-active);
       }
     }
 }
