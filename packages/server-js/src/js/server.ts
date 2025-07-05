@@ -63,8 +63,12 @@ wss.on('connection', (ws: WebSocket) => {
       if (message.type === 'cancel') {
         console.log(`Form cancelled at ${new Date(message.timestamp).toISOString()}`);
         // this crashes
+        console.log(serverContext.mcpServer);
+        // serverContext.mcpServer.ping().then(r => {
+        //   console.log('ping response', r);
+        // }).catch(reason => {console.log('ping failed', reason)});
         serverContext.mcpServer.request({
-          method: "notifications/message",
+          method: "message",
           params: {
             level: "info",
             logger: "test-server",

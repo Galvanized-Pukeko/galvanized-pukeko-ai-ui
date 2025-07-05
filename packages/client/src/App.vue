@@ -80,13 +80,20 @@ const handleCancel = () => {
 
   // Reset values based on current components
   serverComponents.value = [];
-  
+
   // Send cancel message to server
   connectionService.sendMessage({
     type: 'cancel',
     timestamp: Date.now()
   })
 }
+
+const sendMessage = () => {
+  connectionService.sendMessage({
+    type: 'cancel',
+    timestamp: Date.now()
+  })
+};
 
 onMounted(() => {
   connectionService.connect()
@@ -186,6 +193,7 @@ onUnmounted(() => {
       </div>
     </PkForm>
   </div>
+  <button @click="sendMessage">send message</button>
 </template>
 
 <style scoped>
