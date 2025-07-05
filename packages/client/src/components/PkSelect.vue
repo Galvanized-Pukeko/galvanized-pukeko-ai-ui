@@ -1,6 +1,7 @@
 <template>
   <label :for="selectId"> {{ label }}</label>
   <select
+    :name="name"
     :value="modelValue"
     :disabled="disabled"
     @change="handleChange"
@@ -17,7 +18,7 @@ interface Props {
   disabled?: boolean
   selectId?: string
   label?: string
-
+  name?: string
 }
 
 defineProps<Props>()

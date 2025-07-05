@@ -3,11 +3,15 @@ type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 interface ComponentConfig {
   type: string
   label: string
+  options?: string[]
+  value?: string
 }
 
 interface WebSocketMessage {
   type: string
   components?: ComponentConfig[]
+  submitLabel?: string
+  cancelLabel?: string
   [key: string]: unknown
 }
 
