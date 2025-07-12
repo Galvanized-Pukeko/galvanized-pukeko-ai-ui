@@ -35,12 +35,6 @@ export async function configure() {
       }
     },
     hooks: {
-      beforeProcessMessages: (runner, messages, runConfig) => {
-        // Safe run config fom first message
-        if (!sessionState.runConfig) {
-          sessionState.runConfig = runConfig;
-        }
-      },
       afterAgentInit: (runner) => {
         const agent = runner.getAgent();
         if (agent instanceof GthLangChainAgent) {
@@ -51,14 +45,9 @@ export async function configure() {
               // xxx it seems like this listener function can't be async
             }), (props, extra) => {
               console.log('request handler', props, extra);
-              // FIXME this explodes without runnable
-              if (sessionState.runConfig) {
-                runner.processMessages([new HumanMessage('user cancelled the form')], sessionState.runConfig).then((r) => {
+                runner.processMessages([new HumanMessage('user cancelled the form')]).then((r) => {
                   console.log('invoked');
                 });
-              } else {
-                console.log('no run config');
-              }
               return {
                 ack: true,
               };
