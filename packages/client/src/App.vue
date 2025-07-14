@@ -17,7 +17,8 @@ const componentValues = ref<{
   checkbox: Record<string, boolean>
   radio: Record<string, string>
   select: Record<string, string>
-}>({ input: {}, checkbox: {}, radio: {}, select: {} })
+  counter: Record<string, string>
+}>({ input: {}, checkbox: {}, radio: {}, select: {}, counter: {} })
 
 /**
  * This is going to be coming from config in future.
@@ -34,6 +35,7 @@ const componentMap = markRaw({
 let unsubscribeStatus: (() => void) | null = null
 let unsubscribeMessage: (() => void) | null = null
 
+// This all is really bad stuff and has to be refactored
 const handleRenderComponents = (message: WebSocketMessage) => {
   console.log('Received message from server:', message)
   if (message.components) {
@@ -43,7 +45,7 @@ const handleRenderComponents = (message: WebSocketMessage) => {
       cancelLabel: message.cancelLabel
     }
     // Reset form values when new components arrive
-    componentValues.value = { input: {}, checkbox: {}, radio: {}, select: {} }
+    componentValues.value = { input: {}, checkbox: {}, radio: {}, select: {}, counter: {} }
 
     message.components.forEach((comp, index) => {
       const key = comp.label || `${comp.type}_${index}`
@@ -82,7 +84,7 @@ const handleSubmit = (event: Event) => {
 
 const handleCancel = () => {
   // Clear all form values
-  componentValues.value = { input: {}, checkbox: {}, radio: {}, select: {}, counter {} }
+  componentValues.value = { input: {}, checkbox: {}, radio: {}, select: {}, counter: {} }
 
   // Reset values based on current components
   serverComponents.value = [];
