@@ -6,6 +6,7 @@ import PkCheckbox from './components/PkCheckbox.vue'
 import PkRadio from './components/PkRadio.vue'
 import PkSelect from './components/PkSelect.vue'
 import PkButton from './components/PkButton.vue'
+import PkInputCounter from './components/PkInputCounter.vue'
 
 // Component values
 const inputValue = ref('')
@@ -14,6 +15,7 @@ const checkboxValue1 = ref(false)
 const checkboxValue2 = ref(false)
 const radioValue = ref('option1')
 const selectValue = ref('')
+const counterValue = ref(0)
 
 // Form submission handler
 const handleFormSubmit = (event: Event) => {
@@ -25,7 +27,8 @@ const handleFormSubmit = (event: Event) => {
     checkbox: checkboxValue1.value,
     checkbox: checkboxValue2.value,
     radio: radioValue.value,
-    select: selectValue.value
+    select: selectValue.value,
+    counter: counterValue.value
   })
 }
 
@@ -48,6 +51,16 @@ const handleButtonClick = () => {
           inputId="standardInput"
           placeholder="Enter some text"
           label="Input label"
+        />
+      </div>
+
+      <div class="form-group counter-group">
+        <PkInputCounter
+          :modelValue="counterValue"
+          @update:modelValue="(val: string | number) => counterValue = Number(val)"
+          inputId="counterInput"
+          placeholder="0"
+          label="Counter Input label"
         />
       </div>
 
