@@ -33,11 +33,16 @@ export async function configure() {
         transport: 'http',
         'url': 'http://localhost:3002/mcp'
       },
-      // 'data-server': {
-      //   transport: 'http',
-      //   'url': 'http://localhost:3007/mcp'
-      // }
-
+      // // I did not actually try the STDIO
+      // 'pukeko-ui': {
+      //   transport: 'stdio',
+      //   command: 'npm',
+      //   args: ['run', 'ui-mcp-server-stdio']
+      // },
+      'data-server': {
+        transport: 'http',
+        'url': 'http://localhost:3007/mcp'
+      }
     },
     hooks: {
       afterAgentInit: (runner) => {
