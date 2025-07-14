@@ -5,7 +5,7 @@
   "devDependencies": {},
   "scripts": {
     "build": "tsc",
-    "dev": "npm run build && node dist/mcp-http.js",
+    "dev": "npm run build && node dist/mcp-boilerplate/mcp-http.js",
     "dev-server-randomp": " npm run build && node dist/random-server.js",
     "chat": "gth chat",
     "test": "echo \"Error: no test specified\" && exit 1"

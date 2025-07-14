@@ -9,15 +9,14 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import {z} from "zod";
 import {zodToJsonSchema} from "zod-to-json-schema";
-import {WebSocketServer, WebSocket} from 'ws';
-import {createServer as createHttpServer} from 'http';
+import { createWebSocketServer, WebSocketServerManager } from './websocket-server.js';
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
 
 const serverContext = {
   mcpServer: undefined as Server,
-  webSocketServer: undefined as WebSocketServer,
+  webSocketManager: undefined as WebSocketServerManager,
 }
 
 /* Input schemas for tools implemented in this server */
@@ -43,87 +42,10 @@ enum ToolName {
   PK_FORM = "pk_form",
 }
 
-// Set up WebSocket server (dirty stuff, doing it on file load)
-console.log('Setting up WebSocket server...');
+// Set up WebSocket server
 const WS_PORT = 3001;
-const httpServer = createHttpServer();
-const wss = new WebSocketServer({server: httpServer});
-serverContext.webSocketServer = wss;
-const connectedClients = new Set<WebSocket>();
-
-wss.on('connection', (ws: WebSocket) => {
-  console.log('Client connected to WebSocket');
-  connectedClients.add(ws);
-
-  ws.on('message', (data) => {
-    try {
-      const message = JSON.parse(data.toString());
-      console.log('Received message from client:', message);
-
-      if (message.type === 'cancel') {
-        console.log(`Form cancelled at ${new Date(message.timestamp).toISOString()}`);
-        // this crashes
-        console.log(serverContext.mcpServer);
-        // serverContext.mcpServer.ping().then(r => {
-        //   console.log('ping response', r);
-        // }).catch(reason => {console.log('ping failed', reason)});
-        serverContext.mcpServer.request({
-          method: "message",
-          params: {
-            level: "info",
-            logger: "test-server",
-            data: `Form cancelled at ${new Date(message.timestamp).toISOString()}`,
-          },
-        }, z.object({
-          ack: z.boolean()
-        })).then((r) => {
-          console.log('response from client', r);
-        }).catch((reason) => {
-          console.log('failed to send message', reason)
-          // failed to send message McpError: MCP error -32601: Method not found
-          // This should somehow be handled in the client
-        });
-
-        // This goes somewhere
-        // serverContext.mcpServer.notification({
-        //   method: "notifications/message",
-        //   params: {
-        //     message: "Form cancelled at " + new Date(message.timestamp).toISOString(),
-        //   }
-        // }).then((r) => {
-        //   console.log('response from client', r);
-        // })
-      }
-    } catch (error) {
-      console.error('Error parsing message from client:', error);
-    }
-  });
-
-
-  ws.on('close', () => {
-    console.log('Client disconnected from WebSocket');
-    connectedClients.delete(ws);
-  });
-
-  ws.on('error', (error) => {
-    console.error('WebSocket error:', error);
-    connectedClients.delete(ws);
-  });
-});
-
-httpServer.listen(WS_PORT, () => {
-  console.log(`WebSocket server running on ws://localhost:${WS_PORT}`);
-});
-
-// Function to broadcast messages to all connected clients
-const broadcastToClients = (message: any) => {
-  const messageStr = JSON.stringify(message);
-  connectedClients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(messageStr);
-    }
-  });
-};
+const wsManager = createWebSocketServer(WS_PORT);
+serverContext.webSocketManager = wsManager;
 
 export const createServer = () => {
   const server = new Server(
@@ -142,6 +64,9 @@ export const createServer = () => {
     }
   );
   serverContext.mcpServer = server;
+
+  // Set MCP server reference in WebSocket manager
+  (wsManager as any).setMcpServer(server);
 
   let logLevel: LoggingLevel = "debug";
   const messages = [
@@ -182,7 +107,7 @@ export const createServer = () => {
 
     const {components, submitLabel, cancelLabel} = FormSchema.parse(args);
 
-    broadcastToClients({
+    serverContext.webSocketManager.broadcastToClients({
       type: 'form',
       components: components,
       submitLabel: submitLabel,
@@ -216,20 +141,7 @@ export const createServer = () => {
   });
 
   const cleanup = async () => {
-    // Close all WebSocket connections
-    connectedClients.forEach((client) => {
-      client.close();
-    });
-
-    // Close the WebSocket server
-    wss.close(() => {
-      console.log('WebSocket server closed');
-    });
-
-    // Close the HTTP server
-    httpServer.close(() => {
-      console.log('HTTP server closed');
-    });
+    await serverContext.webSocketManager.cleanup();
   };
 
   return {server, cleanup};
