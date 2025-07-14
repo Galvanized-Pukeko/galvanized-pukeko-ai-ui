@@ -7,11 +7,27 @@ import PkRadio from './components/PkRadio.vue'
 import PkSelect from './components/PkSelect.vue'
 import PkButton from './components/PkButton.vue'
 import PkInputCounter from './components/PkInputCounter.vue'
+import PkBarChart from './components/PkBarChart.vue'
+import PkPieChart from './components/PkPieChart.vue'
 import { connectionService, type ConnectionStatus, type ComponentConfig, type WebSocketMessage } from './services/connectionService'
 
 const serverComponents = ref<ComponentConfig[]>([])
 const formLabels = ref<{ submitLabel?: string; cancelLabel?: string }>({})
 const wsStatus = ref<ConnectionStatus>('disconnected')
+const currentChart = ref<{
+  type: 'bar' | 'pie'
+  title: string
+  data: {
+    labels: string[]
+    datasets: {
+      label: string
+      data: number[]
+      backgroundColor?: string[]
+      borderColor?: string[]
+      borderWidth?: number
+    }[]
+  }
+} | null>(null)
 const componentValues = ref<{
   input: Record<string, string>
   checkbox: Record<string, boolean>
@@ -34,6 +50,7 @@ const componentMap = markRaw({
 
 let unsubscribeStatus: (() => void) | null = null
 let unsubscribeMessage: (() => void) | null = null
+let unsubscribeChartMessage: (() => void) | null = null
 
 // This all is really bad stuff and has to be refactored
 const handleRenderComponents = (message: WebSocketMessage) => {
@@ -67,6 +84,30 @@ const handleRenderComponents = (message: WebSocketMessage) => {
           break
       }
     })
+  }
+}
+
+const handleChartMessage = (message: {
+  chartType: 'bar' | 'pie'
+  title: string
+  data: {
+    labels: string[]
+    datasets: {
+      label: string
+      data: number[]
+      backgroundColor?: string[]
+      borderColor?: string[]
+      borderWidth?: number
+    }[]
+  }
+}) => {
+  console.log('Received chart message from server:', message)
+  if (message.chartType && message.title && message.data) {
+    currentChart.value = {
+      type: message.chartType,
+      title: message.title,
+      data: message.data
+    }
   }
 }
 
@@ -111,6 +152,7 @@ onMounted(() => {
   })
 
   unsubscribeMessage = connectionService.subscribeToMessage('form', handleRenderComponents)
+  unsubscribeChartMessage = connectionService.subscribeToMessage('chart', handleChartMessage)
 })
 
 onUnmounted(() => {
@@ -119,6 +161,9 @@ onUnmounted(() => {
   }
   if (unsubscribeMessage) {
     unsubscribeMessage()
+  }
+  if (unsubscribeChartMessage) {
+    unsubscribeChartMessage()
   }
   connectionService.disconnect()
 })
@@ -200,6 +245,21 @@ onUnmounted(() => {
         </PkButton>
       </div>
     </PkForm>
+
+    <!-- Chart rendering section -->
+    <div v-if="currentChart" class="chart-section">
+      <h2>Server-Requested Chart</h2>
+      <PkBarChart
+        v-if="currentChart.type === 'bar'"
+        :data="currentChart.data"
+        :title="currentChart.title"
+      />
+      <PkPieChart
+        v-if="currentChart.type === 'pie'"
+        :data="currentChart.data"
+        :title="currentChart.title"
+      />
+    </div>
   </div>
   <button @click="sendMessage">send message</button>
 </template>
@@ -207,4 +267,18 @@ onUnmounted(() => {
 <style scoped>
 /* See packages/client/src/assets/global.css for global styles */
 /* Place only things specific to DevSite here */
+
+.chart-section {
+  margin: 2rem 0;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.chart-section h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #374151;
+}
 </style>

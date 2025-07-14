@@ -66,10 +66,6 @@ const handleFormSubmit = (event: Event) => {
   })
 }
 
-// Button click handler
-const handleButtonClick = () => {
-  alert('Button clicked!')
-}
 </script>
 
 <template>

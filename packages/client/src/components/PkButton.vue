@@ -14,7 +14,6 @@
 interface Props {
   type?: 'button' | 'submit' | 'reset'
   disabled?: boolean
-  handleClick?: typeof onclick
 }
 
 withDefaults(defineProps<Props>(), {

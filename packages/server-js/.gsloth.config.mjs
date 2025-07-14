@@ -32,6 +32,10 @@ export async function configure() {
       'pukeko-ui': {
         transport: 'http',
         'url': 'http://localhost:3002/mcp'
+      },
+      'data-server': {
+        transport: 'http',
+        'url': 'http://localhost:3007/mcp'
       }
     },
     hooks: {
@@ -52,7 +56,6 @@ export async function configure() {
                 ack: true,
               };
             });
-            console.log('client', client);
           });
         }
       }

@@ -38,8 +38,16 @@ const FormSchema = z.object({
   cancelLabel: z.string().describe("Cancel button label").optional(),
 });
 
+const ChartSchema = z.object({
+  type: z.enum(['bar', 'pie']).describe("Chart type (bar or pie)"),
+  title: z.string().describe("Chart title"),
+  data: z.array(z.number()).describe("Chart data values"),
+  labels: z.array(z.string()).describe("Chart data labels"),
+});
+
 enum ToolName {
   PK_FORM = "pk_form",
+  PK_CHARTS = "pk_charts",
 }
 
 // Set up WebSocket server
@@ -92,6 +100,11 @@ export const createServer = () => {
         name: ToolName.PK_FORM,
         description: "Renders a form with multiple components (button, checkbox, input, radio, select)",
         inputSchema: zodToJsonSchema(FormSchema) as ToolInput,
+      },
+      {
+        name: ToolName.PK_CHARTS,
+        description: "Renders charts (bar or pie) with data and labels",
+        inputSchema: zodToJsonSchema(ChartSchema) as ToolInput,
       }
     ];
 
@@ -101,25 +114,58 @@ export const createServer = () => {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const {name, arguments: args} = request.params;
 
-    if (name !== ToolName.PK_FORM) {
+    if (name === ToolName.PK_FORM) {
+      const {components, submitLabel, cancelLabel} = FormSchema.parse(args);
+
+      serverContext.webSocketManager.broadcastToClients({
+        type: 'form',
+        components: components,
+        submitLabel: submitLabel,
+        cancelLabel: cancelLabel
+      });
+
+      return {
+        content: [{
+          type: "text",
+          text: `Form with ${components.length} component(s) sent successfully`
+        }],
+      };
+    } else if (name === ToolName.PK_CHARTS) {
+      const {type, title, data, labels} = ChartSchema.parse(args);
+
+      // Generate random colors for the chart
+      const colors = [
+        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+        '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
+      ];
+
+      const chartData = {
+        labels: labels,
+        datasets: [{
+          label: title,
+          data: data,
+          backgroundColor: colors.slice(0, data.length),
+          borderColor: colors.slice(0, data.length),
+          borderWidth: 1
+        }]
+      };
+
+      serverContext.webSocketManager.broadcastToClients({
+        type: 'chart',
+        chartType: type,
+        title: title,
+        data: chartData
+      });
+
+      return {
+        content: [{
+          type: "text",
+          text: `${type.charAt(0).toUpperCase() + type.slice(1)} chart "${title}" sent successfully`
+        }],
+      };
+    } else {
       throw new Error(`Unknown tool: ${name}`);
     }
-
-    const {components, submitLabel, cancelLabel} = FormSchema.parse(args);
-
-    serverContext.webSocketManager.broadcastToClients({
-      type: 'form',
-      components: components,
-      submitLabel: submitLabel,
-      cancelLabel: cancelLabel
-    });
-
-    return {
-      content: [{
-        type: "text",
-        text: `Form with ${components.length} component(s) sent successfully`
-      }],
-    };
   });
 
 
