@@ -40,44 +40,56 @@ graph LR
     
 ```
 
-Running 
+# Running a quick demo
+
 ```bash
-git clone https://github.com/andruhon/galvanized-pukeko-ai-ui.git
+git clone https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui.git
 cd galvanized-pukeko-ai-ui
 npm install
+npm run 
 ```
 
-Start MCP and Websockets server
+Http UI MCP
 ```bash
 npm run ui-mcp-server
 ```
 
-Start Vue app in a separate console
+Web (just to serve the Web)
 ```bash
 npm run web
 ```
 
-Server should be running on port 3002, now you can connect your client to this:
-```json
-{
-      "transport": "http",
-      "url": "http://localhost:3002/mcp"
-}
-```
-(you can alternatively `server/src/mcp-stdio.ts`)
-
-Chat neds demo data server to start
+Start mock data MCP
 ```bash
 npm run demo-data-mcp-server
 ```
 
-You can use [Gaunt Sloth](https://github.com/andruhon/gaunt-sloth-assistant) installation to connect to this MCP.
-(it is currently preconfigured to use an Anthropic API key, but you can change `server/.gsloth.config.json` to use different provider)
+Start chat client in terminal (http)
 ```bash
 npm run chat
 ```
 
-In the chat ask it to render a form to collect user data.
+Chat is preconfigured with `vertexai`, so you need to authenticate.
+
+Config is in `packages/ui-mcp-server-js/.gsloth.config.mjs`, so different AI provider can be chosen.
+
+---
+
+When everything is up:
+
+Ask chat to `list reports`
+
+Then ask to `render bar chart of performance`
+
+---
+
+There's also STDIO for the UI server
+```bash
+npm run ui-mcp-server-stdio
+```
+
+STDIO needs to be configured, but I did not test it, so it's likely not working.
+
 
 ## Development
 
