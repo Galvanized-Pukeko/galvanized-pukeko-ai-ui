@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "client": "npm run dev -w packages/client",
+    "web": "npm run dev -w packages/web",
     "server": "npm run dev -w packages/server-js",
     "chat": "npm run chat -w packages/server-js",
     "data": "npm run dev -w packages/demo-mcp",
-    "sink": "npm run sink -w packages/client"
+    "sink": "npm run sink -w packages/web"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
@@ -44,7 +44,7 @@
     "vue-tsc": "^2.2.8"
   },
   "workspaces": [
-    "packages/client",
+    "packages/web",
     "packages/server-js",
     "packages/demo-mcp"
   ]
