@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "web": "npm run dev -w packages/web",
-    "ui-mcp-server": "npm run dev -w packages/ui-mcp-server-js",
+    "ui-mcp-server": "npm run mcp-http -w packages/ui-mcp-server-js",
+    "ui-mcp-server-stdio": "npm run mcp-stdio -w packages/ui-mcp-server-js",
     "demo-data-mcp-server": "npm run dev -w packages/demo-mcp",
     "chat": "npm run chat -w packages/ui-mcp-server-js",
     "sink": "npm run sink -w packages/web"
