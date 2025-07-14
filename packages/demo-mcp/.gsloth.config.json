@@ -1,0 +1,12 @@
+{
+  "llm": {
+    "type": "vertexai",
+    "model": "gemini-2.5-pro"
+  },
+  "mcpServers": {
+    "data-server": {
+      "transport": "http",
+      "url": "http://localhost:3007/mcp"
+    }
+  }
+}
