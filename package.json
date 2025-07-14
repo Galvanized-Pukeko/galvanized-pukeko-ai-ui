@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "web": "npm run dev -w packages/web",
-    "server": "npm run dev -w packages/server-js",
-    "chat": "npm run chat -w packages/server-js",
+    "ui-mcp-server": "npm run dev -w packages/ui-mcp-server-js",
+    "chat": "npm run chat -w packages/ui-mcp-server-js",
     "data": "npm run dev -w packages/demo-mcp",
     "sink": "npm run sink -w packages/web"
   },
@@ -45,7 +45,7 @@
   },
   "workspaces": [
     "packages/web",
-    "packages/server-js",
+    "packages/ui-mcp-server-js",
     "packages/demo-mcp"
   ]
 }
