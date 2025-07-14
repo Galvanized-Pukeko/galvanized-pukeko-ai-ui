@@ -7,7 +7,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import {z} from "zod";
 import {zodToJsonSchema} from "zod-to-json-schema";
-import {readFileSync} from "fs";
+import {readFileSync, readdirSync} from "fs";
 import {join, dirname} from "path";
 import {fileURLToPath} from "url";
 
@@ -21,8 +21,27 @@ const serverContext = {
   mcpServer: undefined as Server,
 }
 
-function readCSVData(): (string | number)[][] {
-  const csvPath = join(__dirname, '..', 'sales24m.csv');
+function validateFilename(filename: string): void {
+  if (filename.includes('..') || filename.startsWith('/') || filename.includes('\\')) {
+    throw new Error('Invalid filename: path traversal attempts are not allowed');
+  }
+  if (!/^[a-zA-Z0-9_.-]+$/.test(filename)) {
+    throw new Error('Invalid filename: only alphanumeric characters, dots, hyphens, and underscores are allowed');
+  }
+}
+
+function listFiles(): string[] {
+  const filesDir = join(__dirname, '..', 'files');
+  try {
+    return readdirSync(filesDir).filter(file => file.endsWith('.csv'));
+  } catch (error) {
+    throw new Error('Unable to read files directory');
+  }
+}
+
+function readCSVData(filename: string): (string | number)[][] {
+  validateFilename(filename);
+  const csvPath = join(__dirname, '..', 'files', filename);
   const csvContent = readFileSync(csvPath, 'utf-8');
   const lines = csvContent.trim().split('\n');
   
@@ -41,6 +60,7 @@ function readCSVData(): (string | number)[][] {
 
 enum ToolName {
   READ_CSV = "read_csv",
+  LIST_REPORTS = "list_reports",
 }
 
 export const createServer = () => {
@@ -66,6 +86,13 @@ export const createServer = () => {
       {
         name: ToolName.READ_CSV,
         description: "Reads data from provided CSV file.",
+        inputSchema: zodToJsonSchema(z.object({
+          filename: z.string().describe("Name of the CSV file to read")
+        })) as ToolInput,
+      },
+      {
+        name: ToolName.LIST_REPORTS,
+        description: "Lists available CSV files in the reports directory.",
         inputSchema: zodToJsonSchema(z.object({})) as ToolInput,
       }
     ];
@@ -76,18 +103,32 @@ export const createServer = () => {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const {name, arguments: args} = request.params;
 
-    if (name !== ToolName.READ_CSV) {
-      throw new Error(`Unknown tool: ${name}`);
+    if (name === ToolName.READ_CSV) {
+      const filename = args?.filename as string;
+      if (!filename) {
+        throw new Error('filename parameter is required');
+      }
+      
+      const data = readCSVData(filename);
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(data)
+        }],
+      };
+    }
+    
+    if (name === ToolName.LIST_REPORTS) {
+      const files = listFiles();
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(files)
+        }],
+      };
     }
 
-    const data = readCSVData();
-
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify(data)
-      }],
-    };
+    throw new Error(`Unknown tool: ${name}`);
   });
 
   const cleanup = async () => {
