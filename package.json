@@ -6,8 +6,8 @@
   "scripts": {
     "web": "npm run dev -w packages/web",
     "ui-mcp-server": "npm run dev -w packages/ui-mcp-server-js",
+    "demo-data-mcp-server": "npm run dev -w packages/demo-mcp",
     "chat": "npm run chat -w packages/ui-mcp-server-js",
-    "data": "npm run dev -w packages/demo-mcp",
     "sink": "npm run sink -w packages/web"
   },
   "dependencies": {
