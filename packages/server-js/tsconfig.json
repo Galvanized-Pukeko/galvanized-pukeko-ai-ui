@@ -9,11 +9,11 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "outDir": "dist",
-    "rootDir": "./src/js",
+    "rootDir": "./src/",
     "types": ["node"]
   },
   "include": [
-    "src/js/**/*"
+    "src/**/*"
   ],
   "exclude": [
     "../../node_modules", "node_modules", "dist"

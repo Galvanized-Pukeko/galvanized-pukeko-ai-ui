@@ -64,7 +64,7 @@ Server should be running on port 3002, now you can connect your client to this:
       "url": "http://localhost:3002/mcp"
 }
 ```
-(you can alternatively `server/src/js/mcp-stdio.ts`)
+(you can alternatively `server/src/mcp-stdio.ts`)
 
 You can use [Gaunt Sloth](https://github.com/andruhon/gaunt-sloth-assistant) installation to connect to this MCP.
 (it is currently preconfigured to use an Anthropic API key, but you can change `server/.gsloth.config.json` to use different provider)
