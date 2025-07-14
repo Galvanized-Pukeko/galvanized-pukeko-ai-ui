@@ -7,12 +7,36 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import {z} from "zod";
 import {zodToJsonSchema} from "zod-to-json-schema";
+import {readFileSync} from "fs";
+import {join, dirname} from "path";
+import {fileURLToPath} from "url";
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const serverContext = {
   mcpServer: undefined as Server,
+}
+
+function readCSVData(): (string | number)[][] {
+  const csvPath = join(__dirname, '..', 'sales24m.csv');
+  const csvContent = readFileSync(csvPath, 'utf-8');
+  const lines = csvContent.trim().split('\n');
+  
+  const headers = lines[0].split(',');
+  const months: string[] = [headers[0]];
+  const sales: (string | number)[] = [headers[1]];
+  
+  for (let i = 1; i < lines.length; i++) {
+    const [month, salesValue] = lines[i].split(',');
+    months.push(month);
+    sales.push(parseFloat(salesValue));
+  }
+  
+  return [months, sales];
 }
 
 enum ToolName {
@@ -56,7 +80,7 @@ export const createServer = () => {
       throw new Error(`Unknown tool: ${name}`);
     }
 
-    const data = [['Aug 2025', 'Sep 2025'], [10, 12]];
+    const data = readCSVData();
 
     return {
       content: [{
