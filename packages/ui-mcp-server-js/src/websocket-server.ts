@@ -67,6 +67,26 @@ export const createWebSocketServer = (port: number = 3001): WebSocketServerManag
             //   console.log('response from client', r);
             // })
           }
+        } else if (message.type === 'form_submit') {
+          console.log(`Form submitted at ${new Date(message.timestamp).toISOString()}`);
+          console.log('Form data:', message.data);
+          
+          if (mcpServer) {
+            mcpServer.request({
+              method: "form_submit",
+              params: {
+                data: message.data,
+                timestamp: message.timestamp
+              },
+            }, z.object({
+              ack: z.boolean(),
+              received: z.boolean().optional()
+            })).then((r) => {
+              console.log('form submission response from client', r);
+            }).catch((reason) => {
+              console.log('failed to send form submission', reason)
+            });
+          }
         }
       } catch (error) {
         console.error('Error parsing message from client:', error);

@@ -121,6 +121,13 @@ const handleSubmit = (event: Event) => {
     ...componentValues.value.counter
   }
   console.log('Form submitted with values:', allValues)
+  
+  // Send form submission to server
+  connectionService.sendMessage({
+    type: 'form_submit',
+    data: allValues,
+    timestamp: Date.now()
+  })
 }
 
 const handleCancel = () => {

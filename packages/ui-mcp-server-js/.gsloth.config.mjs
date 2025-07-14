@@ -49,11 +49,34 @@ export async function configure() {
               // xxx it seems like this listener function can't be async
             }), (props, extra) => {
               console.log('request handler', props, extra);
-                runner.processMessages([new HumanMessage('user cancelled the last action')]).then((r) => {
-                  console.log('invoked');
-                });
+              runner.processMessages([new HumanMessage('user cancelled the last action')]).then((r) => {
+                console.log('invoked');
+              });
               return {
                 ack: true,
+              };
+            });
+
+            client.setRequestHandler(z.object({
+              method: z.literal('form_submit'),
+              params: z.object({
+                data: z.record(z.union([z.string(), z.boolean(), z.number()])),
+                timestamp: z.number()
+              })
+            }), (props, extra) => {
+              console.log('form submission request handler', props, extra);
+              const formData = props.params.data;
+              const timestamp = new Date(props.params.timestamp).toISOString();
+
+              runner.processMessages([
+                new HumanMessage(`User submitted a form with the following data at ${timestamp}:\n${JSON.stringify(formData, null, 2)}`)
+              ]).then((r) => {
+                console.log('form submission processed');
+              });
+
+              return {
+                ack: true,
+                received: true
               };
             });
           });
