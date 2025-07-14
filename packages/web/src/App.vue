@@ -137,6 +137,17 @@ const handleCancel = () => {
   })
 }
 
+const handleClearChart = () => {
+  // Clear the current chart
+  currentChart.value = null
+
+  // Send cancel message to server (similar to form cancel)
+  connectionService.sendMessage({
+    type: 'cancel',
+    timestamp: Date.now()
+  })
+}
+
 const sendMessage = () => {
   connectionService.sendMessage({
     type: 'cancel',
@@ -180,10 +191,12 @@ onUnmounted(() => {
       </span>
     </div>
 
-    <div v-if="serverComponents.length === 0" class="info">
+    <!-- Show only one section at a time: waiting message, form, or chart -->
+    <div v-if="!currentChart && serverComponents.length === 0" class="info">
       Waiting for server to send components...
     </div>
-    <PkForm v-else @submit="handleSubmit" class="dynamic-form">
+
+    <PkForm v-else-if="!currentChart && serverComponents.length > 0" @submit="handleSubmit" class="dynamic-form">
       <h2>Server-Requested Form</h2>
       <p class="form-info">server-rendered form</p>
 
@@ -247,7 +260,7 @@ onUnmounted(() => {
     </PkForm>
 
     <!-- Chart rendering section -->
-    <div v-if="currentChart" class="chart-section">
+    <div v-else-if="currentChart" class="chart-section">
       <h2>Server-Requested Chart</h2>
       <PkBarChart
         v-if="currentChart.type === 'bar'"
@@ -259,6 +272,11 @@ onUnmounted(() => {
         :data="currentChart.data"
         :title="currentChart.title"
       />
+      <div class="chart-buttons">
+        <PkButton type="button" @click="handleClearChart">
+          Clear
+        </PkButton>
+      </div>
     </div>
   </div>
   <button @click="sendMessage">send message</button>
@@ -280,5 +298,11 @@ onUnmounted(() => {
   margin-top: 0;
   margin-bottom: 1rem;
   color: #374151;
+}
+
+.chart-buttons {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
 }
 </style>

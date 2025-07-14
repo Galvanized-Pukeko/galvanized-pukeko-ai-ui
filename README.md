@@ -49,12 +49,12 @@ npm install
 
 Start MCP and Websockets server
 ```bash
-npm run server
+npm run ui-mcp-server
 ```
 
 Start Vue app in a separate console
 ```bash
-npm run client
+npm run web
 ```
 
 Server should be running on port 3002, now you can connect your client to this:
@@ -65,6 +65,11 @@ Server should be running on port 3002, now you can connect your client to this:
 }
 ```
 (you can alternatively `server/src/mcp-stdio.ts`)
+
+Chat neds demo data server to start
+```bash
+npm run demo-data-mcp-server
+```
 
 You can use [Gaunt Sloth](https://github.com/andruhon/gaunt-sloth-assistant) installation to connect to this MCP.
 (it is currently preconfigured to use an Anthropic API key, but you can change `server/.gsloth.config.json` to use different provider)

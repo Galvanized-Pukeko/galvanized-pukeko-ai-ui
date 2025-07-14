@@ -49,7 +49,7 @@ export async function configure() {
               // xxx it seems like this listener function can't be async
             }), (props, extra) => {
               console.log('request handler', props, extra);
-                runner.processMessages([new HumanMessage('user cancelled the form')]).then((r) => {
+                runner.processMessages([new HumanMessage('user cancelled the last action')]).then((r) => {
                   console.log('invoked');
                 });
               return {
