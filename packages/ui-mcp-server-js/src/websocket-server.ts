@@ -2,6 +2,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createServer as createHttpServer } from 'http';
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { z } from "zod";
+import { log, error } from './utils/console.js';
 
 export interface WebSocketServerManager {
   broadcastToClients: (message: any) => void;
@@ -9,7 +10,7 @@ export interface WebSocketServerManager {
 }
 
 export const createWebSocketServer = (port: number = 3001): WebSocketServerManager => {
-  console.log('Setting up WebSocket server...');
+  log('Setting up WebSocket server...');
   
   const httpServer = createHttpServer();
   const wss = new WebSocketServer({ server: httpServer });
@@ -23,23 +24,23 @@ export const createWebSocketServer = (port: number = 3001): WebSocketServerManag
   };
 
   wss.on('connection', (ws: WebSocket) => {
-    console.log('Client connected to WebSocket');
+    log('Client connected to WebSocket');
     connectedClients.add(ws);
 
     ws.on('message', (data) => {
       try {
         const message = JSON.parse(data.toString());
-        console.log('Received message from client:', message);
+        log('Received message from client:', message);
 
         if (message.type === 'cancel') {
-          console.log(`Form cancelled at ${new Date(message.timestamp).toISOString()}`);
+          log(`Form cancelled at ${new Date(message.timestamp).toISOString()}`);
           
           if (mcpServer) {
             // this crashes
-            console.log(mcpServer);
+            log(mcpServer);
             // mcpServer.ping().then(r => {
-            //   console.log('ping response', r);
-            // }).catch(reason => {console.log('ping failed', reason)});
+            //   log('ping response', r);
+            // }).catch(reason => {log('ping failed', reason)});
             mcpServer.request({
               method: "message",
               params: {
@@ -50,9 +51,9 @@ export const createWebSocketServer = (port: number = 3001): WebSocketServerManag
             }, z.object({
               ack: z.boolean()
             })).then((r) => {
-              console.log('response from client', r);
+              log('response from client', r);
             }).catch((reason) => {
-              console.log('failed to send message', reason)
+              log('failed to send message', reason)
               // failed to send message McpError: MCP error -32601: Method not found
               // This should somehow be handled in the client
             });
@@ -64,12 +65,12 @@ export const createWebSocketServer = (port: number = 3001): WebSocketServerManag
             //     message: "Form cancelled at " + new Date(message.timestamp).toISOString(),
             //   }
             // }).then((r) => {
-            //   console.log('response from client', r);
+            //   log('response from client', r);
             // })
           }
         } else if (message.type === 'form_submit') {
-          console.log(`Form submitted at ${new Date(message.timestamp).toISOString()}`);
-          console.log('Form data:', message.data);
+          log(`Form submitted at ${new Date(message.timestamp).toISOString()}`);
+          log('Form data:', message.data);
           
           if (mcpServer) {
             mcpServer.request({
@@ -82,30 +83,71 @@ export const createWebSocketServer = (port: number = 3001): WebSocketServerManag
               ack: z.boolean(),
               received: z.boolean().optional()
             })).then((r) => {
-              console.log('form submission response from client', r);
+              log('form submission response from client', r);
             }).catch((reason) => {
-              console.log('failed to send form submission', reason)
+              log('failed to send form submission', reason)
             });
           }
         }
       } catch (error) {
-        console.error('Error parsing message from client:', error);
+        error('Error parsing message from client:', error);
       }
     });
 
     ws.on('close', () => {
-      console.log('Client disconnected from WebSocket');
+      log('Client disconnected from WebSocket');
       connectedClients.delete(ws);
     });
 
-    ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
+    ws.on('error', (err) => {
+      error('WebSocket error:', err);
       connectedClients.delete(ws);
     });
   });
 
   httpServer.listen(port, () => {
-    console.log(`WebSocket server running on ws://localhost:${port}`);
+    log(`WebSocket server running on ws://localhost:${port}`);
+  });
+
+  // Handle server errors
+  httpServer.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      error(`Port ${port} is already in use. Please close any existing processes using this port.`);
+    } else {
+      error('HTTP server error:', err);
+    }
+    cleanup().catch((cleanupErr) => {
+      error('Failed to cleanup after server error:', cleanupErr);
+    });
+  });
+
+  // Handle process termination signals for graceful shutdown
+  const handleExit = () => {
+    log('Received exit signal, cleaning up WebSocket server...');
+    cleanup().then(() => {
+      log('WebSocket server cleanup completed');
+    }).catch((err) => {
+      error('Error during WebSocket server cleanup:', err);
+    });
+  };
+
+  process.on('SIGINT', handleExit);
+  process.on('SIGTERM', handleExit);
+  process.on('uncaughtException', (err) => {
+    error('Uncaught exception, cleaning up WebSocket server:', err);
+    cleanup().then(() => {
+      process.exit(1);
+    }).catch(() => {
+      process.exit(1);
+    });
+  });
+  process.on('unhandledRejection', (reason) => {
+    error('Unhandled rejection, cleaning up WebSocket server:', reason);
+    cleanup().then(() => {
+      process.exit(1);
+    }).catch(() => {
+      process.exit(1);
+    });
   });
 
   // Function to broadcast messages to all connected clients
@@ -119,22 +161,60 @@ export const createWebSocketServer = (port: number = 3001): WebSocketServerManag
   };
 
   const cleanup = async (): Promise<void> => {
-    return new Promise((resolve) => {
-      // Close all WebSocket connections
-      connectedClients.forEach((client) => {
-        client.close();
-      });
-
-      // Close the WebSocket server
-      wss.close(() => {
-        console.log('WebSocket server closed');
-        
-        // Close the HTTP server
-        httpServer.close(() => {
-          console.log('HTTP server closed');
+    return new Promise((resolve, reject) => {
+      let resolved = false;
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          error('Cleanup timeout - forcing exit');
           resolve();
+        }
+      }, 5000); // 5 second timeout
+
+      try {
+        // Close all WebSocket connections
+        connectedClients.forEach((client) => {
+          try {
+            if (client.readyState === WebSocket.OPEN || client.readyState === WebSocket.CONNECTING) {
+              client.terminate(); // Use terminate() for immediate close
+            }
+          } catch (err) {
+            error('Error closing WebSocket client:', err);
+          }
         });
-      });
+        connectedClients.clear();
+
+        // Close the WebSocket server
+        wss.close((err) => {
+          if (err) {
+            error('Error closing WebSocket server:', err);
+          } else {
+            log('WebSocket server closed');
+          }
+          
+          // Close the HTTP server
+          httpServer.close((err) => {
+            clearTimeout(timeout);
+            if (!resolved) {
+              resolved = true;
+              if (err) {
+                error('Error closing HTTP server:', err);
+                reject(err);
+              } else {
+                log('HTTP server closed');
+                resolve();
+              }
+            }
+          });
+        });
+      } catch (err) {
+        clearTimeout(timeout);
+        if (!resolved) {
+          resolved = true;
+          error('Error during cleanup:', err);
+          reject(err);
+        }
+      }
     });
   };
 

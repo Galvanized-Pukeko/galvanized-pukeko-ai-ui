@@ -2,7 +2,9 @@
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "../server.js";
+import {loggingConfig} from "../utils/console.js";
 
+loggingConfig.logToFile = true;
 console.error('Starting default (STDIO) server...');
 
 async function main() {
