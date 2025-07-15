@@ -42,6 +42,7 @@ graph LR
 
 # Running a quick demo
 
+## HTTP and provided demo server
 ```bash
 git clone https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui.git
 cd galvanized-pukeko-ai-ui
@@ -64,7 +65,7 @@ Start mock data MCP
 npm run demo-data-mcp-server
 ```
 
-Start chat client in terminal (http)
+Start a chat client in the terminal (http)
 ```bash
 npm run chat
 ```
@@ -81,14 +82,53 @@ Ask chat to `list reports`
 
 Then ask to `render bar chart of performance`
 
----
+## STDIO
 
-There's also STDIO for the UI server
+Note, your client starts the STDIO server.
+
+Start the Web renderer (web server):
 ```bash
-npm run ui-mcp-server-stdio
+npm install
+npm run build-ui-server
 ```
 
-STDIO needs to be configured, but I did not test it, so it's likely not working.
+Install UI server to your local NPM cache
+```bash
+npm install ./packages/ui-mcp-server-js/ -g
+```
+(open the provided link in the browser)
+
+```bash
+npm run web
+```
+
+Configure your client:
+```json
+{
+  "mcpServers": {
+    "pukeko": {
+      "command": "galvanized-pukeko-ui-mcp-stdio",
+      "args": [
+        ""
+      ]
+    }
+  }
+}
+```
+
+On Windows you might need to specify a file extension
+```json
+{
+  "mcpServers": {
+    "pukeko": {
+      "command": "galvanized-pukeko-ui-mcp-stdio.bin",
+      "args": [
+        ""
+      ]
+    }
+  }
+}
+```
 
 
 ## Development

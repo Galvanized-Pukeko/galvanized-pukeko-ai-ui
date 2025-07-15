@@ -3,6 +3,10 @@
   "version": "0.0.1",
   "main": "index.js",
   "devDependencies": {},
+  "bin": {
+    "galvanized-pukeko-ui-mcp-http": "dist/mcp-boilerplate/mcp-http.js",
+    "galvanized-pukeko-ui-mcp-stdio": "dist/mcp-boilerplate/mcp-stdio.js"
+  },
   "scripts": {
     "build": "tsc",
     "mcp-http": "npm run build && node dist/mcp-boilerplate/mcp-http.js",

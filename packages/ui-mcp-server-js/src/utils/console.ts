@@ -1,10 +1,12 @@
 import {appendFileSync} from 'fs';
+import {join} from 'path';
+import {homedir} from 'os';
 
 export const loggingConfig = {
   logToFile: false
 };
 
-const LOG_FILE = 'pukeko-ui.log';
+const LOG_FILE = join(homedir(), 'galvanized-pukeko-ui.log');
 
 const formatMessage = (level: string, ...args: any[]): string => {
   const timestamp = new Date().toISOString();

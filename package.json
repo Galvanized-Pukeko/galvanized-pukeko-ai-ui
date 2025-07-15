@@ -1,10 +1,11 @@
 {
   "name": "galvanized-pukeko-ai-ui",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "scripts": {
     "web": "npm run dev -w packages/web",
+    "build-ui-server": "npm run build -w packages/ui-mcp-server-js",
     "ui-mcp-server": "npm run mcp-http -w packages/ui-mcp-server-js",
     "ui-mcp-server-stdio": "npm run mcp-stdio -w packages/ui-mcp-server-js",
     "demo-data-mcp-server": "npm run dev -w packages/demo-mcp",
