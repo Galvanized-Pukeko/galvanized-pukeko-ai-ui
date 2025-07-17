@@ -19,6 +19,9 @@
   /* Colour variables to be used scoped inside this block exclusively */
   --white-pure: #fff;
   --white-98: #fafafa;
+  --grey-98: #f8f9fa; /* form bg */
+  --grey-94: #f0f0f0;
+  --grey-91: #ebe6e7; /* subtle border */
   --grey-87: #ddd;
   --grey-80: #ccc;
   --grey-70: #b3b3b3;
@@ -31,13 +34,15 @@
 
 
 
+
+
   /* Colour variables for use anywhere */
   --main-text-color: var(--grey-20);
   --header-1: var(--main-text-color);
   --header-2: var(--grey-27);
   --header-3: var(--grey-27);
 
-  --line-separator-subtle: 1px solid #ebe6e7;
+  --line-separator-subtle: 1px solid var(--grey-91);
 
   --border-input-idle: 1px solid var(--grey-70);
   --border-input-active: 1px solid var(--grey-20);
@@ -53,8 +58,8 @@
   --border-button-prim-active: linear-gradient(var(--grey-20), var(--grey-13));
   --border-button-sec-idle: linear-gradient(var(--grey-33), var(--grey-27));
   --border-button-sec-active: linear-gradient(var(--grey-27), var(--grey-20));
-  --border-button-nob-idle: transparent;
-  --border-button-nob-active: var(--white-pure);
+  --border-button-nob-idle: 1px solid transparent;
+  --border-button-nob-active: 1px solid var(--grey-91);
   --border-button-disabled: linear-gradient(var(--grey-87), var(--grey-80));
 
   --bg-button-prim-idle: linear-gradient(var(--grey-40), var(--grey-33));
@@ -62,7 +67,7 @@
   --bg-button-sec-idle: linear-gradient(var(--white-98), var(--white-98));
   --bg-button-sec-active: linear-gradient(var(--white-pure), var(--white-98));
   --bg-button-nob-idle: transparent;
-  --bg-button-nob-active: var(--white-pure);
+  --bg-button-nob-active: var(--grey-94);
   --bg-button-disabled: linear-gradient(var(--white-98), var(--white-98));
 
   --text-button-prim-idle: var(--white-pure);

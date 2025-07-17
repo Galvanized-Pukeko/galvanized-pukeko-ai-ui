@@ -9,6 +9,7 @@ import PkButton from './components/PkButton.vue'
 import PkInputCounter from './components/PkInputCounter.vue'
 import PkBarChart from './components/PkBarChart.vue'
 import PkPieChart from './components/PkPieChart.vue'
+import PkNav from './components/PkNav.vue'
 
 // Component values
 const inputValue = ref('')
@@ -58,18 +59,23 @@ const handleFormSubmit = (event: Event) => {
   console.log('Form Values:', {
     input: inputValue.value,
     number: numberValue.value,
-    checkbox1: checkboxValue1.value,
-    checkbox2: checkboxValue2.value,
+    checkbox: checkboxValue1.value,
+    checkbox: checkboxValue2.value,
     radio: radioValue.value,
     select: selectValue.value,
     counter: counterValue.value
   })
 }
 
+// Button click handler
+const handleButtonClick = () => {
+  alert('Button clicked!')
+}
 </script>
 
 <template>
   <div class="app">
+    <PkNav></PkNav>
     <h1>Pukeko UI Component Kitchen Sink</h1>
     <p class="form-info">A showcase of all available components without external dependencies</p>
 

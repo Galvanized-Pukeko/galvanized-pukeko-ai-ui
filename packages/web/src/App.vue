@@ -9,6 +9,7 @@ import PkButton from './components/PkButton.vue'
 import PkInputCounter from './components/PkInputCounter.vue'
 import PkBarChart from './components/PkBarChart.vue'
 import PkPieChart from './components/PkPieChart.vue'
+import PkNav from './components/PkNav.vue'
 import { connectionService, type ConnectionStatus, type ComponentConfig, type WebSocketMessage } from './services/connectionService'
 
 const serverComponents = ref<ComponentConfig[]>([])
@@ -45,7 +46,8 @@ const componentMap = markRaw({
   radio: PkRadio,
   select: PkSelect,
   button: PkButton,
-  counter: PkInputCounter
+  counter: PkInputCounter,
+  nav: PkNav
 })
 
 let unsubscribeStatus: (() => void) | null = null
@@ -121,7 +123,7 @@ const handleSubmit = (event: Event) => {
     ...componentValues.value.counter
   }
   console.log('Form submitted with values:', allValues)
-  
+
   // Send form submission to server
   connectionService.sendMessage({
     type: 'form_submit',

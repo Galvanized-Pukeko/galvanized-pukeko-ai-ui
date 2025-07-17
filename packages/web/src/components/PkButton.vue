@@ -98,7 +98,7 @@ const handleClick = (event: MouseEvent) => {
       /* for sharper look, we add gradient border */
       background: var(--bg-button-nob-idle) padding-box,
                   var(--border-button-nob-idle) border-box;
-      border: 1px solid transparent;
+      border: var(--border-button-nob-idle);
       border-radius: var(--border-radius-small-box);
       padding: var(--padding-third) var(--padding-twothird);
 
@@ -108,7 +108,7 @@ const handleClick = (event: MouseEvent) => {
       &:active:not(.pk-button--disabled) {
         /* for sharper look, we add gradient border */
         background: var(--bg-button-nob-active);
-        border: 1px solid transparent;
+        border: var(--border-button-nob-active);
         color: var(--text-button-nob-active);
       }
     }
