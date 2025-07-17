@@ -1,11 +1,16 @@
 {
-  "name": "@galvanized-pukeko-ai-ui/server-js",
+  "name": "@galvanized-pukeko-ai-ui/ui-mcp-server-js",
   "version": "0.0.1",
   "main": "index.js",
   "devDependencies": {},
+  "bin": {
+    "galvanized-pukeko-ui-mcp-http": "dist/mcp-boilerplate/mcp-http.js",
+    "galvanized-pukeko-ui-mcp-stdio": "dist/mcp-boilerplate/mcp-stdio.js"
+  },
   "scripts": {
     "build": "tsc",
-    "dev": "npm run build && node dist/mcp-http.js",
+    "mcp-http": "npm run build && node dist/mcp-boilerplate/mcp-http.js",
+    "mcp-stdio": "npm run build && node dist/mcp-boilerplate/mcp-stdio.js",
     "dev-server-randomp": " npm run build && node dist/random-server.js",
     "chat": "gth chat",
     "test": "echo \"Error: no test specified\" && exit 1"

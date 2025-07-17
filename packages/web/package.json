@@ -1,8 +1,7 @@
 {
-  "name": "@galvanized-pukeko-ai-ui/client",
+  "name": "@galvanized-pukeko-ai-ui/web",
   "version": "0.0.1",
   "main": "index.js",
-  "devDependencies": {},
   "scripts": {
     "dev": "vite",
     "sink": "vite --open /sink/",
@@ -14,9 +13,12 @@
     "lint:oxlint": "oxlint . --fix -D correctness --ignore-path .gitignore",
     "lint:eslint": "eslint . --fix",
     "lint": "oxlint . --fix -D correctness --ignore-path .gitignore && eslint . --fix",
-    "format": "prettier --write packages/client/src/"
+    "format": "prettier --write packages/web/src/"
   },
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "dependencies": {
+    "chart.js": "^4.5.0"
+  }
 }

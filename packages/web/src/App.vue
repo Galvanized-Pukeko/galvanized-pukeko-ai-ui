@@ -7,18 +7,35 @@ import PkRadio from './components/PkRadio.vue'
 import PkSelect from './components/PkSelect.vue'
 import PkButton from './components/PkButton.vue'
 import PkInputCounter from './components/PkInputCounter.vue'
+import PkBarChart from './components/PkBarChart.vue'
+import PkPieChart from './components/PkPieChart.vue'
 import PkNav from './components/PkNav.vue'
 import { connectionService, type ConnectionStatus, type ComponentConfig, type WebSocketMessage } from './services/connectionService'
 
 const serverComponents = ref<ComponentConfig[]>([])
 const formLabels = ref<{ submitLabel?: string; cancelLabel?: string }>({})
 const wsStatus = ref<ConnectionStatus>('disconnected')
+const currentChart = ref<{
+  type: 'bar' | 'pie'
+  title: string
+  data: {
+    labels: string[]
+    datasets: {
+      label: string
+      data: number[]
+      backgroundColor?: string[]
+      borderColor?: string[]
+      borderWidth?: number
+    }[]
+  }
+} | null>(null)
 const componentValues = ref<{
   input: Record<string, string>
   checkbox: Record<string, boolean>
   radio: Record<string, string>
   select: Record<string, string>
-}>({ input: {}, checkbox: {}, radio: {}, select: {} })
+  counter: Record<string, string>
+}>({ input: {}, checkbox: {}, radio: {}, select: {}, counter: {} })
 
 /**
  * This is going to be coming from config in future.
@@ -35,7 +52,9 @@ const componentMap = markRaw({
 
 let unsubscribeStatus: (() => void) | null = null
 let unsubscribeMessage: (() => void) | null = null
+let unsubscribeChartMessage: (() => void) | null = null
 
+// This all is really bad stuff and has to be refactored
 const handleRenderComponents = (message: WebSocketMessage) => {
   console.log('Received message from server:', message)
   if (message.components) {
@@ -45,7 +64,7 @@ const handleRenderComponents = (message: WebSocketMessage) => {
       cancelLabel: message.cancelLabel
     }
     // Reset form values when new components arrive
-    componentValues.value = { input: {}, checkbox: {}, radio: {}, select: {} }
+    componentValues.value = { input: {}, checkbox: {}, radio: {}, select: {}, counter: {} }
 
     message.components.forEach((comp, index) => {
       const key = comp.label || `${comp.type}_${index}`
@@ -70,30 +89,80 @@ const handleRenderComponents = (message: WebSocketMessage) => {
   }
 }
 
+const handleChartMessage = (message: {
+  chartType: 'bar' | 'pie'
+  title: string
+  data: {
+    labels: string[]
+    datasets: {
+      label: string
+      data: number[]
+      backgroundColor?: string[]
+      borderColor?: string[]
+      borderWidth?: number
+    }[]
+  }
+}) => {
+  console.log('Received chart message from server:', message)
+  if (message.chartType && message.title && message.data) {
+    currentChart.value = {
+      type: message.chartType,
+      title: message.title,
+      data: message.data
+    }
+  }
+}
+
 const handleSubmit = (event: Event) => {
   event.preventDefault()
   const allValues: Record<string, string | boolean | number> = {
     ...componentValues.value.input,
     ...componentValues.value.checkbox,
     ...componentValues.value.radio,
-    ...componentValues.value.select
+    ...componentValues.value.select,
+    ...componentValues.value.counter
   }
   console.log('Form submitted with values:', allValues)
+
+  // Send form submission to server
+  connectionService.sendMessage({
+    type: 'form_submit',
+    data: allValues,
+    timestamp: Date.now()
+  })
 }
 
 const handleCancel = () => {
   // Clear all form values
-  componentValues.value = { input: {}, checkbox: {}, radio: {}, select: {} }
+  componentValues.value = { input: {}, checkbox: {}, radio: {}, select: {}, counter: {} }
 
   // Reset values based on current components
   serverComponents.value = [];
-  
+
   // Send cancel message to server
   connectionService.sendMessage({
     type: 'cancel',
     timestamp: Date.now()
   })
 }
+
+const handleClearChart = () => {
+  // Clear the current chart
+  currentChart.value = null
+
+  // Send cancel message to server (similar to form cancel)
+  connectionService.sendMessage({
+    type: 'cancel',
+    timestamp: Date.now()
+  })
+}
+
+const sendMessage = () => {
+  connectionService.sendMessage({
+    type: 'cancel',
+    timestamp: Date.now()
+  })
+};
 
 onMounted(() => {
   connectionService.connect()
@@ -103,6 +172,7 @@ onMounted(() => {
   })
 
   unsubscribeMessage = connectionService.subscribeToMessage('form', handleRenderComponents)
+  unsubscribeChartMessage = connectionService.subscribeToMessage('chart', handleChartMessage)
 })
 
 onUnmounted(() => {
@@ -111,6 +181,9 @@ onUnmounted(() => {
   }
   if (unsubscribeMessage) {
     unsubscribeMessage()
+  }
+  if (unsubscribeChartMessage) {
+    unsubscribeChartMessage()
   }
   connectionService.disconnect()
 })
@@ -127,10 +200,12 @@ onUnmounted(() => {
       </span>
     </div>
 
-    <div v-if="serverComponents.length === 0" class="info">
+    <!-- Show only one section at a time: waiting message, form, or chart -->
+    <div v-if="!currentChart && serverComponents.length === 0" class="info">
       Waiting for server to send components...
     </div>
-    <PkForm v-else @submit="handleSubmit" class="dynamic-form">
+
+    <PkForm v-else-if="!currentChart && serverComponents.length > 0" @submit="handleSubmit" class="dynamic-form">
       <h2>Server-Requested Form</h2>
       <p class="form-info">server-rendered form</p>
 
@@ -192,10 +267,51 @@ onUnmounted(() => {
         </PkButton>
       </div>
     </PkForm>
+
+    <!-- Chart rendering section -->
+    <div v-else-if="currentChart" class="chart-section">
+      <h2>Server-Requested Chart</h2>
+      <PkBarChart
+        v-if="currentChart.type === 'bar'"
+        :data="currentChart.data"
+        :title="currentChart.title"
+      />
+      <PkPieChart
+        v-if="currentChart.type === 'pie'"
+        :data="currentChart.data"
+        :title="currentChart.title"
+      />
+      <div class="chart-buttons">
+        <PkButton type="button" @click="handleClearChart">
+          Clear
+        </PkButton>
+      </div>
+    </div>
   </div>
+  <button @click="sendMessage">send message</button>
 </template>
 
 <style scoped>
 /* See packages/client/src/assets/global.css for global styles */
 /* Place only things specific to DevSite here */
+
+.chart-section {
+  margin: 2rem 0;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.chart-section h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #374151;
+}
+
+.chart-buttons {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
 </style>

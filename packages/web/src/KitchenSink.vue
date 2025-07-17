@@ -7,6 +7,8 @@ import PkRadio from './components/PkRadio.vue'
 import PkSelect from './components/PkSelect.vue'
 import PkButton from './components/PkButton.vue'
 import PkInputCounter from './components/PkInputCounter.vue'
+import PkBarChart from './components/PkBarChart.vue'
+import PkPieChart from './components/PkPieChart.vue'
 import PkNav from './components/PkNav.vue'
 
 // Component values
@@ -17,6 +19,38 @@ const checkboxValue2 = ref(false)
 const radioValue = ref('option1')
 const selectValue = ref('')
 const counterValue = ref(0)
+
+// Chart data
+const barChartData = ref({
+  labels: ['Engineering', 'Marketing', 'Sales', 'HR', 'Finance', 'Operations'],
+  datasets: [{
+    label: 'Tasks Completed',
+    data: [245, 189, 312, 156, 203, 278],
+    backgroundColor: [
+      '#3b82f6',
+      '#ef4444',
+      '#10b981',
+      '#f59e0b',
+      '#8b5cf6',
+      '#06b6d4'
+    ]
+  }]
+})
+
+const pieChartData = ref({
+  labels: ['Desktop', 'Mobile', 'Tablet', 'Smart TV', 'Other'],
+  datasets: [{
+    label: 'Device Usage',
+    data: [45, 32, 15, 6, 2],
+    backgroundColor: [
+      '#3b82f6',
+      '#ef4444',
+      '#10b981',
+      '#f59e0b',
+      '#8b5cf6'
+    ]
+  }]
+})
 
 // Form submission handler
 const handleFormSubmit = (event: Event) => {
@@ -177,10 +211,52 @@ const handleButtonClick = () => {
       </div>
 
     </PkForm>
+
+    <h2>Chart Components</h2>
+
+    <div class="chart-section">
+      <h3>Department Task Completion - Bar Chart</h3>
+      <PkBarChart
+        :data="barChartData"
+        title="Tasks Completed by Department"
+      />
+    </div>
+
+    <div class="chart-section">
+      <h3>Device Usage Distribution - Pie Chart</h3>
+      <PkPieChart
+        :data="pieChartData"
+        title="User Device Preferences (%)"
+      />
+    </div>
+
+    <div class="chart-section">
+      <h3>Device Usage Distribution - Doughnut Chart</h3>
+      <PkPieChart
+        :data="pieChartData"
+        title="User Device Preferences (Doughnut)"
+        type="doughnut"
+      />
+    </div>
+
   </div>
 </template>
 
 <style scoped>
 /* See packages/client/src/assets/global.css for global styles */
 /* Place only things specific to KitchenSink here */
+
+.chart-section {
+  margin: 2rem 0;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.chart-section h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #374151;
+}
 </style>

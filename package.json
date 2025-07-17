@@ -1,18 +1,22 @@
 {
   "name": "galvanized-pukeko-ai-ui",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "scripts": {
-    "client": "npm run dev -w packages/client",
-    "server": "npm run dev -w packages/server-js",
-    "chat": "npm run chat -w packages/server-js",
-    "sink": "npm run sink -w packages/client"
+    "web": "npm run dev -w packages/web",
+    "build-ui-server": "npm run build -w packages/ui-mcp-server-js",
+    "ui-mcp-server": "npm run mcp-http -w packages/ui-mcp-server-js",
+    "ui-mcp-server-stdio": "npm run mcp-stdio -w packages/ui-mcp-server-js",
+    "demo-data-mcp-server": "npm run dev -w packages/demo-mcp",
+    "chat": "npm run chat -w packages/ui-mcp-server-js",
+    "sink": "npm run sink -w packages/web"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
     "@types/ws": "^8.18.1",
     "express": "^4.21.1",
+    "gaunt-sloth-assistant": "^0.8.11",
     "vue": "^3.5.13",
     "ws": "^8.18.2",
     "zod": "^3.23.8",
@@ -42,7 +46,8 @@
     "vue-tsc": "^2.2.8"
   },
   "workspaces": [
-    "packages/client",
-    "packages/server-js"
+    "packages/web",
+    "packages/ui-mcp-server-js",
+    "packages/demo-mcp"
   ]
 }

@@ -1,5 +1,5 @@
 {
-  "extends": "@galvanized-pukeko-ai-ui/client/tsconfig.json",
+  "extends": "@galvanized-pukeko-ai-ui/web/tsconfig.json",
   "compilerOptions": {
     "composite": true,
     "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.server.tsbuildinfo",
@@ -9,11 +9,11 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "outDir": "dist",
-    "rootDir": "./src/js",
+    "rootDir": "./src",
     "types": ["node"]
   },
   "include": [
-    "src/js/**/*"
+    "src/**/*"
   ],
   "exclude": [
     "../../node_modules", "node_modules", "dist"

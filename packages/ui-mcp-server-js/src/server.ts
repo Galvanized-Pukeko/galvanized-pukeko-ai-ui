@@ -9,15 +9,14 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import {z} from "zod";
 import {zodToJsonSchema} from "zod-to-json-schema";
-import {WebSocketServer, WebSocket} from 'ws';
-import {createServer as createHttpServer} from 'http';
+import { createWebSocketServer, WebSocketServerManager } from './websocket-server.js';
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
 
 const serverContext = {
   mcpServer: undefined as Server,
-  webSocketServer: undefined as WebSocketServer,
+  webSocketManager: undefined as WebSocketServerManager,
 }
 
 /* Input schemas for tools implemented in this server */
@@ -39,87 +38,22 @@ const FormSchema = z.object({
   cancelLabel: z.string().describe("Cancel button label").optional(),
 });
 
+const ChartSchema = z.object({
+  type: z.enum(['bar', 'pie']).describe("Chart type (bar or pie)"),
+  title: z.string().describe("Chart title"),
+  data: z.array(z.number()).describe("Chart data values"),
+  labels: z.array(z.string()).describe("Chart data labels"),
+});
+
 enum ToolName {
   PK_FORM = "pk_form",
+  PK_CHARTS = "pk_charts",
 }
 
-// Set up WebSocket server (dirty stuff, doing it on file load)
-console.log('Setting up WebSocket server...');
+// Set up WebSocket server
 const WS_PORT = 3001;
-const httpServer = createHttpServer();
-const wss = new WebSocketServer({server: httpServer});
-serverContext.webSocketServer = wss;
-const connectedClients = new Set<WebSocket>();
-
-wss.on('connection', (ws: WebSocket) => {
-  console.log('Client connected to WebSocket');
-  connectedClients.add(ws);
-
-  ws.on('message', (data) => {
-    try {
-      const message = JSON.parse(data.toString());
-      console.log('Received message from client:', message);
-
-      if (message.type === 'cancel') {
-        console.log(`Form cancelled at ${new Date(message.timestamp).toISOString()}`);
-        // this crashes
-        serverContext.mcpServer.request({
-          method: "notifications/message",
-          params: {
-            level: "info",
-            logger: "test-server",
-            data: `Form cancelled at ${new Date(message.timestamp).toISOString()}`,
-          },
-        }, z.object({
-          ack: z.boolean()
-        })).then((r) => {
-          console.log('response from client', r);
-        }).catch((reason) => {
-          console.log('failed to send message', reason)
-          // failed to send message McpError: MCP error -32601: Method not found
-          // This should somehow be handled in the client
-        });
-
-        // This goes somewhere
-        // serverContext.mcpServer.notification({
-        //   method: "notifications/message",
-        //   params: {
-        //     message: "Form cancelled at " + new Date(message.timestamp).toISOString(),
-        //   }
-        // }).then((r) => {
-        //   console.log('response from client', r);
-        // })
-      }
-    } catch (error) {
-      console.error('Error parsing message from client:', error);
-    }
-  });
-
-
-  ws.on('close', () => {
-    console.log('Client disconnected from WebSocket');
-    connectedClients.delete(ws);
-  });
-
-  ws.on('error', (error) => {
-    console.error('WebSocket error:', error);
-    connectedClients.delete(ws);
-  });
-});
-
-httpServer.listen(WS_PORT, () => {
-  console.log(`WebSocket server running on ws://localhost:${WS_PORT}`);
-});
-
-// Function to broadcast messages to all connected clients
-const broadcastToClients = (message: any) => {
-  const messageStr = JSON.stringify(message);
-  connectedClients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(messageStr);
-    }
-  });
-};
+const wsManager = createWebSocketServer(WS_PORT);
+serverContext.webSocketManager = wsManager;
 
 export const createServer = () => {
   const server = new Server(
@@ -138,6 +72,9 @@ export const createServer = () => {
     }
   );
   serverContext.mcpServer = server;
+
+  // Set MCP server reference in WebSocket manager
+  (wsManager as any).setMcpServer(server);
 
   let logLevel: LoggingLevel = "debug";
   const messages = [
@@ -163,6 +100,11 @@ export const createServer = () => {
         name: ToolName.PK_FORM,
         description: "Renders a form with multiple components (button, checkbox, input, radio, select)",
         inputSchema: zodToJsonSchema(FormSchema) as ToolInput,
+      },
+      {
+        name: ToolName.PK_CHARTS,
+        description: "Renders charts (bar or pie) with data and labels",
+        inputSchema: zodToJsonSchema(ChartSchema) as ToolInput,
       }
     ];
 
@@ -172,25 +114,58 @@ export const createServer = () => {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const {name, arguments: args} = request.params;
 
-    if (name !== ToolName.PK_FORM) {
+    if (name === ToolName.PK_FORM) {
+      const {components, submitLabel, cancelLabel} = FormSchema.parse(args);
+
+      serverContext.webSocketManager.broadcastToClients({
+        type: 'form',
+        components: components,
+        submitLabel: submitLabel,
+        cancelLabel: cancelLabel
+      });
+
+      return {
+        content: [{
+          type: "text",
+          text: `Form with ${components.length} component(s) sent successfully`
+        }],
+      };
+    } else if (name === ToolName.PK_CHARTS) {
+      const {type, title, data, labels} = ChartSchema.parse(args);
+
+      // Generate random colors for the chart
+      const colors = [
+        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+        '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
+      ];
+
+      const chartData = {
+        labels: labels,
+        datasets: [{
+          label: title,
+          data: data,
+          backgroundColor: colors.slice(0, data.length),
+          borderColor: colors.slice(0, data.length),
+          borderWidth: 1
+        }]
+      };
+
+      serverContext.webSocketManager.broadcastToClients({
+        type: 'chart',
+        chartType: type,
+        title: title,
+        data: chartData
+      });
+
+      return {
+        content: [{
+          type: "text",
+          text: `${type.charAt(0).toUpperCase() + type.slice(1)} chart "${title}" sent successfully`
+        }],
+      };
+    } else {
       throw new Error(`Unknown tool: ${name}`);
     }
-
-    const {components, submitLabel, cancelLabel} = FormSchema.parse(args);
-
-    broadcastToClients({
-      type: 'form',
-      components: components,
-      submitLabel: submitLabel,
-      cancelLabel: cancelLabel
-    });
-
-    return {
-      content: [{
-        type: "text",
-        text: `Form with ${components.length} component(s) sent successfully`
-      }],
-    };
   });
 
 
@@ -212,20 +187,7 @@ export const createServer = () => {
   });
 
   const cleanup = async () => {
-    // Close all WebSocket connections
-    connectedClients.forEach((client) => {
-      client.close();
-    });
-
-    // Close the WebSocket server
-    wss.close(() => {
-      console.log('WebSocket server closed');
-    });
-
-    // Close the HTTP server
-    httpServer.close(() => {
-      console.log('HTTP server closed');
-    });
+    await serverContext.webSocketManager.cleanup();
   };
 
   return {server, cleanup};

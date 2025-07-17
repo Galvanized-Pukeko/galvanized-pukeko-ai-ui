@@ -40,39 +40,96 @@ graph LR
     
 ```
 
-Running 
+# Running a quick demo
+
+## HTTP and provided demo server
 ```bash
-git clone https://github.com/andruhon/galvanized-pukeko-ai-ui.git
+git clone https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui.git
 cd galvanized-pukeko-ai-ui
 npm install
+npm run 
 ```
 
-Start MCP and Websockets server
+Http UI MCP
 ```bash
-npm run server
+npm run ui-mcp-server
 ```
 
-Start Vue app in a separate console
+Web (just to serve the Web)
 ```bash
-npm run client
+npm run web
 ```
 
-Server should be running on port 3002, now you can connect your client to this:
-```json
-{
-      "transport": "http",
-      "url": "http://localhost:3002/mcp"
-}
+Start mock data MCP
+```bash
+npm run demo-data-mcp-server
 ```
-(you can alternatively `server/src/js/mcp-stdio.ts`)
 
-You can use [Gaunt Sloth](https://github.com/andruhon/gaunt-sloth-assistant) installation to connect to this MCP.
-(it is currently preconfigured to use an Anthropic API key, but you can change `server/.gsloth.config.json` to use different provider)
+Start a chat client in the terminal (http)
 ```bash
 npm run chat
 ```
 
-In the chat ask it to render a form to collect user data.
+Chat is preconfigured with `vertexai`, so you need to authenticate.
+
+Config is in `packages/ui-mcp-server-js/.gsloth.config.mjs`, so different AI provider can be chosen.
+
+---
+
+When everything is up:
+
+Ask chat to `list reports`
+
+Then ask to `render bar chart of performance`
+
+## STDIO
+
+Note, your client starts the STDIO server.
+
+Start the Web renderer (web server):
+```bash
+npm install
+npm run build-ui-server
+```
+
+Install UI server to your local NPM cache
+```bash
+npm install ./packages/ui-mcp-server-js/ -g
+```
+(open the provided link in the browser)
+
+```bash
+npm run web
+```
+
+Configure your client:
+```json
+{
+  "mcpServers": {
+    "pukeko": {
+      "command": "galvanized-pukeko-ui-mcp-stdio",
+      "args": [
+        ""
+      ]
+    }
+  }
+}
+```
+
+On Windows you might need to specify a file extension
+```json
+{
+  "mcpServers": {
+    "pukeko": {
+      "command": "galvanized-pukeko-ui-mcp-stdio.bin",
+      "args": [
+        ""
+      ]
+    }
+  }
+}
+```
+
 
 ## Development
 
