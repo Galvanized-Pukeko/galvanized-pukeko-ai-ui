@@ -7,6 +7,7 @@ import PkRadio from './components/PkRadio.vue'
 import PkSelect from './components/PkSelect.vue'
 import PkButton from './components/PkButton.vue'
 import PkInputCounter from './components/PkInputCounter.vue'
+import PkNav from './components/PkNav.vue'
 import { connectionService, type ConnectionStatus, type ComponentConfig, type WebSocketMessage } from './services/connectionService'
 
 const serverComponents = ref<ComponentConfig[]>([])
@@ -28,7 +29,8 @@ const componentMap = markRaw({
   radio: PkRadio,
   select: PkSelect,
   button: PkButton,
-  counter: PkInputCounter
+  counter: PkInputCounter,
+  nav: PkNav
 })
 
 let unsubscribeStatus: (() => void) | null = null
@@ -74,15 +76,14 @@ const handleSubmit = (event: Event) => {
     ...componentValues.value.input,
     ...componentValues.value.checkbox,
     ...componentValues.value.radio,
-    ...componentValues.value.select,
-    ...componentValues.value.counter
+    ...componentValues.value.select
   }
   console.log('Form submitted with values:', allValues)
 }
 
 const handleCancel = () => {
   // Clear all form values
-  componentValues.value = { input: {}, checkbox: {}, radio: {}, select: {}, counter {} }
+  componentValues.value = { input: {}, checkbox: {}, radio: {}, select: {} }
 
   // Reset values based on current components
   serverComponents.value = [];

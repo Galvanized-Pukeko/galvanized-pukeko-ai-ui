@@ -7,6 +7,7 @@ import PkRadio from './components/PkRadio.vue'
 import PkSelect from './components/PkSelect.vue'
 import PkButton from './components/PkButton.vue'
 import PkInputCounter from './components/PkInputCounter.vue'
+import PkNav from './components/PkNav.vue'
 
 // Component values
 const inputValue = ref('')
@@ -40,6 +41,7 @@ const handleButtonClick = () => {
 
 <template>
   <div class="app">
+    <PkNav></PkNav>
     <h1>Pukeko UI Component Kitchen Sink</h1>
     <p class="form-info">A showcase of all available components without external dependencies</p>
 
