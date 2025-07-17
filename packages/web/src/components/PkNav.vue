@@ -1,3 +1,100 @@
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import PkSelect from './PkSelect.vue'
+
+interface NavItem {
+  id: string
+  label: string
+  href?: string
+  isActive?: boolean
+}
+interface CurrencyItem {
+  id: string
+  label: string
+  isActive?: boolean
+}
+
+interface Props {
+  navItems?: NavItem[]
+  currencyItems?: CurrencyItem[]
+  showSearch?: boolean
+  showCurrency?: boolean
+  showCart?: boolean
+  showAuth?: boolean
+  cartCount?: number
+  isLoggedIn?: boolean
+  username?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  navItems: () => [
+    { id: 'company', label: 'Company', href: '#company' },
+    { id: 'catalogue', label: 'Catalogue', href: '#catalogue' },
+    { id: 'stores', label: 'Stores', href: '#stores' }
+  ],
+  currencyItems: () => [
+    { id: 'option1', label: 'USD' },
+    { id: 'option2', label: 'AUD' },
+    { id: 'option3', label: 'NZD' }
+  ],
+  showSearch: true,
+  showCurrency: true,
+  showCart: true,
+  showAuth: true,
+  cartCount: 0,
+  isLoggedIn: false,
+  username: ''
+})
+
+const emit = defineEmits<{
+  navigate: [item: NavItem]
+  search: [query: string]
+  currencyChange: [currency: string]
+  cartClick: []
+  authClick: []
+}>()
+
+const activeNavItem = ref<string>('')
+const searchQuery = ref('')
+const selectedCurrency = ref('USD')
+const selectValue = ref('USD')
+
+const cartDisplay = computed(() => {
+  return props.cartCount > 0 ? `Cart (${props.cartCount})` : 'Cart'
+})
+
+const authDisplay = computed(() => {
+  return props.isLoggedIn ? props.username || 'Profile' : 'Log in'
+})
+
+const handleNavClick = (item: NavItem) => {
+  activeNavItem.value = item.id
+  emit('navigate', item)
+
+  if (item.href) {
+    window.location.href = item.href
+  }
+}
+
+const handleSearch = () => {
+  emit('search', searchQuery.value)
+}
+
+const handleCurrencyChange = (currency: string) => {
+  selectedCurrency.value = currency
+  selectValue.value = currency
+  emit('currencyChange', currency)
+}
+
+const handleCartClick = () => {
+  emit('cartClick')
+}
+
+const handleAuthClick = () => {
+  emit('authClick')
+}
+</script>
+
 <template>
   <div class="nav-wrapper">
     <div class="nav-logo">
@@ -24,11 +121,6 @@
         </svg>
         </span>
       </a>
-      <a href="#" class="nav-control nav-control-currency">
-        <span>
-          USD
-        </span>
-      </a>
       <a href="#" class="nav-control nav-control-cart">
         <span>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -36,6 +128,22 @@
         </svg>
         </span>
       </a>
+      <div class="nav-control nav-control-currency">
+        <PkSelect
+          v-if="currencyItems.length > 0"
+          :modelValue="selectValue"
+          @update:modelValue="(val: string | number) => handleCurrencyChange(String(val))"
+          selectId="currencySelect"
+          label=""
+          class="select-control"
+        >
+          <option
+            v-for="item in currencyItems"
+            :key="item.id"
+            :value="item.label">{{ item.label }}
+          </option>
+        </PkSelect>
+      </div>
       <a href="#" class="nav-control nav-control-profile">
         <span>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -46,89 +154,6 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { ref, computed } from 'vue'
-
-interface NavItem {
-  id: string
-  label: string
-  href?: string
-  isActive?: boolean
-}
-
-interface Props {
-  navItems?: NavItem[]
-  showSearch?: boolean
-  showCurrency?: boolean
-  showCart?: boolean
-  showAuth?: boolean
-  cartCount?: number
-  isLoggedIn?: boolean
-  username?: string
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  navItems: () => [
-    { id: 'company', label: 'Company', href: '#company' },
-    { id: 'catalogue', label: 'Catalogue', href: '#catalogue' },
-    { id: 'stores', label: 'Stores', href: '#stores' }
-  ],
-  showSearch: true,
-  showCurrency: true,
-  showCart: true,
-  showAuth: true,
-  cartCount: 0,
-  isLoggedIn: false,
-  username: ''
-})
-
-const emit = defineEmits<{
-  navigate: [item: NavItem]
-  search: [query: string]
-  currencyChange: [currency: string]
-  cartClick: []
-  authClick: []
-}>()
-
-const activeNavItem = ref<string>('')
-const searchQuery = ref('')
-const selectedCurrency = ref('USD')
-
-const cartDisplay = computed(() => {
-  return props.cartCount > 0 ? `Cart (${props.cartCount})` : 'Cart'
-})
-
-const authDisplay = computed(() => {
-  return props.isLoggedIn ? props.username || 'Profile' : 'Log in'
-})
-
-const handleNavClick = (item: NavItem) => {
-  activeNavItem.value = item.id
-  emit('navigate', item)
-
-  if (item.href) {
-    window.location.href = item.href
-  }
-}
-
-const handleSearch = () => {
-  emit('search', searchQuery.value)
-}
-
-const handleCurrencyChange = (currency: string) => {
-  selectedCurrency.value = currency
-  emit('currencyChange', currency)
-}
-
-const handleCartClick = () => {
-  emit('cartClick')
-}
-
-const handleAuthClick = () => {
-  emit('authClick')
-}
-</script>
 
 <style scoped>
 .nav-wrapper {
@@ -185,43 +210,6 @@ const handleAuthClick = () => {
   gap: var(--padding-third);
 }
 
-.nav-search input {
-  padding: var(--padding-third) var(--padding-twothird);
-  border: var(--border-input-idle);
-  border-radius: var(--border-radius-small-box);
-  background-color: var(--bg-input-idle);
-  font-size: 1rem;
-  font-family: inherit;
-  width: 150px;
-  transition: var(--transition-normal);
-}
-
-.nav-search input:focus {
-  outline: none;
-  border: var(--border-input-active);
-  background-color: var(--bg-input-active);
-  box-shadow: var(--box-shadow-inner-active);
-}
-
-.nav-search button {
-  padding: var(--padding-third) var(--padding-twothird);
-  background: var(--bg-button-prim-idle) padding-box,
-              var(--border-button-prim-idle) border-box;
-  border: 1px solid transparent;
-  border-radius: var(--border-radius-small-box);
-  color: var(--text-button-prim-idle);
-  cursor: pointer;
-  font-size: 1rem;
-  font-family: inherit;
-  transition: var(--transition-normal);
-}
-
-.nav-search button:hover {
-  background: var(--bg-button-prim-active) padding-box,
-              var(--border-button-prim-active) border-box;
-  color: var(--text-button-prim-active);
-}
-
 .nav-control {
   padding: var(--padding-third) var(--padding-twothird);
   background: var(--bg-button-nob-idle);
@@ -243,24 +231,6 @@ const handleAuthClick = () => {
   color: var(--text-button-nob-active);
 }
 
-.nav-currency select {
-  padding: var(--padding-third) var(--padding-twothird);
-  border: var(--border-input-idle);
-  border-radius: var(--border-radius-small-box);
-  background-color: var(--bg-input-idle);
-  font-size: 1rem;
-  font-family: inherit;
-  cursor: pointer;
-  transition: var(--transition-normal);
-}
-
-.nav-currency select:focus {
-  outline: none;
-  border: var(--border-input-active);
-  background-color: var(--bg-input-active);
-  box-shadow: var(--box-shadow-inner-active);
-}
-
 @media (max-width: 768px) {
   .nav-wrapper {
     flex-direction: column;
@@ -278,8 +248,5 @@ const handleAuthClick = () => {
     flex-wrap: wrap;
   }
 
-  .nav-search input {
-    width: 120px;
-  }
 }
 </style>
