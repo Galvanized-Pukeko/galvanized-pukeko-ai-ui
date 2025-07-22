@@ -5,17 +5,18 @@ import { z } from "zod";
 import { log, error } from './utils/console.js';
 
 export interface WebSocketServerManager {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   broadcastToClients: (message: any) => void;
   cleanup: () => Promise<void>;
 }
 
 export const createWebSocketServer = (port: number = 3001): WebSocketServerManager => {
   log('Setting up WebSocket server...');
-  
+
   const httpServer = createHttpServer();
   const wss = new WebSocketServer({ server: httpServer });
   const connectedClients = new Set<WebSocket>();
-  
+
   let mcpServer: Server | undefined;
 
   // Set the MCP server reference (will be called from main server)
@@ -34,7 +35,7 @@ export const createWebSocketServer = (port: number = 3001): WebSocketServerManag
 
         if (message.type === 'cancel') {
           log(`Form cancelled at ${new Date(message.timestamp).toISOString()}`);
-          
+
           if (mcpServer) {
             // this crashes
             log(mcpServer);
@@ -71,7 +72,7 @@ export const createWebSocketServer = (port: number = 3001): WebSocketServerManag
         } else if (message.type === 'form_submit') {
           log(`Form submitted at ${new Date(message.timestamp).toISOString()}`);
           log('Form data:', message.data);
-          
+
           if (mcpServer) {
             mcpServer.request({
               method: "form_submit",
@@ -110,6 +111,7 @@ export const createWebSocketServer = (port: number = 3001): WebSocketServerManag
   });
 
   // Handle server errors
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   httpServer.on('error', (err: any) => {
     if (err.code === 'EADDRINUSE') {
       error(`Port ${port} is already in use. Please close any existing processes using this port.`);
@@ -151,6 +153,7 @@ export const createWebSocketServer = (port: number = 3001): WebSocketServerManag
   });
 
   // Function to broadcast messages to all connected clients
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const broadcastToClients = (message: any) => {
     const messageStr = JSON.stringify(message);
     connectedClients.forEach((client) => {
@@ -191,7 +194,7 @@ export const createWebSocketServer = (port: number = 3001): WebSocketServerManag
           } else {
             log('WebSocket server closed');
           }
-          
+
           // Close the HTTP server
           httpServer.close((err) => {
             clearTimeout(timeout);

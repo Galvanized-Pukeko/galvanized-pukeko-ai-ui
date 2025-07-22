@@ -1,7 +1,22 @@
 {
   "llm": {
-    "type": "anthropic",
-    "model": "claude-sonnet-4-20250514"
+    "type": "openrouter",
+    "model": "moonshotai/kimi-k2"
   },
-  "projectGuidelines": "GUIDELINES.md"
+  "llm1": {
+    "type": "openrouter",
+    "model": "google/gemini-2.5-pro"
+  },
+  "projectGuidelines": "GUIDELINES.md",
+  "commands": {
+    "code": {
+      "filesystem": "all",
+      "devTools": {
+        "run_build": "build-ui-server",
+        "run_lint": "npm run lint --workspaces",
+        "run_tests": "npm run test --workspaces",
+        "run_single_test": "npm run test -w packages/${testPath}"
+      }
+    }
+  }
 }

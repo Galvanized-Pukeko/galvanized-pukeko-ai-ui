@@ -35,7 +35,7 @@ function listFiles(): string[] {
   try {
     return readdirSync(filesDir).filter(file => file.endsWith('.csv'));
   } catch (error) {
-    throw new Error('Unable to read files directory');
+    throw new Error('Unable to read files directory', error);
   }
 }
 
@@ -44,17 +44,17 @@ function readCSVData(filename: string): (string | number)[][] {
   const csvPath = join(__dirname, '..', 'files', filename);
   const csvContent = readFileSync(csvPath, 'utf-8');
   const lines = csvContent.trim().split('\n');
-  
+
   const headers = lines[0].split(',');
   const months: string[] = [headers[0]];
   const sales: (string | number)[] = [headers[1]];
-  
+
   for (let i = 1; i < lines.length; i++) {
     const [month, salesValue] = lines[i].split(',');
     months.push(month);
     sales.push(parseFloat(salesValue));
   }
-  
+
   return [months, sales];
 }
 
@@ -108,7 +108,7 @@ export const createServer = () => {
       if (!filename) {
         throw new Error('filename parameter is required');
       }
-      
+
       const data = readCSVData(filename);
       return {
         content: [{
@@ -117,7 +117,7 @@ export const createServer = () => {
         }],
       };
     }
-    
+
     if (name === ToolName.LIST_REPORTS) {
       const files = listFiles();
       return {

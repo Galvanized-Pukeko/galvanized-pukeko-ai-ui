@@ -9,11 +9,14 @@
   },
   "scripts": {
     "build": "tsc",
+    "test": "vitest run",
     "mcp-http": "npm run build && node dist/mcp-boilerplate/mcp-http.js",
     "mcp-stdio": "npm run build && node dist/mcp-boilerplate/mcp-stdio.js",
     "dev-server-randomp": " npm run build && node dist/random-server.js",
-    "chat": "gth chat",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint:oxlint": "oxlint . --fix -D correctness --ignore-path .gitignore",
+    "lint:eslint": "eslint . --fix",
+    "lint": "oxlint . --fix -D correctness --ignore-path .gitignore && eslint . --fix",
+    "chat": "gth chat"
   },
   "author": "",
   "license": "ISC",

@@ -3,11 +3,11 @@
   "version": "0.0.1",
   "main": "index.js",
   "scripts": {
+    "test": "vitest run",
     "dev": "vite",
     "sink": "vite --open /sink/",
     "build": "npm run type-check && npm run build-only",
     "preview": "vite preview",
-    "test:unit": "vitest",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
     "lint:oxlint": "oxlint . --fix -D correctness --ignore-path .gitignore",
