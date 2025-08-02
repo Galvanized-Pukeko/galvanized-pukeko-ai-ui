@@ -3,6 +3,106 @@ import { createServer as createHttpServer } from 'http';
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { z } from "zod";
 import { log, error } from './utils/console.js';
+import { JsonRpcRequest, JsonRpcResponse, JsonRpcError } from './types/jsonrpc.js';
+
+const handleJsonRpcMethod = async (request: JsonRpcRequest, ws: WebSocket, mcpServer?: Server) => {
+  const sendResponse = (result?: unknown, error?: JsonRpcError) => {
+    // Only send response if request has an id (not a notification)
+    if (request.id !== undefined) {
+      const response: JsonRpcResponse = {
+        jsonrpc: '2.0',
+        id: request.id,
+        ...(error ? { error } : { result })
+      };
+      ws.send(JSON.stringify(response));
+    }
+  };
+
+  try {
+    switch (request.method) {
+      case 'cancel': {
+        const params = request.params as { timestamp?: number };
+        const timestamp = params?.timestamp || Date.now();
+        log(`Form cancelled at ${new Date(timestamp).toISOString()}`);
+
+        if (mcpServer) {
+          try {
+            await mcpServer.request({
+              method: "message",
+              params: {
+                level: "info",
+                logger: "test-server",
+                data: `Form cancelled at ${new Date(timestamp).toISOString()}`,
+              },
+            }, z.object({
+              ack: z.boolean()
+            }));
+            sendResponse({ success: true });
+          } catch (reason) {
+            log('failed to send message', reason);
+            sendResponse(undefined, {
+              code: -32603,
+              message: 'Internal error',
+              data: reason
+            });
+          }
+        } else {
+          sendResponse({ success: true });
+        }
+        break;
+      }
+
+      case 'form_submit': {
+        const params = request.params as { data?: Record<string, unknown>, timestamp?: number };
+        const timestamp = params?.timestamp || Date.now();
+        log(`Form submitted at ${new Date(timestamp).toISOString()}`);
+        log('Form data:', params?.data);
+
+        if (mcpServer && params?.data) {
+          try {
+            const response = await mcpServer.request({
+              method: "form_submit",
+              params: {
+                data: params.data,
+                timestamp: timestamp
+              },
+            }, z.object({
+              ack: z.boolean(),
+              received: z.boolean().optional()
+            }));
+            sendResponse(response);
+          } catch (reason) {
+            log('failed to send form submission', reason);
+            sendResponse(undefined, {
+              code: -32603,
+              message: 'Internal error',
+              data: reason
+            });
+          }
+        } else {
+          sendResponse(undefined, {
+            code: -32602,
+            message: 'Invalid params'
+          });
+        }
+        break;
+      }
+
+      default:
+        sendResponse(undefined, {
+          code: -32601,
+          message: 'Method not found'
+        });
+    }
+  } catch (err) {
+    log('Error handling JSON-RPC method:', err);
+    sendResponse(undefined, {
+      code: -32603,
+      message: 'Internal error',
+      data: err
+    });
+  }
+};
 
 export interface WebSocketServerManager {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,68 +130,36 @@ export const createWebSocketServer = (port: number = 3001): WebSocketServerManag
 
     ws.on('message', (data) => {
       try {
-        const message = JSON.parse(data.toString());
-        log('Received message from client:', message);
+        const request: JsonRpcRequest = JSON.parse(data.toString());
+        log('Received JSON-RPC request from client:', request);
 
-        if (message.type === 'cancel') {
-          log(`Form cancelled at ${new Date(message.timestamp).toISOString()}`);
-
-          if (mcpServer) {
-            // this crashes
-            log(mcpServer);
-            // mcpServer.ping().then(r => {
-            //   log('ping response', r);
-            // }).catch(reason => {log('ping failed', reason)});
-            mcpServer.request({
-              method: "message",
-              params: {
-                level: "info",
-                logger: "test-server",
-                data: `Form cancelled at ${new Date(message.timestamp).toISOString()}`,
-              },
-            }, z.object({
-              ack: z.boolean()
-            })).then((r) => {
-              log('response from client', r);
-            }).catch((reason) => {
-              log('failed to send message', reason)
-              // failed to send message McpError: MCP error -32601: Method not found
-              // This should somehow be handled in the client
-            });
-
-            // This goes somewhere
-            // mcpServer.notification({
-            //   method: "notifications/message",
-            //   params: {
-            //     message: "Form cancelled at " + new Date(message.timestamp).toISOString(),
-            //   }
-            // }).then((r) => {
-            //   log('response from client', r);
-            // })
-          }
-        } else if (message.type === 'form_submit') {
-          log(`Form submitted at ${new Date(message.timestamp).toISOString()}`);
-          log('Form data:', message.data);
-
-          if (mcpServer) {
-            mcpServer.request({
-              method: "form_submit",
-              params: {
-                data: message.data,
-                timestamp: message.timestamp
-              },
-            }, z.object({
-              ack: z.boolean(),
-              received: z.boolean().optional()
-            })).then((r) => {
-              log('form submission response from client', r);
-            }).catch((reason) => {
-              log('failed to send form submission', reason)
-            });
-          }
+        // Validate JSON-RPC format
+        if (request.jsonrpc !== '2.0' || !request.method) {
+          const errorResponse: JsonRpcResponse = {
+            jsonrpc: '2.0',
+            error: {
+              code: -32600,
+              message: 'Invalid Request'
+            },
+            id: request.id || null
+          };
+          ws.send(JSON.stringify(errorResponse));
+          return;
         }
-      } catch (error) {
-        error('Error parsing message from client:', error);
+
+        // Handle different methods
+        handleJsonRpcMethod(request, ws, mcpServer);
+      } catch (err) {
+        error('Error parsing JSON-RPC request from client:', err);
+        const errorResponse: JsonRpcResponse = {
+          jsonrpc: '2.0',
+          error: {
+            code: -32700,
+            message: 'Parse error'
+          },
+          id: null
+        };
+        ws.send(JSON.stringify(errorResponse));
       }
     });
 
