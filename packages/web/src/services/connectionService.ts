@@ -55,12 +55,12 @@ class ConnectionService {
     this.ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
-        
+
         // Check if it's a JSON-RPC response
         if (data.jsonrpc === '2.0' && data.id !== undefined) {
           this.handleJsonRpcResponse(data as JsonRpcResponse)
-        } 
-        // Check if it's a JSON-RPC notification  
+        }
+        // Check if it's a JSON-RPC notification
         else if (data.jsonrpc === '2.0' && data.method) {
           this.handleJsonRpcNotification(data as JsonRpcNotification)
         }
@@ -176,7 +176,8 @@ class ConnectionService {
 
   cancelForm(timestamp?: number): Promise<unknown> {
     return this.sendJsonRpcRequest('cancel', {
-      timestamp: timestamp || Date.now()
+      timestamp: timestamp || Date.now(),
+      id: crypto.randomUUID()
     })
   }
 
@@ -185,6 +186,7 @@ class ConnectionService {
   }
 
   private handleMessage(message: WebSocketMessage): void {
+    console.log('Received message:', message);
     const handlers = this.messageHandlers.get(message.type)
     if (handlers) {
       handlers.forEach(handler => handler(message))
@@ -200,12 +202,12 @@ class ConnectionService {
     const pendingRequest = this.pendingRequests.get(response.id)
     if (pendingRequest) {
       this.pendingRequests.delete(response.id)
-      
+
       if (response.error) {
         const error = new Error(response.error.message)
-        Object.assign(error, { 
+        Object.assign(error, {
           code: response.error.code,
-          data: response.error.data 
+          data: response.error.data
         })
         pendingRequest.reject(error)
       } else {

@@ -121,7 +121,7 @@ const handleSubmit = (event: Event) => {
     ...componentValues.value.counter
   }
   console.log('Form submitted with values:', allValues)
-  
+
   // Send form submission to server
   connectionService.sendMessage({
     type: 'form_submit',
@@ -157,8 +157,11 @@ const handleClearChart = () => {
 
 const sendMessage = () => {
   connectionService.sendMessage({
+    jsonrpc: '2.0',
+    method: 'cancel',
     type: 'cancel',
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    id: crypto.randomUUID()
   })
 };
 
