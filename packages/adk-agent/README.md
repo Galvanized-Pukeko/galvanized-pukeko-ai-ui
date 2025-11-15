@@ -1,10 +1,12 @@
 # Java ADK agent
 
+(Used Maven 3.9.11 and Temurin JDK 25)
+
 ## Running locally
 
 Start server
 ```bash
-mvn exec:java -Dexec.mainClass=com.google.adk.web.AdkWebServer -Dexec.classpathScope=compile -Dexec.args="--server.port=8080 --adk.agents.source-dir=target"
+mvn compile exec:java -Dexec.mainClass=com.google.adk.web.AdkWebServer -Dexec.classpathScope=compile -Dexec.args="--server.port=8080 --adk.agents.source-dir=target"
 ```
 
 Create new session:
@@ -28,6 +30,8 @@ curl 'http://localhost:8080/run_sse' \
 
 ## Running on Cloud Run
 
+## Deploy
+
 Deploy the container to Cloud Run (the `deploy.sh` script wraps the `gcloud run deploy` command that targets the `us-west1` region and sets the required env vars).
 
 First you need to define your GCP project name.
@@ -43,9 +47,10 @@ export APP_URL="https://YOUR-SERVICE-URL.a.run.app"
 ```
 
 Create a session on the hosted service.
+(normally post goes to /apps/hello-time-agent/users/user1/sessions/ and creates a new UUID, but for testing we can always create the same ID)
 ```bash
 curl -X POST \
-  "$APP_URL/apps/hello-time-agent/users/user/sessions" \
+  "$APP_URL/apps/hello-time-agent/users/user1/sessions/test_session_1" \
   -H "Content-Type: application/json" \
   -H 'Accept: application/json, text/plain, */*'
 ```
@@ -57,36 +62,5 @@ curl "$APP_URL/run_sse" \
   -H 'Accept-Language: en-AU,en-GB;q=0.9,en;q=0.8,en-US;q=0.7' \
   -H 'Connection: keep-alive' \
   -H 'Content-Type: application/json' \
-  --data-raw '{"appName":"hello-time-agent","userId":"user","sessionId":"d6b5c314-078f-42be-b4d6-c66766f944e7","newMessage":{"role":"user","parts":[{"text":"what is the time in Paris?"}]},"streaming":false,"stateDelta":null}'
-```
-
-## Deploy
-
-```bash
-sh deploy.sh
-```
-
-```bash
-# Save app URL
-export APP_URL="https://test-agent-service-159166179683.us-west1.run.app"
-# Create session
-curl -X POST \
-    $APP_URL/apps/capital_agent/users/user1/sessions \
-    -H "Content-Type: application/json"
-# Send a request to AGENT
-curl -X POST \
-    $APP_URL/run_sse \
-    -H "Content-Type: application/json" \
-    -d '{
-    "appName": "hello-time-agent",
-    "userId": "user1",
-    "sessionId": "7cb4c37f-ced4-4b2d-9b6e-78f739099ac1",
-    "newMessage": {
-        "role": "user",
-        "parts": [{
-        "text": "What is the capital of Canada?"
-        }]
-    },
-    "streaming": false
-    }'
+  --data-raw '{"appName":"hello-time-agent","userId":"user1","sessionId":"test_session_1","newMessage":{"role":"user","parts":[{"text":"what is the time in Paris?"}]},"streaming":false,"stateDelta":null}'
 ```
