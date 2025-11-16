@@ -10,8 +10,8 @@
 
     <!-- Specify the version of Java you'll be using -->
     <properties>
-        <maven.compiler.source>25</maven.compiler.source>
-        <maven.compiler.target>25</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -37,7 +37,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.2.0</version>
                 <configuration>
-                    <mainClass>com.google.adk.web.AdkWebServer</mainClass>
+                    <mainClass>com.example.agent.web.VertexAdkWebServer</mainClass>
                     <classpathScope>compile</classpathScope>
                 </configuration>
             </plugin>

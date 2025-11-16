@@ -1,12 +1,12 @@
 # Java ADK agent
 
-(Used Maven 3.9.11 and Temurin JDK 25)
+(Used Maven 3.9.11 and Temurin JDK 17)
 
 ## Running locally
 
 Start server
 ```bash
-mvn compile exec:java -Dexec.mainClass=com.google.adk.web.AdkWebServer -Dexec.classpathScope=compile -Dexec.args="--server.port=8080 --adk.agents.source-dir=target"
+mvn compile exec:java -Dexec.mainClass=com.example.agent.web.VertexAdkWebServer -Dexec.classpathScope=compile -Dexec.args="--server.port=8080 --adk.agents.source-dir=target"
 ```
 
 Create new session:

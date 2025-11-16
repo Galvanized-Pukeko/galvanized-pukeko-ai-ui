@@ -15,6 +15,6 @@ EXPOSE 8080
 # The command to run your application.
 # Use a shell so ${PORT} expands and quote exec.args so agent source-dir is passed correctly.
 ENTRYPOINT ["sh", "-c", "mvn compile exec:java \
-    -Dexec.mainClass=com.google.adk.web.AdkWebServer \
+    -Dexec.mainClass=com.example.agent.web.VertexAdkWebServer \
     -Dexec.classpathScope=compile \
     -Dexec.args='--server.port=${PORT:-8080} --adk.agents.source-dir=target'"]
