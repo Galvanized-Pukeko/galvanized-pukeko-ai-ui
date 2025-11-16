@@ -11,7 +11,7 @@ mvn compile exec:java -Dexec.mainClass=com.google.adk.web.AdkWebServer -Dexec.cl
 
 Create new session:
 ```bash
-curl 'http://localhost:8080/apps/hello-time-agent/users/user/sessions' \
+curl 'http://localhost:8080/apps/hello-time-agent/users/user/sessions/test_session1' \
   -X 'POST' \
   -H "Content-Type: application/json" \
   -H 'Accept: application/json, text/plain, */*'
@@ -25,7 +25,7 @@ curl 'http://localhost:8080/run_sse' \
   -H 'Accept-Language: en-AU,en-GB;q=0.9,en;q=0.8,en-US;q=0.7' \
   -H 'Connection: keep-alive' \
   -H 'Content-Type: application/json' \
-  --data-raw '{"appName":"hello-time-agent","userId":"user","sessionId":"c4352550-5e3e-49d3-9f9f-fd0010e56bdd","newMessage":{"role":"user","parts":[{"text":"what is the time in Paris?"}]},"streaming":false,"stateDelta":null}'
+  --data-raw '{"appName":"hello-time-agent","userId":"user","sessionId":"test_session1","newMessage":{"role":"user","parts":[{"text":"what is the time in Paris?"}]},"streaming":false,"stateDelta":null}'
   ```
 
 ## Running on Cloud Run

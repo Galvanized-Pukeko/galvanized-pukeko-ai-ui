@@ -1,5 +1,6 @@
 package com.example.agent;
 
+import com.example.agent.config.ModelConfig;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.tools.Annotations.Schema;
@@ -20,7 +21,8 @@ public class HelloTimeAgent {
                 Use the 'getCurrentTime' tool for this purpose.
                 """
             )
-            .model("gemini-2.5-flash")
+                // Todo this one expects either String or BaseLLM
+            .model(ModelConfig.getConfiguredModel())
             .tools(FunctionTool.create(HelloTimeAgent.class, "getCurrentTime"))
             .build();
     }
