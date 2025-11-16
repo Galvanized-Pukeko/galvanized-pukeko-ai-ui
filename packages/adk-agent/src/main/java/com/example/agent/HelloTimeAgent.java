@@ -5,14 +5,19 @@ import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.tools.Annotations.Schema;
 import com.google.adk.tools.FunctionTool;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
 
 public class HelloTimeAgent {
 
-    public static BaseAgent ROOT_AGENT = initAgent();
+    private static final Logger log = LoggerFactory.getLogger(HelloTimeAgent.class);
+
+    public static final BaseAgent ROOT_AGENT = initAgent();
 
     private static BaseAgent initAgent() {
-        return LlmAgent.builder()
+        var builder = LlmAgent.builder()
             .name("hello-time-agent")
             .description("Tells the current time in a specified city")
             .instruction(
@@ -20,9 +25,19 @@ public class HelloTimeAgent {
                 You are a helpful assistant that tells the current time in a city.
                 Use the 'getCurrentTime' tool for this purpose.
                 """
-            )
-                // Todo this one expects either String or BaseLLM
-            .model(ModelConfig.getConfiguredModel())
+            );
+
+        // Configure model based on provider
+        String provider = ModelConfig.getModelProvider();
+        if ("anthropic".equalsIgnoreCase(provider)) {
+            log.info("Initializing Anthropic model");
+            builder.model(ModelConfig.createAnthropicModel());
+        } else {
+            log.info("Initializing Gemini VertexAI model");
+            builder.model(ModelConfig.getGeminiModelName());
+        }
+
+        return builder
             .tools(FunctionTool.create(HelloTimeAgent.class, "getCurrentTime"))
             .build();
     }

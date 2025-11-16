@@ -3,16 +3,19 @@ package com.example.agent.config;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 import com.anthropic.vertex.backends.VertexBackend;
-import com.google.adk.models.BaseLlm;
+import com.example.agent.HelloTimeAgent;
 import com.google.adk.models.Claude;
-import com.google.adk.models.Model;
 import com.google.auth.oauth2.GoogleCredentials;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
 public class ModelConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(HelloTimeAgent.class);
 
     private static final Properties properties = new Properties();
 
@@ -28,40 +31,23 @@ public class ModelConfig {
         }
     }
 
-    public static BaseLlm getConfiguredModel() {
-        String provider = properties.getProperty("model.provider", "gemini");
-
-        return switch (provider.toLowerCase()) {
-            case "anthropic" -> createAnthropicModel();
-            case "gemini" -> createGeminiModel();
-            default -> throw new IllegalArgumentException(
-                "Unknown model provider: " + provider + ". Use 'gemini' or 'anthropic'"
-            );
-        };
-    }
-
-    private static BaseLlm createGeminiModel() {
-        String modelName = properties.getProperty("model.gemini.name", "gemini-2.5-flash");
-        // For Gemini, ADK uses the model name string directly
-        // The framework handles the instantiation internally
-        return Model.builder().modelName(modelName).build().model().orElseThrow();
-    }
-
-    private static Claude createAnthropicModel() {
-        String modelName = properties.getProperty("model.anthropic.name", "claude-3-5-sonnet@20240620");
+    public static Claude createAnthropicModel() {
+        String modelName = getAnthropicModelName();
         String project = getEnvOrThrow("GOOGLE_CLOUD_PROJECT");
         String location = getEnvOrThrow("GOOGLE_CLOUD_LOCATION");
 
         try {
             AnthropicClient anthropicClient = AnthropicOkHttpClient.builder()
-                .backend(
-                    VertexBackend.builder()
-                        .region(location)
-                        .project(project)
-                        .googleCredentials(GoogleCredentials.getApplicationDefault())
-                        .build()
-                )
-                .build();
+                    .backend(
+                            VertexBackend.builder()
+                                    .region(location)
+                                    .project(project)
+                                    .googleCredentials(GoogleCredentials.getApplicationDefault())
+                                    .build()
+                    )
+                    .build();
+
+            log.info("Creating client for Anthropic model: {}, project: {}, location: {}", modelName, project, location);
 
             return new Claude(modelName, anthropicClient);
         } catch (IOException ex) {
@@ -73,21 +59,27 @@ public class ModelConfig {
         String value = System.getenv(envVar);
         if (value == null || value.isBlank()) {
             throw new IllegalStateException(
-                "Environment variable " + envVar + " is required for Anthropic/Vertex AI configuration"
+                    "Environment variable " + envVar + " is required for Anthropic/Vertex AI configuration"
             );
         }
         return value;
     }
 
     public static String getModelProvider() {
-        return properties.getProperty("model.provider", "gemini");
+        String provider = properties.getProperty("model.provider", "gemini");
+        log.info("Using model provider: {}", provider);
+        return provider;
     }
 
     public static String getGeminiModelName() {
-        return properties.getProperty("model.gemini.name", "gemini-2.5-flash");
+        String modelName = properties.getProperty("model.gemini.name", "gemini-2.5-flash");
+        log.info("Using Gemini model: {}", modelName);
+        return modelName;
     }
 
     public static String getAnthropicModelName() {
-        return properties.getProperty("model.anthropic.name", "claude-3-5-sonnet@20240620");
+        String modelName = properties.getProperty("model.anthropic.name");
+        log.info("Using Anthropic model: {}", modelName);
+        return modelName;
     }
 }

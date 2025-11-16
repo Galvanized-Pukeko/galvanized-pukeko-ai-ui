@@ -1,6 +1,40 @@
 # Java ADK agent
 
-(Used Maven 3.9.11 and Temurin JDK 25)
+(Used Maven 3.9.11 and Temurin JDK 17)
+
+## Model Configuration
+
+The agent supports both Gemini and Anthropic Claude models via Vertex AI. Configuration is done in `src/main/resources/application.properties`:
+
+```properties
+# Choose provider: 'gemini' or 'anthropic'
+model.provider=gemini
+
+# Gemini model name
+model.gemini.name=gemini-2.5-flash
+
+# Anthropic model name (available: claude-3-5-sonnet@20240620, claude-3-sonnet@20240229, claude-3-haiku@20240307)
+model.anthropic.name=claude-3-5-sonnet@20240620
+```
+
+### Using Anthropic Claude
+
+To use Anthropic Claude via Vertex AI, you need to:
+
+1. Set `model.provider=anthropic` in `application.properties`
+2. Set the following environment variables (automatically configured in `deploy.sh` for Cloud Run):
+   - `GOOGLE_CLOUD_PROJECT` - Your GCP project ID
+   - `GOOGLE_CLOUD_LOCATION` - The Vertex AI region (e.g., `us-east5`)
+
+For local development:
+```bash
+export GOOGLE_CLOUD_PROJECT="your-project-id"
+export GOOGLE_CLOUD_LOCATION="us-east5"
+```
+
+**Note:** The Anthropic SDK is included as a transitive dependency from `google-adk`. The following dependencies have been added to support Anthropic:
+- `jackson-module-kotlin` - Required by the Anthropic SDK
+- Jackson BOM (`jackson-bom`) - Ensures all Jackson components use version 2.18.2 to avoid compatibility issues
 
 ## Running locally
 
@@ -32,7 +66,7 @@ curl 'http://localhost:8080/run_sse' \
 
 ## Deploy
 
-Deploy the container to Cloud Run (the `deploy.sh` script wraps the `gcloud run deploy` command that targets the `us-west1` region and sets the required env vars).
+Deploy the container to Cloud Run (the `deploy.sh` script wraps the `gcloud run deploy` command that targets the `us-east5` region and sets the required env vars).
 
 First you need to define your GCP project name.
 
