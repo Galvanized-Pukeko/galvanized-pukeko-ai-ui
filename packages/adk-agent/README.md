@@ -13,8 +13,8 @@ model.provider=gemini
 # Gemini model name
 model.gemini.name=gemini-2.5-flash
 
-# Anthropic model name (available: claude-3-5-sonnet@20240620, claude-3-sonnet@20240229, claude-3-haiku@20240307)
-model.anthropic.name=claude-3-5-sonnet@20240620
+# Anthropic model name (available: claude-sonnet-4-5@20250929, claude-3-sonnet@20240229, claude-3-haiku@20240307)
+model.anthropic.name=claude-sonnet-4-5@20250929
 ```
 
 ### Using Anthropic Claude
