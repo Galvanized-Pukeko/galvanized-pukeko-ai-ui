@@ -24,12 +24,12 @@ To use Anthropic Claude via Vertex AI, you need to:
 1. Set `model.provider=anthropic` in `application.properties`
 2. Set the following environment variables (automatically configured in `deploy.sh` for Cloud Run):
    - `GOOGLE_CLOUD_PROJECT` - Your GCP project ID
-   - `GOOGLE_CLOUD_LOCATION` - The Vertex AI region (e.g., `us-east5`)
+   - `GOOGLE_CLOUD_LOCATION` - The Vertex AI region (e.g., `global`)
 
 For local development:
 ```bash
 export GOOGLE_CLOUD_PROJECT="your-project-id"
-export GOOGLE_CLOUD_LOCATION="us-east5"
+export GOOGLE_CLOUD_LOCATION="global"
 ```
 
 **Note:** The Anthropic SDK is included as a transitive dependency from `google-adk`. The following dependencies have been added to support Anthropic:
@@ -66,7 +66,7 @@ curl 'http://localhost:8080/run_sse' \
 
 ## Deploy
 
-Deploy the container to Cloud Run (the `deploy.sh` script wraps the `gcloud run deploy` command that targets the `us-east5` region and sets the required env vars).
+Deploy the container to Cloud Run (the `deploy.sh` script wraps the `gcloud run deploy` command that targets the `global` region and sets the required env vars).
 
 First you need to define your GCP project name.
 

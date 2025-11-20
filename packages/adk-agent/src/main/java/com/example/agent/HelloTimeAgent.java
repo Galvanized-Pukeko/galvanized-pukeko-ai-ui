@@ -7,16 +7,18 @@ import com.google.adk.tools.Annotations.Schema;
 import com.google.adk.tools.FunctionTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 import java.util.Map;
 
+@Configuration
 public class HelloTimeAgent {
 
     private static final Logger log = LoggerFactory.getLogger(HelloTimeAgent.class);
 
-    public static final BaseAgent ROOT_AGENT = initAgent();
-
-    private static BaseAgent initAgent() {
+    @Bean
+    public BaseAgent initAgent() {
         var builder = LlmAgent.builder()
             .name("hello-time-agent")
             .description("Tells the current time in a specified city")
