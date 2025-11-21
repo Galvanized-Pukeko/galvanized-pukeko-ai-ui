@@ -35,7 +35,7 @@ class ConnectionService {
   private requestId = 0
   private pendingRequests: Map<string | number, PendingRequest> = new Map()
 
-  constructor(url: string = 'ws://localhost:3001') {
+  constructor(url: string = 'ws://localhost:8080/ws') {
     this.wsUrl = url
   }
 
