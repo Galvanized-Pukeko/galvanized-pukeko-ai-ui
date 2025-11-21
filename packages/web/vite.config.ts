@@ -28,4 +28,20 @@ export default defineConfig({
     },
     preserveSymlinks: true
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: false,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Remove Origin header to avoid CORS issues
+            proxyReq.removeHeader('origin')
+            proxyReq.removeHeader('referer')
+          })
+        }
+      }
+    }
+  }
 });

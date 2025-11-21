@@ -1,36 +1,69 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import PkButton from './PkButton.vue'
-import PkInput from './PkInput.vue'
-
-const messages = ref([
-  { id: 1, text: 'Hello! How can I help you today?', sender: 'ai' },
-  { id: 2, text: 'I need some help with the form.', sender: 'user' },
-  { id: 3, text: 'Sure, what specifically do you need help with?', sender: 'ai' }
-])
-
-const newMessage = ref('')
-
-const sendMessage = () => {
-  if (!newMessage.value.trim()) return
+  import { ref, onMounted } from 'vue'
+  import PkButton from './PkButton.vue'
+  import PkInput from './PkInput.vue'
+  import { chatService } from '../services/chatService'
   
-  messages.value.push({
-    id: Date.now(),
-    text: newMessage.value,
-    sender: 'user'
+  const messages = ref<Array<{ id: number | string, text: string, sender: 'user' | 'ai' }>>([])
+  const newMessage = ref('')
+  const sessionId = ref<string | null>(null)
+  const isLoading = ref(false)
+  
+  onMounted(async () => {
+    try {
+      const session = await chatService.createSession()
+      sessionId.value = session.id
+      messages.value.push({
+        id: Date.now(),
+        text: 'Hello! How can I help you today?',
+        sender: 'ai'
+      })
+    } catch (error) {
+      console.error('Failed to init session:', error)
+      messages.value.push({
+        id: Date.now(),
+        text: 'Error connecting to chat server.',
+        sender: 'ai'
+      })
+    }
   })
   
-  newMessage.value = ''
-  
-  // Simulate AI response
-  setTimeout(() => {
+  const sendMessage = async () => {
+    if (!newMessage.value.trim() || !sessionId.value || isLoading.value) return
+    
+    const text = newMessage.value
     messages.value.push({
-      id: Date.now() + 1,
-      text: 'I see. Let me process that for you.',
-      sender: 'ai'
+      id: Date.now(),
+      text: text,
+      sender: 'user'
     })
-  }, 1000)
-}
+    
+    newMessage.value = ''
+    isLoading.value = true
+    
+    try {
+      const response = await chatService.sendMessage(sessionId.value, text)
+      
+      // Extract text from response
+      // The response structure has content.parts array
+      const aiText = response.content.parts.map(p => p.text).join('\n')
+      
+      messages.value.push({
+        id: response.id,
+        text: aiText,
+        sender: 'ai'
+      })
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      messages.value.push({
+        id: Date.now(),
+        text: 'Error sending message. Please try again.',
+        sender: 'ai'
+      })
+    } finally {
+      isLoading.value = false
+    }
+  }
 </script>
 
 <template>
