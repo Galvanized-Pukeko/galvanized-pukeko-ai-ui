@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
-public class HelloTimeAgent {
+public class UiAgent {
 
   private static final Logger log = LoggerFactory.getLogger(HelloTimeAgent.class);
 
