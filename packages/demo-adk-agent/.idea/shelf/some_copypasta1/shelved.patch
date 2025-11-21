@@ -1,0 +1,1561 @@
+Index: src/main/java/com/google/adk/webservice/A2ARemoteService.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/google/adk/webservice/A2ARemoteService.java b/src/main/java/com/google/adk/webservice/A2ARemoteService.java
+new file mode 100644
+--- /dev/null	(date 1763623598971)
++++ b/src/main/java/com/google/adk/webservice/A2ARemoteService.java	(date 1763623598971)
+@@ -0,0 +1,88 @@
++package com.google.adk.webservice;
++
++import com.google.adk.a2a.A2ASendMessageExecutor;
++import com.google.adk.a2a.ResponseConverter;
++import io.a2a.spec.JSONRPCError;
++import io.a2a.spec.Message;
++import io.a2a.spec.MessageSendParams;
++import io.a2a.spec.SendMessageRequest;
++import io.a2a.spec.SendMessageResponse;
++import java.util.List;
++import java.util.UUID;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.stereotype.Service;
++
++/** Core service that bridges the A2A JSON-RPC sendMessage API to a local ADK runner. */
++@Service
++public class A2ARemoteService {
++
++  private static final Logger logger = LoggerFactory.getLogger(A2ARemoteService.class);
++  private static final int ERROR_CODE_INVALID_PARAMS = -32602;
++  private static final int ERROR_CODE_INTERNAL_ERROR = -32603;
++
++  private final A2ASendMessageExecutor executor;
++
++  public A2ARemoteService(A2ASendMessageExecutor executor) {
++    this.executor = executor;
++  }
++
++  public SendMessageResponse handle(SendMessageRequest request) {
++    if (request == null) {
++      logger.warn("Received null SendMessageRequest");
++      return invalidParamsResponse(null, "Request body is missing");
++    }
++
++    MessageSendParams params = request.getParams();
++    if (params == null) {
++      logger.warn("SendMessageRequest {} missing params", request.getId());
++      return invalidParamsResponse(request, "Request params are missing");
++    }
++
++    Message inbound = params.message();
++    if (inbound == null) {
++      logger.warn("SendMessageRequest {} missing message payload", request.getId());
++      return invalidParamsResponse(request, "Request message payload is missing");
++    }
++
++    boolean generatedContext = inbound.getContextId() == null || inbound.getContextId().isEmpty();
++    Message normalized = ensureContextId(inbound);
++    if (generatedContext) {
++      logger.debug("Incoming request lacked contextId; generated {}", normalized.getContextId());
++    }
++
++    try {
++      Message result = executor.execute(normalized).blockingGet();
++      if (result == null) {
++        result =
++            ResponseConverter.eventsToMessage(
++                List.of(), normalized.getContextId(), normalized.getTaskId());
++      }
++
++      logger.debug("Returning A2A response for context {}", normalized.getContextId());
++      return new SendMessageResponse(request.getId(), result);
++    } catch (RuntimeException e) {
++      logger.error("Failed to process remote A2A request", e);
++      return errorResponse(request, e);
++    }
++  }
++
++  private static Message ensureContextId(Message message) {
++    if (message.getContextId() != null && !message.getContextId().isEmpty()) {
++      return message;
++    }
++    return new Message.Builder(message).contextId(UUID.randomUUID().toString()).build();
++  }
++
++  private static SendMessageResponse invalidParamsResponse(
++      SendMessageRequest request, String reason) {
++    JSONRPCError error = new JSONRPCError(ERROR_CODE_INVALID_PARAMS, reason, null);
++    return new SendMessageResponse(request != null ? request.getId() : null, error);
++  }
++
++  private static SendMessageResponse errorResponse(SendMessageRequest request, Throwable error) {
++    String message = "Internal error processing sendMessage request";
++    JSONRPCError jsonrpcError = new JSONRPCError(ERROR_CODE_INTERNAL_ERROR, message, null);
++    return new SendMessageResponse(request != null ? request.getId() : null, jsonrpcError);
++  }
++}
+Index: src/main/java/com/google/adk/webservice/A2ARemoteController.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/google/adk/webservice/A2ARemoteController.java b/src/main/java/com/google/adk/webservice/A2ARemoteController.java
+new file mode 100644
+--- /dev/null	(date 1763621534921)
++++ b/src/main/java/com/google/adk/webservice/A2ARemoteController.java	(date 1763621534921)
+@@ -0,0 +1,35 @@
++package com.google.adk.webservice;
++
++import io.a2a.spec.SendMessageRequest;
++import io.a2a.spec.SendMessageResponse;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.web.bind.annotation.PostMapping;
++import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RestController;
++
++/** REST controller exposing an A2A-compliant JSON-RPC endpoint backed by a local ADK runner. */
++@RestController
++@RequestMapping("/a2a/remote")
++public class A2ARemoteController {
++
++  private static final Logger logger = LoggerFactory.getLogger(A2ARemoteController.class);
++
++  private final A2ARemoteService service;
++
++  public A2ARemoteController(A2ARemoteService service) {
++    this.service = service;
++  }
++
++  @PostMapping(
++      path = "/v1/message:send",
++      consumes = "application/json",
++      produces = "application/json")
++  public SendMessageResponse sendMessage(@RequestBody SendMessageRequest request) {
++    logger.debug("Received remote A2A request: {}", request);
++    SendMessageResponse response = service.handle(request);
++    logger.debug("Responding with remote A2A payload: {}", response);
++    return response;
++  }
++}
+Index: src/main/java/com/example/agent/AgentCliRunner.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.agent;\n\nimport com.google.adk.agents.RunConfig;\nimport com.google.adk.events.Event;\nimport com.google.adk.runner.InMemoryRunner;\nimport com.google.adk.sessions.Session;\nimport com.google.genai.types.Content;\nimport com.google.genai.types.Part;\nimport io.reactivex.rxjava3.core.Flowable;\nimport java.util.Scanner;\n\nimport static java.nio.charset.StandardCharsets.UTF_8;\n\npublic class AgentCliRunner {\n\n    public static void main(String[] args) {\n        RunConfig runConfig = RunConfig.builder().build();\n        InMemoryRunner runner = new InMemoryRunner(HelloTimeAgent.ROOT_AGENT);\n\n        Session session = runner\n                .sessionService()\n                .createSession(runner.appName(), \"user1234\")\n                .blockingGet();\n\n        try (Scanner scanner = new Scanner(System.in, UTF_8)) {\n            while (true) {\n                System.out.print(\"\\nYou > \");\n                String userInput = scanner.nextLine();\n                if (\"quit\".equalsIgnoreCase(userInput)) {\n                    break;\n                }\n\n                Content userMsg = Content.fromParts(Part.fromText(userInput));\n                Flowable<Event> events = runner.runAsync(session.userId(), session.id(), userMsg, runConfig);\n\n                System.out.print(\"\\nAgent > \");\n                events.blockingForEach(event -> {\n                    if (event.finalResponse()) {\n                        System.out.println(event.stringifyContent());\n                    }\n                });\n            }\n        }\n    }\n}\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/example/agent/AgentCliRunner.java b/src/main/java/com/example/agent/AgentCliRunner.java
+--- a/src/main/java/com/example/agent/AgentCliRunner.java	(revision 84e34cf810bdbd571083c1a4a9eaa88bdc0842b8)
++++ b/src/main/java/com/example/agent/AgentCliRunner.java	(date 1763622910521)
+@@ -14,32 +14,33 @@
+ public class AgentCliRunner {
+ 
+     public static void main(String[] args) {
+-        RunConfig runConfig = RunConfig.builder().build();
+-        InMemoryRunner runner = new InMemoryRunner(HelloTimeAgent.ROOT_AGENT);
+-
+-        Session session = runner
+-                .sessionService()
+-                .createSession(runner.appName(), "user1234")
+-                .blockingGet();
+-
+-        try (Scanner scanner = new Scanner(System.in, UTF_8)) {
+-            while (true) {
+-                System.out.print("\nYou > ");
+-                String userInput = scanner.nextLine();
+-                if ("quit".equalsIgnoreCase(userInput)) {
+-                    break;
+-                }
+-
+-                Content userMsg = Content.fromParts(Part.fromText(userInput));
+-                Flowable<Event> events = runner.runAsync(session.userId(), session.id(), userMsg, runConfig);
+-
+-                System.out.print("\nAgent > ");
+-                events.blockingForEach(event -> {
+-                    if (event.finalResponse()) {
+-                        System.out.println(event.stringifyContent());
+-                    }
+-                });
+-            }
+-        }
++      // CLI stuff is temporarily off
++//        RunConfig runConfig = RunConfig.builder().build();
++//        InMemoryRunner runner = new InMemoryRunner(HelloTimeAgent.ROOT_AGENT);
++//
++//        Session session = runner
++//                .sessionService()
++//                .createSession(runner.appName(), "user1234")
++//                .blockingGet();
++//
++//        try (Scanner scanner = new Scanner(System.in, UTF_8)) {
++//            while (true) {
++//                System.out.print("\nYou > ");
++//                String userInput = scanner.nextLine();
++//                if ("quit".equalsIgnoreCase(userInput)) {
++//                    break;
++//                }
++//
++//                Content userMsg = Content.fromParts(Part.fromText(userInput));
++//                Flowable<Event> events = runner.runAsync(session.userId(), session.id(), userMsg, runConfig);
++//
++//                System.out.print("\nAgent > ");
++//                events.blockingForEach(event -> {
++//                    if (event.finalResponse()) {
++//                        System.out.println(event.stringifyContent());
++//                    }
++//                });
++//            }
++//        }
+     }
+ }
+Index: src/main/java/com/example/agent/A2ARemoteApplication.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/example/agent/A2ARemoteApplication.java b/src/main/java/com/example/agent/A2ARemoteApplication.java
+new file mode 100644
+--- /dev/null	(date 1763622516533)
++++ b/src/main/java/com/example/agent/A2ARemoteApplication.java	(date 1763622516533)
+@@ -0,0 +1,18 @@
++package com.example.agent;
++
++import com.google.adk.webservice.A2ARemoteConfiguration;
++import org.springframework.boot.SpringApplication;
++import org.springframework.boot.autoconfigure.SpringBootApplication;
++import org.springframework.context.annotation.Import;
++
++/** Entry point for the standalone Spring Boot A2A service.
++ * com.example.agent.A2ARemoteApplication
++ * */
++@SpringBootApplication
++@Import(A2ARemoteConfiguration.class)
++public class A2ARemoteApplication {
++
++  public static void main(String[] args) {
++    SpringApplication.run(A2ARemoteApplication.class, args);
++  }
++}
+Index: src/main/java/com/example/agent/HelloTimeAgent.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.agent;\n\nimport com.example.agent.config.ModelConfig;\nimport com.google.adk.agents.BaseAgent;\nimport com.google.adk.agents.LlmAgent;\nimport com.google.adk.tools.Annotations.Schema;\nimport com.google.adk.tools.FunctionTool;\nimport org.slf4j.Logger;\nimport org.slf4j.LoggerFactory;\n\nimport java.util.Map;\n\npublic class HelloTimeAgent {\n\n    private static final Logger log = LoggerFactory.getLogger(HelloTimeAgent.class);\n\n    public static final BaseAgent ROOT_AGENT = initAgent();\n\n    private static BaseAgent initAgent() {\n        var builder = LlmAgent.builder()\n            .name(\"hello-time-agent\")\n            .description(\"Tells the current time in a specified city\")\n            .instruction(\n                \"\"\"\n                You are a helpful assistant that tells the current time in a city.\n                Use the 'getCurrentTime' tool for this purpose.\n                \"\"\"\n            );\n\n        // Configure model based on provider\n        String provider = ModelConfig.getModelProvider();\n        if (\"anthropic\".equalsIgnoreCase(provider)) {\n            log.info(\"Initializing Anthropic model\");\n            builder.model(ModelConfig.createAnthropicModel());\n        } else {\n            log.info(\"Initializing Gemini VertexAI model\");\n            builder.model(ModelConfig.getGeminiModelName());\n        }\n\n        return builder\n            .tools(FunctionTool.create(HelloTimeAgent.class, \"getCurrentTime\"))\n            .build();\n    }\n\n    /** Mock tool implementation */\n    @Schema(description = \"Get the current time for a given city\")\n    public static Map<String, String> getCurrentTime(\n        @Schema(\n            name = \"city\",\n            description = \"Name of the city to get the time for\"\n        ) String city\n    ) {\n        return Map.of(\"city\", city, \"forecast\", \"The time is 10:30am.\");\n    }\n}\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/example/agent/HelloTimeAgent.java b/src/main/java/com/example/agent/HelloTimeAgent.java
+--- a/src/main/java/com/example/agent/HelloTimeAgent.java	(revision 84e34cf810bdbd571083c1a4a9eaa88bdc0842b8)
++++ b/src/main/java/com/example/agent/HelloTimeAgent.java	(date 1763622868230)
+@@ -7,16 +7,18 @@
+ import com.google.adk.tools.FunctionTool;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
++import org.springframework.context.annotation.Bean;
++import org.springframework.context.annotation.Configuration;
+ 
+ import java.util.Map;
+ 
++@Configuration
+ public class HelloTimeAgent {
+ 
+     private static final Logger log = LoggerFactory.getLogger(HelloTimeAgent.class);
+ 
+-    public static final BaseAgent ROOT_AGENT = initAgent();
+-
+-    private static BaseAgent initAgent() {
++    @Bean
++    public BaseAgent initAgent() {
+         var builder = LlmAgent.builder()
+             .name("hello-time-agent")
+             .description("Tells the current time in a specified city")
+Index: src/main/java/com/google/adk/a2a/ConversationPreprocessor.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/google/adk/a2a/ConversationPreprocessor.java b/src/main/java/com/google/adk/a2a/ConversationPreprocessor.java
+new file mode 100644
+--- /dev/null	(date 1763621534916)
++++ b/src/main/java/com/google/adk/a2a/ConversationPreprocessor.java	(date 1763621534916)
+@@ -0,0 +1,105 @@
++package com.google.adk.a2a;
++
++import com.google.adk.events.Event;
++import com.google.common.collect.ImmutableList;
++import com.google.genai.types.Content;
++import com.google.genai.types.Part;
++import java.util.List;
++import java.util.Optional;
++
++/**
++ * Preprocesses a batch of ADK events prior to invoking a remote A2A agent.
++ *
++ * <p>The class splits the conversation into two logical buckets:
++ *
++ * <ul>
++ *   <li>The historical session events that should be preserved as-is when relayed over the wire.
++ *   <li>The most recent user-authored text event, surfaced separately so it can be supplied as the
++ *       pending user input on the {@link com.google.adk.agents.InvocationContext}.
++ * </ul>
++ *
++ * <p>This mirrors the Python A2A implementation where the in-flight user message is maintained
++ * separately from the persisted transcript.
++ */
++public final class ConversationPreprocessor {
++
++  /**
++   * Immutable value that surfaces the results of preprocessing.
++   *
++   * <p>All fields are deliberately exposed to avoid additional AutoValue dependencies in this
++   * internal module.
++   */
++  public static final class PreparedInput {
++    /** Historical events that should remain in the session transcript. */
++    public final ImmutableList<Event> historyEvents;
++
++    /** Extracted user message content, if a qualifying text event was found. */
++    public final Optional<Content> userContent;
++
++    /** The concrete event that supplied {@link #userContent}, for callers needing metadata. */
++    public final Optional<Event> userEvent;
++
++    /**
++     * Creates a new instance.
++     *
++     * @param historyEvents ordered historical events retained in the session stream
++     * @param userContent optional content to place on the pending user message
++     * @param userEvent optional original event that contained {@code userContent}
++     */
++    public PreparedInput(
++        ImmutableList<Event> historyEvents,
++        Optional<Content> userContent,
++        Optional<Event> userEvent) {
++      this.historyEvents = historyEvents;
++      this.userContent = userContent;
++      this.userEvent = userEvent;
++    }
++  }
++
++  private ConversationPreprocessor() {}
++
++  /**
++   * Splits the provided event list into history and the latest user-authored text message.
++   *
++   * @param inputEvents ordered session events, oldest to newest; may be {@code null}
++   * @return container encapsulating the derived history, optional user content, and the original
++   *     user event when present
++   */
++  public static PreparedInput extractHistoryAndUserContent(List<Event> inputEvents) {
++    if (inputEvents == null || inputEvents.isEmpty()) {
++      return new PreparedInput(ImmutableList.of(), Optional.empty(), Optional.empty());
++    }
++
++    Content userContent = null;
++    int lastTextIndex = -1;
++    Event userEvent = null;
++    for (int i = inputEvents.size() - 1; i >= 0; i--) {
++      Event ev = inputEvents.get(i);
++      if (ev.content().isPresent() && ev.content().get().parts().isPresent()) {
++        boolean hasText = false;
++        for (Part p : ev.content().get().parts().get()) {
++          if (p.text().isPresent()) {
++            hasText = true;
++            break;
++          }
++        }
++        if (hasText) {
++          userContent = ev.content().get();
++          lastTextIndex = i;
++          userEvent = ev;
++          break;
++        }
++      }
++    }
++
++    ImmutableList.Builder<Event> historyBuilder = ImmutableList.builder();
++    for (int i = 0; i < inputEvents.size(); i++) {
++      if (i != lastTextIndex) {
++        historyBuilder.add(inputEvents.get(i));
++      }
++    }
++
++    return new PreparedInput(
++        historyBuilder.build(), Optional.ofNullable(userContent), Optional.ofNullable(userEvent));
++  }
++}
+Index: src/main/java/com/google/adk/a2a/PartConverter.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/google/adk/a2a/PartConverter.java b/src/main/java/com/google/adk/a2a/PartConverter.java
+new file mode 100644
+--- /dev/null	(date 1763621899307)
++++ b/src/main/java/com/google/adk/a2a/PartConverter.java	(date 1763621899307)
+@@ -0,0 +1,257 @@
++package com.google.adk.a2a;
++
++import com.fasterxml.jackson.core.JsonProcessingException;
++import com.fasterxml.jackson.databind.ObjectMapper;
++import com.google.genai.types.Blob;
++import com.google.genai.types.FileData;
++import com.google.genai.types.FunctionCall;
++import com.google.genai.types.FunctionResponse;
++import com.google.genai.types.Part;
++import io.a2a.spec.DataPart;
++import io.a2a.spec.FileContent;
++import io.a2a.spec.FilePart;
++import io.a2a.spec.FileWithBytes;
++import io.a2a.spec.FileWithUri;
++import io.a2a.spec.TextPart;
++import java.util.Base64;
++import java.util.HashMap;
++import java.util.Map;
++import java.util.Optional;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++
++/** Utility class for converting between Google GenAI Parts and A2A DataParts. */
++public final class PartConverter {
++  private static final Logger logger = LoggerFactory.getLogger(PartConverter.class);
++  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
++  // Constants for metadata types
++  public static final String A2A_DATA_PART_METADATA_TYPE_KEY = "type";
++  public static final String A2A_DATA_PART_METADATA_IS_LONG_RUNNING_KEY = "is_long_running";
++  public static final String A2A_DATA_PART_METADATA_TYPE_FUNCTION_CALL = "function_call";
++  public static final String A2A_DATA_PART_METADATA_TYPE_FUNCTION_RESPONSE = "function_response";
++  public static final String A2A_DATA_PART_METADATA_TYPE_CODE_EXECUTION_RESULT =
++      "code_execution_result";
++  public static final String A2A_DATA_PART_METADATA_TYPE_EXECUTABLE_CODE = "executable_code";
++
++  /** Convert an A2A JSON part into a Google GenAI part representation. */
++  public static Optional<Part> toGenaiPart(io.a2a.spec.Part<?> a2aPart) {
++    if (a2aPart == null) {
++      return Optional.empty();
++    }
++
++    if (a2aPart instanceof TextPart textPart) {
++      return Optional.of(Part.builder().text(textPart.getText()).build());
++    }
++
++    if (a2aPart instanceof FilePart filePart) {
++      return convertFilePartToGenAiPart(filePart);
++    }
++
++    if (a2aPart instanceof DataPart dataPart) {
++      return convertDataPartToGenAiPart(dataPart);
++    }
++
++    logger.warn("Unsupported A2A part type: {}", a2aPart.getClass());
++    return Optional.empty();
++  }
++
++  /**
++   * Convert a Google GenAI Part to an A2A Part.
++   *
++   * @param part The GenAI part to convert.
++   * @return Optional containing the converted A2A Part, or empty if conversion fails.
++   */
++  public static Optional<DataPart> convertGenaiPartToA2aPart(Part part) {
++    if (part == null) {
++      return Optional.empty();
++    }
++
++    if (part.text().isPresent()) {
++      // Text parts are handled directly in the Message content, not as DataPart
++      return Optional.empty();
++    } else if (part.functionCall().isPresent()) {
++      return createDataPartFromFunctionCall(part.functionCall().get());
++    } else if (part.functionResponse().isPresent()) {
++      return createDataPartFromFunctionResponse(part.functionResponse().get());
++    }
++
++    logger.warn("Cannot convert unsupported part for Google GenAI part: " + part);
++    return Optional.empty();
++  }
++
++  private static Optional<Part> convertFilePartToGenAiPart(
++      FilePart filePart) {
++    FileContent fileContent = filePart.getFile();
++    if (fileContent instanceof FileWithUri fileWithUri) {
++      return Optional.of(
++          Part.builder()
++              .fileData(
++                  FileData.builder()
++                      .fileUri(fileWithUri.uri())
++                      .mimeType(fileWithUri.mimeType())
++                      .build())
++              .build());
++    }
++
++    if (fileContent instanceof FileWithBytes fileWithBytes) {
++      String bytesString = fileWithBytes.bytes();
++      if (bytesString == null) {
++        logger.warn("FileWithBytes missing byte content");
++        return Optional.empty();
++      }
++      try {
++        byte[] decoded = Base64.getDecoder().decode(bytesString);
++        return Optional.of(
++            Part.builder()
++                .inlineData(Blob.builder().data(decoded).mimeType(fileWithBytes.mimeType()).build())
++                .build());
++      } catch (IllegalArgumentException e) {
++        logger.warn("Failed to decode base64 file content", e);
++        return Optional.empty();
++      }
++    }
++
++    logger.warn("Unsupported FilePart content: {}", fileContent.getClass());
++    return Optional.empty();
++  }
++
++  private static Optional<Part> convertDataPartToGenAiPart(
++      DataPart dataPart) {
++    Map<String, Object> data =
++        Optional.ofNullable(dataPart.getData()).map(HashMap::new).orElse(new HashMap<>());
++    Map<String, Object> metadata =
++        Optional.ofNullable(dataPart.getMetadata()).map(HashMap::new).orElse(new HashMap<>());
++
++    String metadataType = metadata.getOrDefault(A2A_DATA_PART_METADATA_TYPE_KEY, "").toString();
++
++    if (data.containsKey("name") && data.containsKey("args")
++        || A2A_DATA_PART_METADATA_TYPE_FUNCTION_CALL.equals(metadataType)) {
++      String functionName = String.valueOf(data.getOrDefault("name", ""));
++      Map<String, Object> args = coerceToMap(data.get("args"));
++      return Optional.of(
++          Part.builder()
++              .functionCall(FunctionCall.builder().name(functionName).args(args).build())
++              .build());
++    }
++
++    if (data.containsKey("name") && data.containsKey("response")
++        || A2A_DATA_PART_METADATA_TYPE_FUNCTION_RESPONSE.equals(metadataType)) {
++      String functionName = String.valueOf(data.getOrDefault("name", ""));
++      Map<String, Object> response = coerceToMap(data.get("response"));
++      return Optional.of(
++          Part.builder()
++              .functionResponse(
++                  FunctionResponse.builder().name(functionName).response(response).build())
++              .build());
++    }
++
++    try {
++      String json = OBJECT_MAPPER.writeValueAsString(data);
++      return Optional.of(Part.builder().text(json).build());
++    } catch (JsonProcessingException e) {
++      logger.warn("Failed to serialize DataPart payload", e);
++      return Optional.empty();
++    }
++  }
++
++  /**
++   * Creates an A2A DataPart from a Google GenAI FunctionResponse.
++   *
++   * @return Optional containing the converted A2A Part, or empty if conversion fails.
++   */
++  private static Optional<DataPart> createDataPartFromFunctionCall(FunctionCall functionCall) {
++    Map<String, Object> data = new HashMap<>();
++    data.put("name", functionCall.name().orElse(""));
++    data.put("args", functionCall.args().orElse(Map.of()));
++
++    Map<String, Object> metadata =
++        Map.of(A2A_DATA_PART_METADATA_TYPE_KEY, A2A_DATA_PART_METADATA_TYPE_FUNCTION_CALL);
++
++    return Optional.of(new DataPart(data, metadata));
++  }
++
++  /**
++   * Creates an A2A DataPart from a Google GenAI FunctionResponse.
++   *
++   * @param functionResponse The GenAI FunctionResponse to convert.
++   * @return Optional containing the converted A2A Part, or empty if conversion fails.
++   */
++  private static Optional<DataPart> createDataPartFromFunctionResponse(
++      FunctionResponse functionResponse) {
++    Map<String, Object> data = new HashMap<>();
++    data.put("name", functionResponse.name().orElse(""));
++    data.put("response", functionResponse.response().orElse(Map.of()));
++
++    Map<String, Object> metadata =
++        Map.of(A2A_DATA_PART_METADATA_TYPE_KEY, A2A_DATA_PART_METADATA_TYPE_FUNCTION_RESPONSE);
++
++    return Optional.of(new DataPart(data, metadata));
++  }
++
++  private PartConverter() {}
++
++  /** Convert a GenAI part into the A2A JSON representation. */
++  public static Optional<io.a2a.spec.Part<?>> fromGenaiPart(Part part) {
++    if (part == null) {
++      return Optional.empty();
++    }
++
++    if (part.text().isPresent()) {
++      return Optional.of(new TextPart(part.text().get()));
++    }
++
++    if (part.fileData().isPresent()) {
++      FileData fileData = part.fileData().get();
++      String uri = fileData.fileUri().orElse(null);
++      String mime = fileData.mimeType().orElse(null);
++      String name = fileData.displayName().orElse(null);
++      return Optional.of(new FilePart(new FileWithUri(mime, name, uri)));
++    }
++
++    if (part.inlineData().isPresent()) {
++      Blob blob = part.inlineData().get();
++      byte[] bytes = blob.data().orElse(null);
++      String encoded = bytes != null ? Base64.getEncoder().encodeToString(bytes) : null;
++      String mime = blob.mimeType().orElse(null);
++      String name = blob.displayName().orElse(null);
++      return Optional.of(new FilePart(new FileWithBytes(mime, name, encoded)));
++    }
++
++    if (part.functionCall().isPresent() || part.functionResponse().isPresent()) {
++      return convertGenaiPartToA2aPart(part).map(data -> data);
++    }
++
++    logger.warn("Unsupported GenAI part type for JSON export: {}", part);
++    return Optional.empty();
++  }
++
++  private static Map<String, Object> coerceToMap(Object value) {
++    if (value == null) {
++      return new HashMap<>();
++    }
++    if (value instanceof Optional<?> optional) {
++      return coerceToMap(optional.orElse(null));
++    }
++    if (value instanceof Map<?, ?> map) {
++      Map<String, Object> result = new HashMap<>();
++      map.forEach((k, v) -> result.put(String.valueOf(k), v));
++      return result;
++    }
++    if (value instanceof String str) {
++      if (str.isEmpty()) {
++        return new HashMap<>();
++      }
++      try {
++        return OBJECT_MAPPER.readValue(str, Map.class);
++      } catch (JsonProcessingException e) {
++        logger.warn("Failed to parse map from string payload", e);
++        Map<String, Object> fallback = new HashMap<>();
++        fallback.put("value", str);
++        return fallback;
++      }
++    }
++    Map<String, Object> wrapper = new HashMap<>();
++    wrapper.put("value", value);
++    return wrapper;
++  }
++}
+Index: src/main/java/com/google/adk/webservice/A2ARemoteConfiguration.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/google/adk/webservice/A2ARemoteConfiguration.java b/src/main/java/com/google/adk/webservice/A2ARemoteConfiguration.java
+new file mode 100644
+--- /dev/null	(date 1763621534920)
++++ b/src/main/java/com/google/adk/webservice/A2ARemoteConfiguration.java	(date 1763621534920)
+@@ -0,0 +1,46 @@
++package com.google.adk.webservice;
++
++import com.google.adk.a2a.A2ASendMessageExecutor;
++import com.google.adk.agents.BaseAgent;
++import java.time.Duration;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.beans.factory.annotation.Value;
++import org.springframework.context.annotation.Bean;
++import org.springframework.context.annotation.ComponentScan;
++import org.springframework.context.annotation.Configuration;
++
++/**
++ * Registers the transport-only A2A webservice stack.
++ *
++ * <p>Importers must supply a {@link BaseAgent} bean. The agent remains opaque to this module so the
++ * transport can be reused across applications.
++ *
++ * <p>TODO:
++ *
++ * <ul>
++ *   <li>Expose discovery endpoints (agent card / extended card) so clients can fetch metadata
++ *       directly.
++ *   <li>Add optional remote-proxy wiring for cases where no local agent bean is available.
++ * </ul>
++ */
++@Configuration
++@ComponentScan(basePackages = "com.google.adk.webservice")
++public class A2ARemoteConfiguration {
++
++  private static final Logger logger = LoggerFactory.getLogger(A2ARemoteConfiguration.class);
++  private static final String DEFAULT_APP_NAME = "a2a-remote-service";
++  private static final long DEFAULT_TIMEOUT_SECONDS = 15L;
++
++  @Bean
++  public A2ASendMessageExecutor a2aSendMessageExecutor(
++      BaseAgent agent,
++      @Value("${a2a.remote.appName:" + DEFAULT_APP_NAME + "}") String appName,
++      @Value("${a2a.remote.timeoutSeconds:" + DEFAULT_TIMEOUT_SECONDS + "}") long timeoutSeconds) {
++    logger.info(
++        "Initializing A2A send message executor for appName {} with timeout {}s",
++        appName,
++        timeoutSeconds);
++    return new A2ASendMessageExecutor(agent, appName, Duration.ofSeconds(timeoutSeconds));
++  }
++}
+Index: src/main/java/com/google/adk/a2a/EventConverter.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/google/adk/a2a/EventConverter.java b/src/main/java/com/google/adk/a2a/EventConverter.java
+new file mode 100644
+--- /dev/null	(date 1763621534916)
++++ b/src/main/java/com/google/adk/a2a/EventConverter.java	(date 1763621534916)
+@@ -0,0 +1,126 @@
++package com.google.adk.a2a;
++
++import com.google.adk.agents.InvocationContext;
++import com.google.adk.events.Event;
++import com.google.genai.types.Content;
++import com.google.genai.types.Part;
++import io.a2a.spec.Message;
++import io.a2a.spec.TextPart;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Optional;
++import java.util.UUID;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++
++/** Converter for ADK Events to A2A Messages. */
++public final class EventConverter {
++  private static final Logger logger = LoggerFactory.getLogger(EventConverter.class);
++
++  private EventConverter() {}
++
++  public enum AggregationMode {
++    AS_IS,
++    EXTERNAL_HANDOFF
++  }
++
++  public static Optional<Message> convertEventToA2AMessage(Event event) {
++    if (event == null) {
++      logger.warn("Cannot convert null event to A2A message.");
++      return Optional.empty();
++    }
++
++    List<io.a2a.spec.Part<?>> a2aParts = new ArrayList<>();
++    Optional<Content> contentOpt = event.content();
++
++    if (contentOpt.isPresent() && contentOpt.get().parts().isPresent()) {
++      for (Part part : contentOpt.get().parts().get()) {
++        PartConverter.fromGenaiPart(part).ifPresent(a2aParts::add);
++      }
++    }
++
++    if (a2aParts.isEmpty()) {
++      logger.warn("No convertible content found in event.");
++      return Optional.empty();
++    }
++
++    Message.Builder builder =
++        new Message.Builder()
++            .messageId(event.id() != null ? event.id() : UUID.randomUUID().toString())
++            .parts(a2aParts)
++            .role(event.author().equals("user") ? Message.Role.USER : Message.Role.AGENT);
++    event
++        .content()
++        .flatMap(Content::role)
++        .ifPresent(
++            role -> builder.role(role.equals("user") ? Message.Role.USER : Message.Role.AGENT));
++    return Optional.of(builder.build());
++  }
++
++  public static Optional<Message> convertEventsToA2AMessage(InvocationContext context) {
++    return convertEventsToA2AMessage(context, AggregationMode.AS_IS);
++  }
++
++  public static Optional<Message> convertEventsToA2AMessage(
++      InvocationContext context, AggregationMode mode) {
++    if (context.session().events().isEmpty()) {
++      logger.warn("No events in session, cannot convert to A2A message.");
++      return Optional.empty();
++    }
++
++    List<io.a2a.spec.Part<?>> parts = new ArrayList<>();
++    for (Event event : context.session().events()) {
++      appendContentParts(event.content(), mode, parts);
++    }
++
++    context
++        .userContent()
++        .ifPresent(content -> appendContentParts(Optional.of(content), mode, parts));
++
++    if (parts.isEmpty()) {
++      logger.warn("No suitable content found to build A2A request message.");
++      return Optional.empty();
++    }
++
++    return Optional.of(
++        new Message.Builder()
++            .messageId(UUID.randomUUID().toString())
++            .parts(parts)
++            .role(Message.Role.USER)
++            .build());
++  }
++
++  private static void appendContentParts(
++      Optional<Content> contentOpt, AggregationMode mode, List<io.a2a.spec.Part<?>> target) {
++    if (contentOpt.isEmpty() || contentOpt.get().parts().isEmpty()) {
++      return;
++    }
++
++    for (Part part : contentOpt.get().parts().get()) {
++      if (part.text().isPresent()) {
++        target.add(new TextPart(part.text().get()));
++        continue;
++      }
++
++      if (part.functionCall().isPresent()) {
++        if (mode == AggregationMode.AS_IS) {
++          PartConverter.convertGenaiPartToA2aPart(part).ifPresent(target::add);
++        }
++        continue;
++      }
++
++      if (part.functionResponse().isPresent()) {
++        if (mode == AggregationMode.AS_IS) {
++          PartConverter.convertGenaiPartToA2aPart(part).ifPresent(target::add);
++        } else {
++          String name = part.functionResponse().get().name().orElse("");
++          String mapStr = String.valueOf(part.functionResponse().get().response().orElse(null));
++          target.add(new TextPart(String.format("%s response: %s", name, mapStr)));
++        }
++        continue;
++      }
++
++      PartConverter.fromGenaiPart(part).ifPresent(target::add);
++    }
++  }
++}
+Index: src/main/java/com/google/adk/a2a/RequestConverter.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/google/adk/a2a/RequestConverter.java b/src/main/java/com/google/adk/a2a/RequestConverter.java
+new file mode 100644
+--- /dev/null	(date 1763621534917)
++++ b/src/main/java/com/google/adk/a2a/RequestConverter.java	(date 1763621534917)
+@@ -0,0 +1,203 @@
++package com.google.adk.a2a;
++
++import com.google.adk.events.Event;
++import com.google.common.collect.ImmutableList;
++import com.google.genai.types.Content;
++import io.a2a.spec.DataPart;
++import io.a2a.spec.Message;
++import io.a2a.spec.Part;
++import java.time.Instant;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Map;
++import java.util.Optional;
++import java.util.UUID;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++
++/**
++ * rfe Converter for A2A Messages to ADK Events. This is used on the A2A service side to convert
++ * incoming A2A requests to ADK Events.
++ */
++public final class RequestConverter {
++  private static final Logger logger = LoggerFactory.getLogger(RequestConverter.class);
++
++  private RequestConverter() {}
++
++  /**
++   * Convert an A2A Message to an ADK Event. This is used when the A2A service receives a request
++   * and needs to process it with ADK.
++   *
++   * @param message The A2A message to convert.
++   * @param invocationId The invocation ID for the event.
++   * @return Optional containing the converted ADK Event, or empty if conversion fails.
++   */
++  public static Optional<Event> convertA2aMessageToAdkEvent(Message message, String invocationId) {
++    if (message == null) {
++      // Create an empty user message event
++      logger.info("Null message received, creating empty user event");
++      Event event =
++          Event.builder()
++              .id(UUID.randomUUID().toString())
++              .invocationId(invocationId != null ? invocationId : UUID.randomUUID().toString())
++              .author("user")
++              .content(
++                  Content.builder()
++                      .role("user")
++                      .parts(
++                          ImmutableList.of(com.google.genai.types.Part.builder().text("").build()))
++                      .build())
++              .timestamp(Instant.now().toEpochMilli())
++              .build();
++      return Optional.of(event);
++    }
++
++    List<com.google.genai.types.Part> genaiParts = new ArrayList<>();
++
++    // Convert each A2A Part to GenAI Part
++    if (message.getParts() != null) {
++      for (Part<?> a2aPart : message.getParts()) {
++        Optional<com.google.genai.types.Part> genaiPart = PartConverter.toGenaiPart(a2aPart);
++        genaiPart.ifPresent(genaiParts::add);
++      }
++    }
++
++    if (genaiParts.isEmpty()) {
++      logger.warn("No convertible parts found in A2A message");
++      return Optional.empty();
++    }
++
++    // Treat inbound A2A requests as user input for the ADK agent.
++    String author = "user";
++
++    // Build the Content object
++    Content content = Content.builder().role("user").parts(genaiParts).build();
++
++    // Build the Event
++    Event event =
++        Event.builder()
++            .id(
++                !message.getMessageId().isEmpty()
++                    ? message.getMessageId()
++                    : UUID.randomUUID().toString())
++            .invocationId(invocationId != null ? invocationId : UUID.randomUUID().toString())
++            .author(author)
++            .content(content)
++            .timestamp(Instant.now().toEpochMilli())
++            .build();
++
++    return Optional.of(event);
++  }
++
++  /**
++   * Convert an aggregated A2A Message to multiple ADK Events. This reconstructs the original event
++   * sequence from an aggregated message.
++   *
++   * @param message The aggregated A2A message to convert.
++   * @param invocationId The invocation ID for the events.
++   * @return List of ADK Events representing the conversation history.
++   */
++  public static ImmutableList<Event> convertAggregatedA2aMessageToAdkEvents(
++      Message message, String invocationId) {
++    if (message == null || message.getParts() == null || message.getParts().isEmpty()) {
++      logger.info("Null or empty message received, creating empty user event");
++      Event event =
++          Event.builder()
++              .id(UUID.randomUUID().toString())
++              .invocationId(invocationId != null ? invocationId : UUID.randomUUID().toString())
++              .author("user")
++              .content(
++                  Content.builder()
++                      .role("user")
++                      .parts(
++                          ImmutableList.of(com.google.genai.types.Part.builder().text("").build()))
++                      .build())
++              .timestamp(Instant.now().toEpochMilli())
++              .build();
++      return ImmutableList.of(event);
++    }
++
++    List<Event> events = new ArrayList<>();
++
++    // Emit exactly one ADK Event per A2A Part, preserving order.
++    for (Part<?> a2aPart : message.getParts()) {
++      Optional<com.google.genai.types.Part> genaiPart = PartConverter.toGenaiPart(a2aPart);
++      if (genaiPart.isEmpty()) {
++        continue;
++      }
++
++      String author = extractAuthorFromMetadata(a2aPart);
++      String role = determineRoleFromAuthor(author);
++
++      events.add(createEvent(ImmutableList.of(genaiPart.get()), author, role, invocationId));
++    }
++
++    if (events.isEmpty()) {
++      logger.warn("No events created from aggregated message; returning single empty user event");
++      Event event =
++          Event.builder()
++              .id(UUID.randomUUID().toString())
++              .invocationId(invocationId)
++              .author("user")
++              .content(
++                  Content.builder()
++                      .role("user")
++                      .parts(
++                          ImmutableList.of(com.google.genai.types.Part.builder().text("").build()))
++                      .build())
++              .timestamp(Instant.now().toEpochMilli())
++              .build();
++      events.add(event);
++    }
++
++    logger.info("Converted aggregated A2A message to {} ADK events", events.size());
++    return ImmutableList.copyOf(events);
++  }
++
++  private static String extractAuthorFromMetadata(Part<?> a2aPart) {
++    if (a2aPart instanceof DataPart dataPart) {
++      Map<String, Object> metadata = Optional.ofNullable(dataPart.getMetadata()).orElse(Map.of());
++      String type =
++          metadata.getOrDefault(PartConverter.A2A_DATA_PART_METADATA_TYPE_KEY, "").toString();
++      if (PartConverter.A2A_DATA_PART_METADATA_TYPE_FUNCTION_CALL.equals(type)) {
++        return "model";
++      }
++      if (PartConverter.A2A_DATA_PART_METADATA_TYPE_FUNCTION_RESPONSE.equals(type)) {
++        return "user";
++      }
++      Map<String, Object> data = Optional.ofNullable(dataPart.getData()).orElse(Map.of());
++      if (data.containsKey("args")) {
++        return "model";
++      }
++      if (data.containsKey("response")) {
++        return "user";
++      }
++    }
++    return "user";
++  }
++
++  private static String determineRoleFromAuthor(String author) {
++    return author.equals("model") ? "model" : "user";
++  }
++
++  private static Event createEvent(
++      List<com.google.genai.types.Part> parts, String author, String role, String invocationId) {
++    return Event.builder()
++        .id(UUID.randomUUID().toString())
++        .invocationId(invocationId)
++        .author(author)
++        .content(Content.builder().role(role).parts(new ArrayList<>(parts)).build())
++        .timestamp(Instant.now().toEpochMilli())
++        .build();
++  }
++
++  /**
++   * Convert an A2A Part to a GenAI Part.
++   *
++   * @param a2aPart The A2A Part to convert.
++   * @return Optional containing the converted GenAI Part, or empty if conversion fails.
++   */
++  private static Optional<com.google.genai.types.Part> convertA2aPartToGenAiPart(Part<?> a2aPart) {
++    return PartConverter.toGenaiPart(a2aPart);
++  }
++}
+Index: src/main/java/com/google/adk/a2a/A2ASendMessageExecutor.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/google/adk/a2a/A2ASendMessageExecutor.java b/src/main/java/com/google/adk/a2a/A2ASendMessageExecutor.java
+new file mode 100644
+--- /dev/null	(date 1763621534915)
++++ b/src/main/java/com/google/adk/a2a/A2ASendMessageExecutor.java	(date 1763621534915)
+@@ -0,0 +1,299 @@
++package com.google.adk.a2a;
++
++import static com.google.common.base.Strings.isNullOrEmpty;
++import static java.util.concurrent.TimeUnit.MILLISECONDS;
++
++import com.google.adk.agents.BaseAgent;
++import com.google.adk.agents.RunConfig;
++import com.google.adk.artifacts.InMemoryArtifactService;
++import com.google.adk.events.Event;
++import com.google.adk.memory.InMemoryMemoryService;
++import com.google.adk.runner.Runner;
++import com.google.adk.sessions.InMemorySessionService;
++import com.google.adk.sessions.Session;
++import com.google.common.collect.ImmutableList;
++import com.google.genai.types.Content;
++import io.a2a.spec.Message;
++import io.a2a.spec.TextPart;
++import io.reactivex.rxjava3.core.Completable;
++import io.reactivex.rxjava3.core.Single;
++import java.time.Duration;
++import java.util.HashSet;
++import java.util.List;
++import java.util.Optional;
++import java.util.Set;
++import java.util.UUID;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.concurrent.TimeoutException;
++import org.jspecify.annotations.Nullable;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++
++/** Shared SendMessage execution between HTTP service and other integrations. */
++public final class A2ASendMessageExecutor {
++  private static final Logger logger = LoggerFactory.getLogger(A2ASendMessageExecutor.class);
++
++  @FunctionalInterface
++  public interface AgentExecutionStrategy {
++    Single<ImmutableList<Event>> execute(
++        String userId,
++        String sessionId,
++        Content userContent,
++        RunConfig runConfig,
++        String invocationId);
++  }
++
++  private final InMemorySessionService sessionService;
++  private final String appName;
++  @Nullable private final Runner runner;
++  @Nullable private final Duration agentTimeout;
++  private static final RunConfig DEFAULT_RUN_CONFIG =
++      RunConfig.builder().setStreamingMode(RunConfig.StreamingMode.NONE).setMaxLlmCalls(20).build();
++
++  public A2ASendMessageExecutor(InMemorySessionService sessionService, String appName) {
++    this.sessionService = sessionService;
++    this.appName = appName;
++    this.runner = null;
++    this.agentTimeout = null;
++  }
++
++  public A2ASendMessageExecutor(BaseAgent agent, String appName, Duration agentTimeout) {
++    InMemorySessionService sessionService = new InMemorySessionService();
++    Runner runnerInstance =
++        new Runner(
++            agent,
++            appName,
++            new InMemoryArtifactService(),
++            sessionService,
++            new InMemoryMemoryService());
++    this.sessionService = sessionService;
++    this.appName = appName;
++    this.runner = runnerInstance;
++    this.agentTimeout = agentTimeout;
++  }
++
++  public Single<Message> execute(
++      @Nullable Message request, AgentExecutionStrategy agentExecutionStrategy) {
++    final String invocationId = UUID.randomUUID().toString();
++    final String contextId = resolveContextId(request);
++    final ImmutableList<Event> inputEvents = buildInputEvents(request, invocationId);
++
++    ConversationPreprocessor.PreparedInput prepared =
++        ConversationPreprocessor.extractHistoryAndUserContent(inputEvents);
++
++    String userId = buildUserId(contextId);
++    String sessionId = contextId;
++
++    return ensureSessionExistsSingle(userId, sessionId, contextId)
++        .flatMap(
++            session ->
++                processEventsSingle(
++                    session, prepared, userId, sessionId, invocationId, agentExecutionStrategy))
++        .map(
++            resultEvents -> {
++              final String taskId = resolveTaskId(request);
++              return ResponseConverter.eventsToMessage(resultEvents, contextId, taskId);
++            })
++        .onErrorReturn(
++            throwable -> {
++              logger.error("Error processing A2A request", throwable);
++              return errorResponse("Internal error: " + throwable.getMessage(), contextId);
++            });
++  }
++
++  public Single<Message> execute(@Nullable Message request) {
++    if (runner == null || agentTimeout == null) {
++      throw new IllegalStateException(
++          "Runner-based handle invoked without configured runner or timeout");
++    }
++    return execute(request, this::executeAgentWithTimeout);
++  }
++
++  private Single<Session> ensureSessionExistsSingle(
++      String userId, String sessionId, String contextId) {
++    return sessionService
++        .getSession(appName, userId, sessionId, Optional.empty())
++        .switchIfEmpty(
++            Single.defer(
++                () -> {
++                  ConcurrentHashMap<String, Object> initialState = new ConcurrentHashMap<>();
++                  return sessionService.createSession(appName, userId, initialState, sessionId);
++                }));
++  }
++
++  private Completable appendHistoryEvents(
++      Session session, ConversationPreprocessor.PreparedInput prepared, String invocationId) {
++    ImmutableList<Event> eventsToAppend =
++        filterNewHistoryEvents(session, prepared.historyEvents, invocationId);
++    return appendEvents(session, eventsToAppend);
++  }
++
++  private ImmutableList<Event> filterNewHistoryEvents(
++      Session session, List<Event> historyEvents, String invocationId) {
++    Set<String> existingEventIds = new HashSet<>();
++    for (Event existing : session.events()) {
++      if (existing.id() != null) {
++        existingEventIds.add(existing.id());
++      }
++    }
++
++    ImmutableList.Builder<Event> eventsToAppend = ImmutableList.builder();
++    for (Event historyEvent : historyEvents) {
++      ensureIdentifiers(historyEvent, invocationId);
++      if (existingEventIds.add(historyEvent.id())) {
++        eventsToAppend.add(historyEvent);
++      }
++    }
++    return eventsToAppend.build();
++  }
++
++  private Completable appendEvents(Session session, ImmutableList<Event> events) {
++    Completable chain = Completable.complete();
++    for (Event event : events) {
++      chain = chain.andThen(sessionService.appendEvent(session, event).ignoreElement());
++    }
++    return chain;
++  }
++
++  private Single<ImmutableList<Event>> processEventsSingle(
++      Session session,
++      ConversationPreprocessor.PreparedInput prepared,
++      String userId,
++      String sessionId,
++      String invocationId,
++      AgentExecutionStrategy agentExecutionStrategy) {
++    Content userContent =
++        prepared.userContent.orElseGet(A2ASendMessageExecutor::defaultUserContent);
++    return appendHistoryEvents(session, prepared, invocationId)
++        .andThen(
++            agentExecutionStrategy.execute(
++                userId, sessionId, userContent, DEFAULT_RUN_CONFIG, invocationId));
++  }
++
++  private static ImmutableList<Event> defaultHelloEvent(String invocationId) {
++    Event e =
++        Event.builder()
++            .id(UUID.randomUUID().toString())
++            .invocationId(invocationId)
++            .author("user")
++            .content(defaultUserContent())
++            .build();
++    return ImmutableList.of(e);
++  }
++
++  private static Content defaultUserContent() {
++    return Content.builder()
++        .role("user")
++        .parts(ImmutableList.of(com.google.genai.types.Part.builder().text("Hello").build()))
++        .build();
++  }
++
++  private static Message errorResponse(String msg, String contextId) {
++    Message error =
++        new Message.Builder()
++            .messageId(UUID.randomUUID().toString())
++            .role(Message.Role.AGENT)
++            .parts(List.of(new TextPart("Error: " + msg)))
++            .build();
++    if (contextId != null && !contextId.isEmpty()) {
++      error.setContextId(contextId);
++    }
++    return error;
++  }
++
++  private Single<ImmutableList<Event>> executeAgentWithTimeout(
++      String userId,
++      String sessionId,
++      Content userContent,
++      RunConfig runConfig,
++      String invocationId) {
++    if (runner == null || agentTimeout == null) {
++      throw new IllegalStateException("Runner-based execution invoked without configuration");
++    }
++
++    Single<ImmutableList<Event>> agentResultSingle =
++        runner
++            .runAsync(userId, sessionId, userContent, runConfig)
++            .toList()
++            .map(events -> ImmutableList.copyOf(events));
++
++    return agentResultSingle
++        .timeout(agentTimeout.toMillis(), MILLISECONDS)
++        .onErrorResumeNext(
++            throwable -> {
++              if (isTimeout(throwable)) {
++                logger.warn(
++                    "Agent execution exceeded {}; returning timeout event",
++                    agentTimeout,
++                    throwable);
++                return Single.just(ImmutableList.of(createTimeoutEvent(invocationId)));
++              }
++              return Single.error(throwable);
++            });
++  }
++
++  private static String resolveContextId(@Nullable Message inbound) {
++    if (inbound == null || inbound.getContextId() == null || inbound.getContextId().isEmpty()) {
++      return UUID.randomUUID().toString();
++    }
++    return inbound.getContextId();
++  }
++
++  private static String resolveTaskId(@Nullable Message inbound) {
++    if (inbound != null && inbound.getTaskId() != null && !inbound.getTaskId().isEmpty()) {
++      return inbound.getTaskId();
++    }
++    return UUID.randomUUID().toString();
++  }
++
++  private static ImmutableList<Event> buildInputEvents(
++      @Nullable Message inbound, String invocationId) {
++    if (inbound == null) {
++      return defaultHelloEvent(invocationId);
++    }
++    return RequestConverter.convertAggregatedA2aMessageToAdkEvents(inbound, invocationId);
++  }
++
++  private static String buildUserId(String contextId) {
++    return "user-" + contextId;
++  }
++
++  private static void ensureIdentifiers(Event event, String invocationId) {
++    if (isNullOrEmpty(event.id())) {
++      event.setId(Event.generateEventId());
++    }
++    if (isNullOrEmpty(event.invocationId())) {
++      event.setInvocationId(invocationId);
++    }
++  }
++
++  private static Event createTimeoutEvent(String invocationId) {
++    return Event.builder()
++        .id(UUID.randomUUID().toString())
++        .invocationId(invocationId)
++        .author("agent")
++        .content(
++            Content.builder()
++                .role("model")
++                .parts(
++                    ImmutableList.of(
++                        com.google.genai.types.Part.builder()
++                            .text("Agent execution timed out.")
++                            .build()))
++                .build())
++        .build();
++  }
++
++  private static boolean isTimeout(@Nullable Throwable throwable) {
++    while (throwable != null) {
++      if (throwable instanceof TimeoutException) {
++        return true;
++      }
++      if (throwable.getClass().getName().endsWith("TimeoutException")) {
++        return true;
++      }
++      throwable = throwable.getCause();
++    }
++    return false;
++  }
++}
+Index: src/main/java/com/google/adk/a2a/ResponseConverter.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/google/adk/a2a/ResponseConverter.java b/src/main/java/com/google/adk/a2a/ResponseConverter.java
+new file mode 100644
+--- /dev/null	(date 1763621899313)
++++ b/src/main/java/com/google/adk/a2a/ResponseConverter.java	(date 1763621899313)
+@@ -0,0 +1,181 @@
++package com.google.adk.a2a;
++
++import com.google.adk.events.Event;
++import com.google.genai.types.Content;
++import io.a2a.spec.EventKind;
++import io.a2a.spec.Message;
++import io.a2a.spec.Message.Builder;
++import io.a2a.spec.SendMessageResponse;
++import io.a2a.spec.Task;
++import java.time.Instant;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Optional;
++import java.util.UUID;
++import org.jspecify.annotations.Nullable;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++
++/** Utility for converting ADK events to A2A spec messages (and back). */
++public final class ResponseConverter {
++  private static final Logger logger = LoggerFactory.getLogger(ResponseConverter.class);
++
++  private ResponseConverter() {}
++
++  /**
++   * Converts a {@link SendMessageResponse} containing a {@link Message} result into ADK events.
++   *
++   * <p>Non-message results are ignored in the message-only integration and logged for awareness.
++   */
++  public static List<Event> sendMessageResponseToEvents(
++      SendMessageResponse response, String invocationId, String branch) {
++    if (response == null) {
++      logger.warn("SendMessageResponse was null; returning no events.");
++      return List.of();
++    }
++
++    EventKind result = response.getResult();
++    if (result == null) {
++      logger.warn("SendMessageResponse result was null for invocation {}", invocationId);
++      return List.of();
++    }
++
++    if (result instanceof Message message) {
++      return messageToEvents(message, invocationId, branch);
++    }
++
++    logger.warn(
++        "Unsupported SendMessageResponse result type {} for invocation {}; expected Message",
++        result.getClass().getSimpleName(),
++        invocationId);
++    return List.of();
++  }
++
++  /** Converts a list of ADK events into a single aggregated A2A message. */
++  public static Message eventsToMessage(List<Event> events, String contextId, String taskId) {
++    if (events == null || events.isEmpty()) {
++      return emptyAgentMessage(contextId);
++    }
++
++    if (events.size() == 1) {
++      return eventToMessage(events.get(0), contextId);
++    }
++
++    List<io.a2a.spec.Part<?>> parts = new ArrayList<>();
++    for (Event event : events) {
++      parts.addAll(eventParts(event));
++    }
++
++    Builder builder =
++        new Builder()
++            .messageId(taskId != null ? taskId : UUID.randomUUID().toString())
++            .role(Message.Role.AGENT)
++            .parts(parts);
++    if (contextId != null) {
++      builder.contextId(contextId);
++    }
++    return builder.build();
++  }
++
++  /** Converts a single ADK event into an A2A message. */
++  public static Message eventToMessage(Event event, String contextId) {
++    List<io.a2a.spec.Part<?>> parts = eventParts(event);
++
++    Builder builder =
++        new Builder()
++            .messageId(event.id() != null ? event.id() : UUID.randomUUID().toString())
++            .role(event.author().equalsIgnoreCase("user") ? Message.Role.USER : Message.Role.AGENT)
++            .parts(parts);
++    if (contextId != null) {
++      builder.contextId(contextId);
++    }
++    return builder.build();
++  }
++
++  /** Converts an A2A message back to ADK events. */
++  public static List<Event> messageToEvents(Message message, String invocationId, String branch) {
++    List<Event> events = new ArrayList<>();
++    if (message == null || message.getParts() == null) {
++      events.add(emptyUserEvent(invocationId, branch));
++      return events;
++    }
++
++    for (io.a2a.spec.Part<?> part : message.getParts()) {
++      PartConverter.toGenaiPart(part)
++          .ifPresent(
++              genaiPart ->
++                  events.add(
++                      Event.builder()
++                          .id(UUID.randomUUID().toString())
++                          .invocationId(invocationId)
++                          .author(message.getRole() == Message.Role.AGENT ? "agent" : "user")
++                          .branch(branch)
++                          .content(
++                              Content.builder()
++                                  .role(message.getRole() == Message.Role.AGENT ? "model" : "user")
++                                  .parts(List.of(genaiPart))
++                                  .build())
++                          .timestamp(Instant.now().toEpochMilli())
++                          .build()));
++    }
++
++    if (events.isEmpty()) {
++      events.add(emptyUserEvent(invocationId, branch));
++    }
++    return events;
++  }
++
++  private static List<io.a2a.spec.Part<?>> eventParts(Event event) {
++    List<io.a2a.spec.Part<?>> parts = new ArrayList<>();
++    Optional<Content> content = event.content();
++    if (content.isEmpty() || content.get().parts().isEmpty()) {
++      return parts;
++    }
++
++    for (com.google.genai.types.Part genaiPart : content.get().parts().get()) {
++      PartConverter.fromGenaiPart(genaiPart).ifPresent(parts::add);
++    }
++    return parts;
++  }
++
++  private static Message emptyAgentMessage(String contextId) {
++    Builder builder =
++        new Builder()
++            .messageId(UUID.randomUUID().toString())
++            .role(Message.Role.AGENT)
++            .parts(List.of(new io.a2a.spec.TextPart("")));
++    if (contextId != null) {
++      builder.contextId(contextId);
++    }
++    return builder.build();
++  }
++
++  private static Event emptyUserEvent(String invocationId, String branch) {
++    Event.Builder builder =
++        Event.builder()
++            .id(UUID.randomUUID().toString())
++            .invocationId(invocationId)
++            .author("user")
++            .content(
++                Content.builder()
++                    .role("user")
++                    .parts(List.of(com.google.genai.types.Part.builder().text("").build()))
++                    .build())
++            .timestamp(Instant.now().toEpochMilli());
++    if (branch != null) {
++      builder.branch(branch);
++    }
++    return builder.build();
++  }
++
++  /** Simple REST-friendly wrapper to carry either a message result or a task result. */
++  public record MessageSendResult(@Nullable Message message, @Nullable Task task) {
++    public static MessageSendResult fromMessage(Message message) {
++      return new MessageSendResult(message, null);
++    }
++
++    public static MessageSendResult fromTask(Task task) {
++      return new MessageSendResult(null, task);
++    }
++  }
++}

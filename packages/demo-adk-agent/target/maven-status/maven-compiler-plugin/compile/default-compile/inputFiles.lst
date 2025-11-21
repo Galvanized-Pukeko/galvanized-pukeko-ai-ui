@@ -1,0 +1,14 @@
+/Users/andrei.kondratev/wrk/galvanized-pukeko-ai-ui/packages/adk-agent/src/main/java/com/example/agent/A2ARemoteApplication.java
+/Users/andrei.kondratev/wrk/galvanized-pukeko-ai-ui/packages/adk-agent/src/main/java/com/example/agent/AgentCliRunner.java
+/Users/andrei.kondratev/wrk/galvanized-pukeko-ai-ui/packages/adk-agent/src/main/java/com/example/agent/HelloTimeAgent.java
+/Users/andrei.kondratev/wrk/galvanized-pukeko-ai-ui/packages/adk-agent/src/main/java/com/example/agent/config/ModelConfig.java
+/Users/andrei.kondratev/wrk/galvanized-pukeko-ai-ui/packages/adk-agent/src/main/java/com/google/adk/a2a/A2ASendMessageExecutor.java
+/Users/andrei.kondratev/wrk/galvanized-pukeko-ai-ui/packages/adk-agent/src/main/java/com/google/adk/a2a/ConversationPreprocessor.java
+/Users/andrei.kondratev/wrk/galvanized-pukeko-ai-ui/packages/adk-agent/src/main/java/com/google/adk/a2a/EventConverter.java
+/Users/andrei.kondratev/wrk/galvanized-pukeko-ai-ui/packages/adk-agent/src/main/java/com/google/adk/a2a/PartConverter.java
+/Users/andrei.kondratev/wrk/galvanized-pukeko-ai-ui/packages/adk-agent/src/main/java/com/google/adk/a2a/RequestConverter.java
+/Users/andrei.kondratev/wrk/galvanized-pukeko-ai-ui/packages/adk-agent/src/main/java/com/google/adk/a2a/ResponseConverter.java
+/Users/andrei.kondratev/wrk/galvanized-pukeko-ai-ui/packages/adk-agent/src/main/java/com/google/adk/webservice/A2ARemoteConfiguration.java
+/Users/andrei.kondratev/wrk/galvanized-pukeko-ai-ui/packages/adk-agent/src/main/java/com/google/adk/webservice/A2ARemoteController.java
+/Users/andrei.kondratev/wrk/galvanized-pukeko-ai-ui/packages/adk-agent/src/main/java/com/google/adk/webservice/A2ARemoteService.java
+/Users/andrei.kondratev/wrk/galvanized-pukeko-ai-ui/packages/adk-agent/src/main/java/com/google/adk/webservice/AgentCardController.java
