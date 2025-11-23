@@ -138,6 +138,20 @@ Kitchen Sink is a static collection of all components (for component inspection)
 npm run sink
 ```
 
+## Stopping servers
+
+In the case you have an agent server dangling and occupying the port:
+
+```bash
+lsof -ti:8080 | xargs kill -9 2>/dev/null || true
+```
+
+Web UI server
+
+```bash
+lsof -ti:5555 | xargs kill -9 2>/dev/null || true
+```
+
 ## Contributing
 
 Contributions are welcome. Feel free to create an issue to contact us.

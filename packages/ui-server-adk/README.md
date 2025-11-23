@@ -37,3 +37,11 @@ Returns JSON like this:
 ```json
 {"id":"bac4f660-074c-43c4-865d-f650507477a5","invocationId":"e-e13cc145-d84d-4bfc-8268-bb2480b81c51","author":"ui-agent","content":{"parts":[{"text":"As an AI, I don't experience \"days\" or have feelings in the way humans do, but I'm ready and functioning perfectly!\n\nHow can I help you today?"}],"role":"model"},"actions":{"stateDelta":{},"artifactDelta":{},"requestedAuthConfigs":{}},"timestamp":1763717198184}
 ```
+
+## Stopping the server
+
+In the case you have a server dangling and occupying the port:
+
+```bash
+lsof -ti:8080 | xargs kill -9 2>/dev/null || true
+```
