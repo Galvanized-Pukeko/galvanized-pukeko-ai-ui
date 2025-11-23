@@ -95,6 +95,34 @@ npm run dev
 2. Type "Hello" in the chat to verify connectivity.
 3. Type "Show me a contact form" to see the dynamic form rendering in action.
 
+## Testing
+
+We use [Playwright](https://playwright.dev/) for End-to-End (E2E) testing.
+
+### Running Tests
+
+To run the tests, ensure the application is running (see [Getting Started](#getting-started)), then run:
+
+```bash
+npx playwright test
+```
+
+### Running Tests with UI
+
+To run the tests in interactive UI mode:
+
+```bash
+npx playwright test --ui
+```
+
+### Debugging Tests
+
+To run tests in debug mode:
+
+```bash
+npx playwright test --debug
+```
+
 ## Contributing
 
 Contributions are welcome. Feel free to create an issue to contact us.

@@ -35,3 +35,9 @@ CLAUDE.md
 # Tools
 gth_*
 
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
