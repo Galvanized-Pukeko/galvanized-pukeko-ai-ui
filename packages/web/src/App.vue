@@ -88,26 +88,29 @@ const handleRenderComponents = (message: WebSocketMessage) => {
   }
 }
 
-const handleChartMessage = (message: {
-  chartType: 'bar' | 'pie'
-  title: string
-  data: {
-    labels: string[]
-    datasets: {
-      label: string
-      data: number[]
-      backgroundColor?: string[]
-      borderColor?: string[]
-      borderWidth?: number
-    }[]
-  }
-}) => {
+const handleChartMessage = (message: WebSocketMessage) => {
   console.log('Received chart message from server:', message)
-  if (message.chartType && message.title && message.data) {
+  // Cast to expected chart message structure
+  const chartMessage = message as unknown as {
+    chartType: 'bar' | 'pie'
+    title: string
+    data: {
+      labels: string[]
+      datasets: {
+        label: string
+        data: number[]
+        backgroundColor?: string[]
+        borderColor?: string[]
+        borderWidth?: number
+      }[]
+    }
+  }
+
+  if (chartMessage.chartType && chartMessage.title && chartMessage.data) {
     currentChart.value = {
-      type: message.chartType,
-      title: message.title,
-      data: message.data
+      type: chartMessage.chartType,
+      title: chartMessage.title,
+      data: chartMessage.data
     }
   }
 }

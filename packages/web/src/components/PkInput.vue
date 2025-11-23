@@ -1,6 +1,7 @@
 <template>
   <label :for="inputId"><slot>{{ label }}</slot></label>
   <input
+    v-bind="$attrs"
     :type="type"
     :value="modelValue"
     :id="inputId"

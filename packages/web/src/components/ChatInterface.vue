@@ -88,6 +88,7 @@
       />
       <PkButton @click="sendMessage">Send</PkButton>
     </div>
+    <div class="helper-text">Click Send or press Enter to send your message</div>
   </div>
 </template>
 
@@ -167,6 +168,14 @@
   border-top: 1px solid #e5e7eb;
   display: flex;
   gap: 0.5rem;
+  background: #fff;
+}
+
+.helper-text {
+  padding: 0 1rem 1rem 1rem;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  text-align: center;
   background: #fff;
 }
 </style>
