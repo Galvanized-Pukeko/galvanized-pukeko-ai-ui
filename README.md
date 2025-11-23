@@ -26,6 +26,8 @@ graph LR
         style spacer fill:none,stroke:none,width:0px
         Agent1
         Agent2
+        etc["..."]
+        style etc fill:none,stroke:none,width:0px
     end
 
     UI -->|HTTP/SSE /run_sse| UIAgent
