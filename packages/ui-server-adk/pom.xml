@@ -63,7 +63,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.2.0</version>
                 <configuration>
-                    <mainClass>com.google.adk.web.AdkWebServer</mainClass>
+                    <mainClass>com.example.agent.UiAgentApplication</mainClass>
                     <classpathScope>compile</classpathScope>
                 </configuration>
             </plugin>

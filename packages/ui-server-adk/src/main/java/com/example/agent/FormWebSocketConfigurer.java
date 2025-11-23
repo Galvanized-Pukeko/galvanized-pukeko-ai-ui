@@ -5,13 +5,17 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
+/**
+ * WebSocket configuration for custom form handlers.
+ * This configuration is separate from the ADK's WebSocketConfig to avoid bean name conflicts.
+ */
 @Configuration
 @EnableWebSocket
-public class WebSocketConfig implements WebSocketConfigurer {
+public class FormWebSocketConfigurer implements WebSocketConfigurer {
 
     private final FormWebSocketHandler formWebSocketHandler;
 
-    public WebSocketConfig(FormWebSocketHandler formWebSocketHandler) {
+    public FormWebSocketConfigurer(FormWebSocketHandler formWebSocketHandler) {
         this.formWebSocketHandler = formWebSocketHandler;
     }
 
