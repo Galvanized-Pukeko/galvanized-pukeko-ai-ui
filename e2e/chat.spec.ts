@@ -11,19 +11,31 @@ test.describe('Chat Interface', () => {
         const input = page.locator('input[name="chat-input"]');
         const sendButton = page.locator('.input-area').getByRole('button', { name: 'Send' });
 
-        await input.fill('Hello via Button');
+        await input.fill('Hello via Button. Your response must include word Button.');
         await sendButton.click();
 
         await expect(page.locator('.message.user', { hasText: 'Hello via Button' })).toBeVisible();
+
+        // Wait for AI response
+        const aiMessage = page.locator('.message.ai').last();
+        await expect(aiMessage).toBeVisible();
+        await expect(aiMessage).not.toContainText('Error');
+        await expect(aiMessage).toContainText('Button');
     });
 
     test('should send message via Enter key', async ({ page }) => {
         const input = page.locator('input[name="chat-input"]');
 
-        await input.fill('Hello via Enter');
+        await input.fill('Hello via Enter. Your response must include word Enter.');
         await input.press('Enter');
 
         await expect(page.locator('.message.user', { hasText: 'Hello via Enter' })).toBeVisible();
+
+        // Wait for AI response
+        const aiMessage = page.locator('.message.ai').last();
+        await expect(aiMessage).toBeVisible();
+        await expect(aiMessage).not.toContainText('Error');
+        await expect(aiMessage).toContainText('Enter');
     });
 
     test('should display helper text', async ({ page }) => {
@@ -46,14 +58,7 @@ test.describe('Chat Interface', () => {
         const input = page.locator('input[name="chat-input"]');
 
         // Request chart
-        await input.fill('Show me a bar chart of sales');
-        await input.press('Enter');
-
-        // Wait for agent response (simplified check, just wait a bit or check for ai message)
-        await page.waitForTimeout(2000);
-
-        // Provide data
-        await input.fill('Here is the data: Q1: 100, Q2: 150, Q3: 200, Q4: 300');
+        await input.fill('Show me a bar chart of sales. Q1: 100, Q2: 150, Q3: 200, Q4: 300');
         await input.press('Enter');
 
         // Wait for chart to appear
