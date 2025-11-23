@@ -3,18 +3,18 @@ package com.example.agent;
 import com.google.adk.web.AdkWebServer;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Import;
 
 /**
  * Main application class for the UI Agent server.
- * This class configures Spring Boot to scan both the ADK package and the custom agent package.
+ * Extends AdkWebServer to inherit all ADK web configuration including
+ * resource handlers, view controllers, and bean definitions.
+ * Also scans the custom agent package for additional components.
  */
 @SpringBootApplication(scanBasePackages = {
     "com.google.adk.web",        // Scan ADK web components
     "com.example.agent"          // Scan custom agent components
 })
-@Import(AdkWebServer.class)      // Explicitly import ADK web server configuration
-public class UiAgentApplication {
+public class UiAgentApplication extends AdkWebServer {
 
     public static void main(String[] args) {
         // Set WebSocket buffer size before starting the application
