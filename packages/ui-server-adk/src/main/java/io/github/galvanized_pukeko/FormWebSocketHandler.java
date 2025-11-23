@@ -1,4 +1,4 @@
-package com.example.agent;
+package io.github.galvanized_pukeko;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

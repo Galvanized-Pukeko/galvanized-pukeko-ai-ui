@@ -1,4 +1,4 @@
-package com.example.agent;
+package io.github.galvanized_pukeko;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;

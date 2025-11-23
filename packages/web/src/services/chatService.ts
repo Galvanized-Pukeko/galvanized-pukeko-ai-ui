@@ -30,7 +30,7 @@ interface ChatResponse {
 }
 
 class ChatService {
-    private baseUrl: string = '/api'
+    private baseUrl: string = 'http://localhost:8080'
 
     async createSession(userId: string = 'user'): Promise<ChatSession> {
         console.log('[ChatService] Creating session for user:', userId)

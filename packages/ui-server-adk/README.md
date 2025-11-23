@@ -4,8 +4,9 @@
 
 Start the server:
 ```bash
-mvn compile exec:java -Dexec.mainClass=com.google.adk.web.AdkWebServer -Dexec.classpathScope=compile -Dexec.args="--server.port=8080 --adk.agents.source-dir=target"
+mvn clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--server.port=8080 --adk.agents.source-dir=target"
 ```
+(Not sure if -Dexec.mainClass=io.github.galvanized_pukeko.UiAgentApplication is actually needed)
 
 Create a new session:
 ```bash

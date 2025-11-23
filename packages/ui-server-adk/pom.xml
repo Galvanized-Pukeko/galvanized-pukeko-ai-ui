@@ -4,7 +4,7 @@
         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.example.agent</groupId>
+    <groupId>io.github.galvanized_pukeko</groupId>
     <artifactId>adk-agents</artifactId>
     <version>0.0.1-SNAPSHOT</version>
 
@@ -63,7 +63,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.2.0</version>
                 <configuration>
-                    <mainClass>com.example.agent.UiAgentApplication</mainClass>
+                    <mainClass>io.github.galvanized_pukeko.UiAgentApplication</mainClass>
                     <classpathScope>compile</classpathScope>
                 </configuration>
             </plugin>
