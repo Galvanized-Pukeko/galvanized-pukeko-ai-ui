@@ -32,7 +32,7 @@ test.describe('Chat Interface', () => {
 
     test('should render form when requested', async ({ page }) => {
         const input = page.locator('input[name="chat-input"]');
-        await input.fill('Show me a contact form');
+        await input.fill('Show me a contact form with name and email fields');
         await input.press('Enter');
 
         // Wait for form to appear

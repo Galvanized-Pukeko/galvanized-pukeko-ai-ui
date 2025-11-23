@@ -115,6 +115,14 @@ To run the tests in interactive UI mode:
 npx playwright test --ui
 ```
 
+### Running Tests in Headed Sequential Mode
+
+To run tests visibly (headed) and one by one (sequential), which is useful for debugging or demonstrations:
+
+```bash
+npx playwright test --headed --workers=1
+```
+
 ### Debugging Tests
 
 To run tests in debug mode:
