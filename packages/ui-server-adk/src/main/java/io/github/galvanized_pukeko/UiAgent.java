@@ -30,7 +30,10 @@ public class UiAgent {
                   - {"type": "input", "label": "Email", "value": ""}
                   """
           )
-          .tools(FunctionTool.create(UiAgent.class, "renderForm"))
+          .tools(
+              FunctionTool.create(UiAgent.class, "renderForm"),
+              FunctionTool.create(UiAgent.class, "renderChart")
+          )
           .build();
 
   public UiAgent(FormWebSocketHandler handler) {
@@ -67,5 +70,36 @@ public class UiAgent {
     webSocketHandler.broadcastForm(formData);
 
     return Map.of("status", "Form rendered successfully");
+  }
+
+  /**
+   * Render a chart in the UI
+   */
+  @Schema(description = "Display a chart to visualize data")
+  public static Map<String, String> renderChart(
+      @Schema(
+          name = "chartType",
+          description = "Type of chart to render (bar/pie)"
+      ) String chartType,
+      @Schema(
+          name = "title",
+          description = "Title of the chart"
+      ) String title,
+      @Schema(
+          name = "data",
+          description = "Chart data containing 'labels' (list of strings) and 'datasets' (list of objects with 'label' and 'data' (list of numbers))"
+      ) Map<String, Object> data
+  ) {
+    log.info("Rendering {} chart: {}", chartType, title);
+
+    Map<String, Object> chartData = Map.of(
+        "chartType", chartType,
+        "title", title,
+        "data", data
+    );
+
+    webSocketHandler.broadcastChart(chartData);
+
+    return Map.of("status", "Chart rendered successfully");
   }
 }

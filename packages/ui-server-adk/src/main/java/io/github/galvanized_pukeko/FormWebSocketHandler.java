@@ -109,11 +109,20 @@ public class FormWebSocketHandler extends TextWebSocketHandler {
 
     // Broadcast form to all connected clients
     public void broadcastForm(Map<String, Object> formData) {
+        broadcastNotification("form", formData);
+    }
+
+    // Broadcast chart to all connected clients
+    public void broadcastChart(Map<String, Object> chartData) {
+        broadcastNotification("chart", chartData);
+    }
+
+    private void broadcastNotification(String method, Map<String, Object> params) {
         try {
             ObjectNode notification = objectMapper.createObjectNode();
             notification.put("jsonrpc", "2.0");
-            notification.put("method", "form");
-            notification.set("params", objectMapper.valueToTree(formData));
+            notification.put("method", method);
+            notification.set("params", objectMapper.valueToTree(params));
             
             String message = notification.toString();
             sessions.values().forEach(session -> {
@@ -126,7 +135,7 @@ public class FormWebSocketHandler extends TextWebSocketHandler {
                 }
             });
         } catch (Exception e) {
-            log.error("Error broadcasting form", e);
+            log.error("Error broadcasting notification", e);
         }
     }
 }
