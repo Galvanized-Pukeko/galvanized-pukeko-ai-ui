@@ -28,4 +28,7 @@ export default defineConfig({
     },
     preserveSymlinks: true
   },
+  server: {
+    port: 5555
+  }
 });

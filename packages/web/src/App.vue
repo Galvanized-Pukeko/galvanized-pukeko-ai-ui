@@ -9,6 +9,7 @@ import PkButton from './components/PkButton.vue'
 import PkInputCounter from './components/PkInputCounter.vue'
 import PkBarChart from './components/PkBarChart.vue'
 import PkPieChart from './components/PkPieChart.vue'
+import ChatInterface from './components/ChatInterface.vue'
 import PkNav from './components/PkNav.vue'
 import { connectionService, type ConnectionStatus, type ComponentConfig, type WebSocketMessage } from './services/connectionService'
 
@@ -89,26 +90,29 @@ const handleRenderComponents = (message: WebSocketMessage) => {
   }
 }
 
-const handleChartMessage = (message: {
-  chartType: 'bar' | 'pie'
-  title: string
-  data: {
-    labels: string[]
-    datasets: {
-      label: string
-      data: number[]
-      backgroundColor?: string[]
-      borderColor?: string[]
-      borderWidth?: number
-    }[]
-  }
-}) => {
+const handleChartMessage = (message: WebSocketMessage) => {
   console.log('Received chart message from server:', message)
-  if (message.chartType && message.title && message.data) {
+  // Cast to expected chart message structure
+  const chartMessage = message as unknown as {
+    chartType: 'bar' | 'pie'
+    title: string
+    data: {
+      labels: string[]
+      datasets: {
+        label: string
+        data: number[]
+        backgroundColor?: string[]
+        borderColor?: string[]
+        borderWidth?: number
+      }[]
+    }
+  }
+
+  if (chartMessage.chartType && chartMessage.title && chartMessage.data) {
     currentChart.value = {
-      type: message.chartType,
-      title: message.title,
-      data: message.data
+      type: chartMessage.chartType,
+      title: chartMessage.title,
+      data: chartMessage.data
     }
   }
 }
@@ -159,8 +163,11 @@ const handleClearChart = () => {
 
 const sendMessage = () => {
   connectionService.sendMessage({
+    jsonrpc: '2.0',
+    method: 'cancel',
     type: 'cancel',
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    id: crypto.randomUUID()
   })
 };
 
@@ -190,117 +197,160 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app">
-    <h1>Pukeko UI Components Demo</h1>
+  <div class="app-container">
+    <div class="split-screen">
+      <!-- Left Side: Chat Interface -->
+      <div class="chat-panel">
+        <ChatInterface />
+      </div>
 
-    <div class="status">
-      WebSocket Status:
-      <span :class="['status-badge', `status-${wsStatus}`]">
-        {{ wsStatus }}
-      </span>
-    </div>
+      <!-- Right Side: Form/Content -->
+      <div class="content-panel">
+        <div class="app-content">
+          <h1>Pukeko UI Components Demo</h1>
 
-    <!-- Show only one section at a time: waiting message, form, or chart -->
-    <div v-if="!currentChart && serverComponents.length === 0" class="info">
-      Waiting for server to send components...
-    </div>
+          <div class="status">
+            WebSocket Status:
+            <span :class="['status-badge', `status-${wsStatus}`]">
+              {{ wsStatus }}
+            </span>
+          </div>
 
-    <PkForm v-else-if="!currentChart && serverComponents.length > 0" @submit="handleSubmit" class="dynamic-form">
-      <h2>Server-Requested Form</h2>
-      <p class="form-info">server-rendered form</p>
+          <!-- Show only one section at a time: waiting message, form, or chart -->
+          <div v-if="!currentChart && serverComponents.length === 0" class="info">
+            Waiting for server to send components...
+          </div>
 
-      <div v-for="(component, index) in serverComponents.filter(c => c.type !== 'button')" :key="`${component.type}_${index}`" class="form-group">
-        <component
-          :is="componentMap[component.type]"
-          v-if="component.type === 'input'"
-          :modelValue="componentValues.input[component.label || `${component.type}_${index}`]"
-          @update:modelValue="(val: string | number) => componentValues.input[component.label || `${component.type}_${index}`] = String(val)"
-          :placeholder="component.label"
-          :name="component.label"
-        />
+          <PkForm v-else-if="!currentChart && serverComponents.length > 0" @submit="handleSubmit" class="dynamic-form">
+            <h2>Server-Requested Form</h2>
+            <p class="form-info">server-rendered form</p>
 
-        <component
-          :is="componentMap[component.type]"
-          v-else-if="component.type === 'checkbox'"
-          :modelValue="componentValues.checkbox[component.label || `${component.type}_${index}`]"
-          @update:modelValue="(val: boolean) => componentValues.checkbox[component.label || `${component.type}_${index}`] = val"
-          :label="component.label"
-          :name="component.label"
-        />
+            <div v-for="(component, index) in serverComponents.filter(c => c.type !== 'button')" :key="`${component.type}_${index}`" class="form-group">
+              <component
+                :is="componentMap[component.type]"
+                v-if="component.type === 'input'"
+                :modelValue="componentValues.input[component.label || `${component.type}_${index}`]"
+                @update:modelValue="(val: string | number) => componentValues.input[component.label || `${component.type}_${index}`] = String(val)"
+                :placeholder="component.label"
+                :name="component.label"
+              />
 
-        <component
-          :is="componentMap[component.type]"
-          v-else-if="component.type === 'radio'"
-          :modelValue="componentValues.radio[component.label || `${component.type}_${index}`]"
-          @update:modelValue="(val: string | number) => componentValues.radio[component.label || `${component.type}_${index}`] = String(val)"
-          :name="component.label"
-          value="option1"
-          :label="component.label"
-        />
+              <component
+                :is="componentMap[component.type]"
+                v-else-if="component.type === 'checkbox'"
+                :modelValue="componentValues.checkbox[component.label || `${component.type}_${index}`]"
+                @update:modelValue="(val: boolean) => componentValues.checkbox[component.label || `${component.type}_${index}`] = val"
+                :label="component.label"
+                :name="component.label"
+              />
 
-        <div v-else-if="component.type === 'select'">
-          <label>{{ component.label }}:</label>
-          <component
-            :is="componentMap[component.type]"
-            :modelValue="componentValues.select[component.label || `${component.type}_${index}`]"
-            @update:modelValue="(val: string | number) => componentValues.select[component.label || `${component.type}_${index}`] = String(val)"
-            :name="component.label"
-          >
-            <option value="">Select an option</option>
-            <option
-              v-for="option in component.options"
-              :key="option"
-              :value="option"
-            >
-              {{ option }}
-            </option>
-          </component>
+              <component
+                :is="componentMap[component.type]"
+                v-else-if="component.type === 'radio'"
+                :modelValue="componentValues.radio[component.label || `${component.type}_${index}`]"
+                @update:modelValue="(val: string | number) => componentValues.radio[component.label || `${component.type}_${index}`] = String(val)"
+                :name="component.label"
+                value="option1"
+                :label="component.label"
+              />
+
+              <div v-else-if="component.type === 'select'">
+                <label>{{ component.label }}:</label>
+                <component
+                  :is="componentMap[component.type]"
+                  :modelValue="componentValues.select[component.label || `${component.type}_${index}`]"
+                  @update:modelValue="(val: string | number) => componentValues.select[component.label || `${component.type}_${index}`] = String(val)"
+                  :name="component.label"
+                >
+                  <option value="">Select an option</option>
+                  <option
+                    v-for="option in component.options"
+                    :key="option"
+                    :value="option"
+                  >
+                    {{ option }}
+                  </option>
+                </component>
+              </div>
+            </div>
+
+            <div class="form-buttons">
+              <PkButton type="submit">
+                {{ formLabels.submitLabel || 'Submit' }}
+              </PkButton>
+              <PkButton type="button" @click="handleCancel">
+                {{ formLabels.cancelLabel || 'Cancel' }}
+              </PkButton>
+            </div>
+          </PkForm>
+
+          <!-- Chart rendering section -->
+          <div v-else-if="currentChart" class="chart-section">
+            <h2>Server-Requested Chart</h2>
+            <PkBarChart
+              v-if="currentChart.type === 'bar'"
+              :data="currentChart.data"
+              :title="currentChart.title"
+            />
+            <PkPieChart
+              v-if="currentChart.type === 'pie'"
+              :data="currentChart.data"
+              :title="currentChart.title"
+            />
+            <div class="chart-buttons">
+              <PkButton type="button" @click="handleClearChart">
+                Clear
+              </PkButton>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div class="form-buttons">
-        <PkButton type="submit">
-          {{ formLabels.submitLabel || 'Submit' }}
-        </PkButton>
-        <PkButton type="button" @click="handleCancel">
-          {{ formLabels.cancelLabel || 'Cancel' }}
-        </PkButton>
-      </div>
-    </PkForm>
-
-    <!-- Chart rendering section -->
-    <div v-else-if="currentChart" class="chart-section">
-      <h2>Server-Requested Chart</h2>
-      <PkBarChart
-        v-if="currentChart.type === 'bar'"
-        :data="currentChart.data"
-        :title="currentChart.title"
-      />
-      <PkPieChart
-        v-if="currentChart.type === 'pie'"
-        :data="currentChart.data"
-        :title="currentChart.title"
-      />
-      <div class="chart-buttons">
-        <PkButton type="button" @click="handleClearChart">
-          Clear
-        </PkButton>
+        <button @click="sendMessage">send message</button>
       </div>
     </div>
   </div>
-  <button @click="sendMessage">send message</button>
 </template>
 
 <style scoped>
 /* See packages/client/src/assets/global.css for global styles */
 /* Place only things specific to DevSite here */
 
+.app-container {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.split-screen {
+  display: flex;
+  height: 100%;
+  width: 100%;
+}
+
+.chat-panel {
+  width: 40%;
+  height: 100%;
+  min-width: 300px;
+}
+
+.content-panel {
+  width: 60%;
+  height: 100%;
+  overflow-y: auto;
+  background-color: #f9fafb;
+}
+
+.app-content {
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
 .chart-section {
   margin: 2rem 0;
   padding: 1rem;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  background: #f9fafb;
+  background: #fff;
 }
 
 .chart-section h2 {

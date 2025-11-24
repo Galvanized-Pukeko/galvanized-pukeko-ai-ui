@@ -1,3 +1,5 @@
+import { JsonRpcRequest, JsonRpcResponse, JsonRpcNotification } from '../types/jsonrpc.js'
+
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 
 interface ComponentConfig {
@@ -18,6 +20,11 @@ interface WebSocketMessage {
 type MessageHandler = (message: WebSocketMessage) => void
 type StatusHandler = (status: ConnectionStatus) => void
 
+interface PendingRequest {
+  resolve: (result: unknown) => void
+  reject: (error: Error) => void
+}
+
 class ConnectionService {
   private ws: WebSocket | null = null
   private messageHandlers: Map<string, Set<MessageHandler>> = new Map()
@@ -25,8 +32,10 @@ class ConnectionService {
   private currentStatus: ConnectionStatus = 'disconnected'
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null
   private wsUrl: string
+  private requestId = 0
+  private pendingRequests: Map<string | number, PendingRequest> = new Map()
 
-  constructor(url: string = 'ws://localhost:3001') {
+  constructor(url: string = 'ws://localhost:8080/ws') {
     this.wsUrl = url
   }
 
@@ -45,8 +54,20 @@ class ConnectionService {
 
     this.ws.onmessage = (event) => {
       try {
-        const message: WebSocketMessage = JSON.parse(event.data)
-        this.handleMessage(message)
+        const data = JSON.parse(event.data)
+
+        // Check if it's a JSON-RPC response
+        if (data.jsonrpc === '2.0' && data.id !== undefined) {
+          this.handleJsonRpcResponse(data as JsonRpcResponse)
+        }
+        // Check if it's a JSON-RPC notification
+        else if (data.jsonrpc === '2.0' && data.method) {
+          this.handleJsonRpcNotification(data as JsonRpcNotification)
+        }
+        // Fall back to legacy message format
+        else {
+          this.handleMessage(data as WebSocketMessage)
+        }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error)
       }
@@ -55,6 +76,7 @@ class ConnectionService {
     this.ws.onclose = () => {
       console.log('Disconnected from WebSocket server')
       this.updateStatus('disconnected')
+      this.cleanupPendingRequests()
       this.scheduleReconnect()
     }
 
@@ -73,6 +95,7 @@ class ConnectionService {
       this.ws.close()
       this.ws = null
     }
+    this.cleanupPendingRequests()
   }
 
   subscribeToMessage(messageType: string, handler: MessageHandler): () => void {
@@ -110,11 +133,60 @@ class ConnectionService {
     }
   }
 
+  sendJsonRpcRequest(method: string, params?: unknown): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+      if (this.ws?.readyState !== WebSocket.OPEN) {
+        reject(new Error('WebSocket is not connected'))
+        return
+      }
+
+      const id = ++this.requestId
+      const request: JsonRpcRequest = {
+        jsonrpc: '2.0',
+        method,
+        params,
+        id
+      }
+
+      this.pendingRequests.set(id, { resolve, reject })
+      this.ws.send(JSON.stringify(request))
+    })
+  }
+
+  sendJsonRpcNotification(method: string, params?: unknown): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      const notification: JsonRpcNotification = {
+        jsonrpc: '2.0',
+        method,
+        params
+      }
+      this.ws.send(JSON.stringify(notification))
+    } else {
+      console.warn('WebSocket is not connected. Notification not sent:', method)
+    }
+  }
+
+  // Convenience methods for common operations
+  submitForm(data: Record<string, unknown>, timestamp?: number): Promise<unknown> {
+    return this.sendJsonRpcRequest('form_submit', {
+      data,
+      timestamp: timestamp || Date.now()
+    })
+  }
+
+  cancelForm(timestamp?: number): Promise<unknown> {
+    return this.sendJsonRpcRequest('cancel', {
+      timestamp: timestamp || Date.now(),
+      id: crypto.randomUUID()
+    })
+  }
+
   getStatus(): ConnectionStatus {
     return this.currentStatus
   }
 
   private handleMessage(message: WebSocketMessage): void {
+    console.log('Received message:', message);
     const handlers = this.messageHandlers.get(message.type)
     if (handlers) {
       handlers.forEach(handler => handler(message))
@@ -124,6 +196,33 @@ class ConnectionService {
     if (allHandlers) {
       allHandlers.forEach(handler => handler(message))
     }
+  }
+
+  private handleJsonRpcResponse(response: JsonRpcResponse): void {
+    const pendingRequest = this.pendingRequests.get(response.id)
+    if (pendingRequest) {
+      this.pendingRequests.delete(response.id)
+
+      if (response.error) {
+        const error = new Error(response.error.message)
+        Object.assign(error, {
+          code: response.error.code,
+          data: response.error.data
+        })
+        pendingRequest.reject(error)
+      } else {
+        pendingRequest.resolve(response.result)
+      }
+    }
+  }
+
+  private handleJsonRpcNotification(notification: JsonRpcNotification): void {
+    // Convert notification to legacy message format for backward compatibility
+    const legacyMessage: WebSocketMessage = {
+      type: notification.method,
+      ...(notification.params as object)
+    }
+    this.handleMessage(legacyMessage)
   }
 
   private updateStatus(status: ConnectionStatus): void {
@@ -140,6 +239,13 @@ class ConnectionService {
       console.log('Attempting to reconnect...')
       this.connect()
     }, 3000)
+  }
+
+  private cleanupPendingRequests(): void {
+    this.pendingRequests.forEach((request) => {
+      request.reject(new Error('Connection closed'))
+    })
+    this.pendingRequests.clear()
   }
 }
 

@@ -74,25 +74,10 @@ export const createServer = () => {
   serverContext.mcpServer = server;
 
   // Set MCP server reference in WebSocket manager
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (wsManager as any).setMcpServer(server);
 
   let logLevel: LoggingLevel = "debug";
-  const messages = [
-    {level: "debug", data: "Debug-level message"},
-    {level: "info", data: "Info-level message"},
-    {level: "notice", data: "Notice-level message"},
-    {level: "warning", data: "Warning-level message"},
-    {level: "error", data: "Error-level message"},
-    {level: "critical", data: "Critical-level message"},
-    {level: "alert", data: "Alert level-message"},
-    {level: "emergency", data: "Emergency-level message"},
-  ];
-
-  const isMessageIgnored = (level: LoggingLevel): boolean => {
-    const currentLevel = messages.findIndex((msg) => logLevel === msg.level);
-    const messageLevel = messages.findIndex((msg) => level === msg.level);
-    return messageLevel < currentLevel;
-  };
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     const tools: Tool[] = [

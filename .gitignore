@@ -6,7 +6,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-req
+_scratchpad
 
 node_modules
 .DS_Store
@@ -34,3 +34,10 @@ CLAUDE.md
 
 # Tools
 gth_*
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

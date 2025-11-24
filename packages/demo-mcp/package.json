@@ -2,16 +2,18 @@
   "name": "@galvanized-pukeko-ai-ui/demo-mcp",
   "version": "0.0.1",
   "main": "index.js",
-  "devDependencies": {},
   "scripts": {
     "build": "tsc",
     "dev": "npm run build && node dist/mcp-http.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run",
+    "lint:oxlint": "oxlint . --fix -D correctness --ignore-path .gitignore",
+    "lint:eslint": "eslint . --fix",
+    "lint": "oxlint . --fix -D correctness --ignore-path .gitignore && eslint . --fix"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "gaunt-sloth-assistant": "^0.8.3"
+    "gaunt-sloth-assistant": "^0.8.12"
   }
 }

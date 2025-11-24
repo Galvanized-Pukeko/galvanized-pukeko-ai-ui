@@ -8,6 +8,7 @@ export const loggingConfig = {
 
 const LOG_FILE = join(homedir(), 'galvanized-pukeko-ui.log');
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const formatMessage = (level: string, ...args: any[]): string => {
   const timestamp = new Date().toISOString();
   const message = args.map(arg =>
@@ -16,6 +17,7 @@ const formatMessage = (level: string, ...args: any[]): string => {
   return `[${timestamp}] [${level.toUpperCase()}] ${message}\n`;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const writeToFile = (level: string, ...args: any[]) => {
   try {
     const logMessage = formatMessage(level, ...args);
@@ -26,6 +28,7 @@ const writeToFile = (level: string, ...args: any[]) => {
   }
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const log = (...args: any[]) => {
   if (loggingConfig.logToFile) {
     writeToFile('info', ...args);
@@ -34,6 +37,7 @@ export const log = (...args: any[]) => {
   }
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const error = (...args: any[]) => {
   if (loggingConfig.logToFile) {
     writeToFile('error', ...args);
@@ -42,6 +46,7 @@ export const error = (...args: any[]) => {
   }
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const warn = (...args: any[]) => {
   if (loggingConfig.logToFile) {
     writeToFile('warn', ...args);
@@ -50,6 +55,7 @@ export const warn = (...args: any[]) => {
   }
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const info = (...args: any[]) => {
   if (loggingConfig.logToFile) {
     writeToFile('info', ...args);
@@ -58,6 +64,7 @@ export const info = (...args: any[]) => {
   }
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const debug = (...args: any[]) => {
   if (loggingConfig.logToFile) {
     writeToFile('debug', ...args);
