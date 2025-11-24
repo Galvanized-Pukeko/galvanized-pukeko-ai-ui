@@ -10,6 +10,7 @@ import PkInputCounter from './components/PkInputCounter.vue'
 import PkBarChart from './components/PkBarChart.vue'
 import PkPieChart from './components/PkPieChart.vue'
 import ChatInterface from './components/ChatInterface.vue'
+import PkNav from './components/PkNav.vue'
 import { connectionService, type ConnectionStatus, type ComponentConfig, type WebSocketMessage } from './services/connectionService'
 
 const serverComponents = ref<ComponentConfig[]>([])
@@ -46,7 +47,8 @@ const componentMap = markRaw({
   radio: PkRadio,
   select: PkSelect,
   button: PkButton,
-  counter: PkInputCounter
+  counter: PkInputCounter,
+  nav: PkNav
 })
 
 let unsubscribeStatus: (() => void) | null = null

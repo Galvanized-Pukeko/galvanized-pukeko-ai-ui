@@ -7,6 +7,7 @@
     @change="handleChange"
     :id="selectId"
     class="pk-select"
+    v-bind="$attrs"
   >
     <slot></slot>
   </select>
@@ -22,6 +23,9 @@ interface Props {
 }
 
 defineProps<Props>()
+defineOptions({
+  inheritAttrs: false
+})
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -47,6 +51,23 @@ const handleChange = (event: Event) => {
   box-shadow: none;
   cursor: pointer;
   transition: var(--transition-normal);
+
+  &.select-control {
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background-color: transparent;
+    font-size: inherit;
+    font-family: inherit;
+    cursor: pointer;
+    transition: var(--transition-normal);
+  }
+  &.select-control:focus, &.select-control:hover:not(.pk-select--disabled) {
+    outline: none;
+    border: none;
+    background-color: transparent;
+    box-shadow: none;
+  }
 }
 
 .pk-select:focus, .pk-select:hover:not(.pk-select--disabled){
