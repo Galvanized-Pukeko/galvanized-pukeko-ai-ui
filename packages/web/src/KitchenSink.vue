@@ -9,6 +9,7 @@ import PkButton from './components/PkButton.vue'
 import PkInputCounter from './components/PkInputCounter.vue'
 import PkBarChart from './components/PkBarChart.vue'
 import PkPieChart from './components/PkPieChart.vue'
+import PkTable from './components/PkTable.vue'
 
 // Component values
 const inputValue = ref('')
@@ -22,34 +23,36 @@ const counterValue = ref(0)
 // Chart data
 const barChartData = ref({
   labels: ['Engineering', 'Marketing', 'Sales', 'HR', 'Finance', 'Operations'],
-  datasets: [{
-    label: 'Tasks Completed',
-    data: [245, 189, 312, 156, 203, 278],
-    backgroundColor: [
-      '#3b82f6',
-      '#ef4444',
-      '#10b981',
-      '#f59e0b',
-      '#8b5cf6',
-      '#06b6d4'
-    ]
-  }]
+  datasets: [
+    {
+      label: 'Tasks Completed',
+      data: [245, 189, 312, 156, 203, 278],
+      backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'],
+    },
+  ],
 })
 
 const pieChartData = ref({
   labels: ['Desktop', 'Mobile', 'Tablet', 'Smart TV', 'Other'],
-  datasets: [{
-    label: 'Device Usage',
-    data: [45, 32, 15, 6, 2],
-    backgroundColor: [
-      '#3b82f6',
-      '#ef4444',
-      '#10b981',
-      '#f59e0b',
-      '#8b5cf6'
-    ]
-  }]
+  datasets: [
+    {
+      label: 'Device Usage',
+      data: [45, 32, 15, 6, 2],
+      backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'],
+    },
+  ],
 })
+
+// Table data
+const tableCaption = ref('Table striped with heading row. And with caption underneath.')
+const tableHeader = ref(['Band', 'Year formed', 'No. of Albums', 'Most famous song'])
+const tableData = ref([
+  ['Stiff Little Fingers', '1977', '10', 'Suspect Device'],
+  ['The Stranglers', '1974', '17', 'No More Heroes'],
+  ['The Clash', '1976', '6', 'London Calling'],
+  ['The Damned', '1976', '11', 'New Rose'],
+])
+const tableFooter = ref(['', 'Total albums', '44', ''])
 
 // Form submission handler
 const handleFormSubmit = (event: Event) => {
@@ -62,10 +65,9 @@ const handleFormSubmit = (event: Event) => {
     checkbox2: checkboxValue2.value,
     radio: radioValue.value,
     select: selectValue.value,
-    counter: counterValue.value
+    counter: counterValue.value,
   })
 }
-
 </script>
 
 <template>
@@ -77,7 +79,7 @@ const handleFormSubmit = (event: Event) => {
       <div class="form-group input-group">
         <PkInput
           :modelValue="inputValue"
-          @update:modelValue="(val: string | number) => inputValue = String(val)"
+          @update:modelValue="(val: string | number) => (inputValue = String(val))"
           inputId="standardInput"
           placeholder="Enter some text"
           label="Input label"
@@ -87,7 +89,7 @@ const handleFormSubmit = (event: Event) => {
       <div class="form-group counter-group">
         <PkInputCounter
           :modelValue="counterValue"
-          @update:modelValue="(val: string | number) => counterValue = Number(val)"
+          @update:modelValue="(val: string | number) => (counterValue = Number(val))"
           inputId="counterInput"
           placeholder="0"
           label="Counter Input label"
@@ -97,13 +99,13 @@ const handleFormSubmit = (event: Event) => {
       <div class="form-group checkbox-group">
         <PkCheckbox
           :modelValue="checkboxValue1"
-          @update:modelValue="(val: boolean) => checkboxValue1 = val"
+          @update:modelValue="(val: boolean) => (checkboxValue1 = val)"
           checkboxId="tc"
           label="Checkbox label, i.e. to confirm acceptance of Terms and Conditions"
         />
         <PkCheckbox
           :modelValue="checkboxValue2"
-          @update:modelValue="(val: boolean) => checkboxValue2 = val"
+          @update:modelValue="(val: boolean) => (checkboxValue2 = val)"
           checkboxId="too"
           label="tick this too :)"
         />
@@ -113,21 +115,21 @@ const handleFormSubmit = (event: Event) => {
       <div class="form-group radio-group">
         <PkRadio
           :modelValue="radioValue"
-          @update:modelValue="(val: string | number) => radioValue = String(val)"
+          @update:modelValue="(val: string | number) => (radioValue = String(val))"
           name="options"
           value="option1"
           label="Radio Label for option 1"
         />
         <PkRadio
           :modelValue="radioValue"
-          @update:modelValue="(val: string | number) => radioValue = String(val)"
+          @update:modelValue="(val: string | number) => (radioValue = String(val))"
           name="options"
           value="option2"
           label="Radio Label for option 2"
         />
         <PkRadio
           :modelValue="radioValue"
-          @update:modelValue="(val: string | number) => radioValue = String(val)"
+          @update:modelValue="(val: string | number) => (radioValue = String(val))"
           name="options"
           value="option3"
           label="Radio Label for option 3"
@@ -137,7 +139,7 @@ const handleFormSubmit = (event: Event) => {
       <div class="form-group input-group">
         <PkSelect
           :modelValue="selectValue"
-          @update:modelValue="(val: string | number) => selectValue = String(val)"
+          @update:modelValue="(val: string | number) => (selectValue = String(val))"
           selectId="justSelect"
           label="Assortment options"
         >
@@ -151,106 +153,61 @@ const handleFormSubmit = (event: Event) => {
       <h2>Range of buttons</h2>
 
       <div class="form-group">
-
-        <PkButton
-          type="submit"
-          class="pk-button-normal-size pk-button-prim"
-          >
-            Submit Form
+        <PkButton type="submit" class="pk-button-normal-size pk-button-prim">
+          Submit Form
         </PkButton>
 
-        <PkButton
-          type="submit"
-          class="pk-button-normal-size pk-button-sec"
-          >
-            Submit Form
-        </PkButton>
-
+        <PkButton type="submit" class="pk-button-normal-size pk-button-sec"> Submit Form </PkButton>
       </div>
 
       <div class="form-group">
-
-        <PkButton
-          type="submit"
-          class="pk-button-normal-size pk-button-no-border"
-          >
-            Submit Form
+        <PkButton type="submit" class="pk-button-normal-size pk-button-no-border">
+          Submit Form
         </PkButton>
 
-        <PkButton
-          type="submit"
-          class="pk-button--disabled"
-          >
-            Submit Form
-        </PkButton>
-
+        <PkButton type="submit" class="pk-button--disabled"> Submit Form </PkButton>
       </div>
 
       <div class="form-group">
-        <PkButton
-          type="submit"
-          class="pk-button-full-size pk-button-prim"
-          >
-            Submit Form
-        </PkButton>
+        <PkButton type="submit" class="pk-button-full-size pk-button-prim"> Submit Form </PkButton>
       </div>
 
       <div class="form-group">
-        <PkButton
-          type="submit"
-          class="pk-button-full-size pk-button-sec"
-          >
-            Submit Form
-        </PkButton>
+        <PkButton type="submit" class="pk-button-full-size pk-button-sec"> Submit Form </PkButton>
       </div>
-
     </PkForm>
 
     <h2>Chart Components</h2>
 
-    <div class="chart-section">
+    <div class="chart-section component-section">
       <h3>Department Task Completion - Bar Chart</h3>
-      <PkBarChart
-        :data="barChartData"
-        title="Tasks Completed by Department"
-      />
+      <PkBarChart :data="barChartData" title="Tasks Completed by Department" />
     </div>
 
-    <div class="chart-section">
+    <div class="chart-section component-section">
       <h3>Device Usage Distribution - Pie Chart</h3>
-      <PkPieChart
-        :data="pieChartData"
-        title="User Device Preferences (%)"
-      />
+      <PkPieChart :data="pieChartData" title="User Device Preferences (%)" />
     </div>
 
-    <div class="chart-section">
+    <div class="chart-section component-section">
       <h3>Device Usage Distribution - Doughnut Chart</h3>
-      <PkPieChart
-        :data="pieChartData"
-        title="User Device Preferences (Doughnut)"
-        type="doughnut"
-      />
+      <PkPieChart :data="pieChartData" title="User Device Preferences (Doughnut)" type="doughnut" />
     </div>
 
+    <div class="component-section">
+      <h3>Range of tables</h3>
+      <PkTable
+        class="pk-table-normal"
+        :caption="tableCaption"
+        :header="tableHeader"
+        :data="tableData"
+        :footer="tableFooter"
+      />
+    </div>
   </div>
 </template>
 
 <style scoped>
 /* See packages/client/src/assets/global.css for global styles */
 /* Place only things specific to KitchenSink here */
-
-.chart-section {
-  margin: 2rem 0;
-  padding: 1rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: #f9fafb;
-}
-
-.chart-section h3 {
-  margin-top: 0;
-  margin-bottom: 1rem;
-  color: #374151;
-}
 </style>
