@@ -1,20 +1,20 @@
 :root {
- /* Place CSS variables here */
+  /* Place CSS variables here */
 
- --transition-normal: all 0.3s ease-out;
+  --transition-normal: all 0.3s ease-out;
 
- /* Spacing, paddings, margins, other gaps */
- --nice-spacing-unit: 1.5rem;
- --padding-full: var(--nice-spacing-unit);
- --padding-half: calc(var(--padding-full) / 2);
- --padding-third: calc(var(--padding-full) / 3);
- --padding-twothird: 1rem;
- --padding-quarter: calc(var(--padding-full) / 4);
- --padding-sixth: calc(var(--padding-full) / 6);
- --padding-oct: calc(var(--padding-full) / 8);
+  /* Spacing, paddings, margins, other gaps */
+  --nice-spacing-unit: 1.5rem;
+  --padding-full: var(--nice-spacing-unit);
+  --padding-half: calc(var(--padding-full) / 2);
+  --padding-third: calc(var(--padding-full) / 3);
+  --padding-twothird: 1rem;
+  --padding-quarter: calc(var(--padding-full) / 4);
+  --padding-sixth: calc(var(--padding-full) / 6);
+  --padding-oct: calc(var(--padding-full) / 8);
 
- --border-radius-small-box: var(--padding-quarter);
- --border-radius-extra-small-box: var(--padding-oct);
+  --border-radius-small-box: var(--padding-quarter);
+  --border-radius-extra-small-box: var(--padding-oct);
 
   /* Colour variables to be used scoped inside this block exclusively */
   --white-pure: #fff;
@@ -22,6 +22,7 @@
   --grey-98: #f8f9fa; /* form bg */
   --grey-94: #f0f0f0;
   --grey-91: #ebe6e7; /* subtle border */
+  --grey-93: #ededed;
   --grey-87: #ddd;
   --grey-80: #ccc;
   --grey-70: #b3b3b3;
@@ -80,6 +81,8 @@
 
   --box-shadow-inner-active: inset 0px 1px 2px 0px var(--grey-70);
   --box-shadow-drop-active: 0px 1px 2px 1px var(--grey-70);
+
+  --table-stripe-bg-idle: var(--grey-93);
 }
 
 /* nice accessible fonts */
@@ -209,8 +212,15 @@ h3 {
 .component-section {
   background-color: #f8f9fa;
   padding: 2rem;
+  border: var(--line-separator-subtle);
   border-radius: 8px;
   margin-bottom: 2rem;
+
+  h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: inherit;
+  }
 }
 
 .component-grid {
