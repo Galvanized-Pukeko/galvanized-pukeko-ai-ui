@@ -201,6 +201,8 @@ interface Message {
   border-radius: 1rem;
   font-size: 0.95rem;
   line-height: 1.4;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
 .message.user .message-content {
