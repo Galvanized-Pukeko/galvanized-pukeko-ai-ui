@@ -39,6 +39,7 @@ public class UiAgent {
     java.util.List<Object> tools = new java.util.ArrayList<>();
     tools.add(FunctionTool.create(UiAgent.class, "renderForm"));
     tools.add(FunctionTool.create(UiAgent.class, "renderChart"));
+    tools.add(FunctionTool.create(UiAgent.class, "renderTable"));
 
     // FIXME this is an ugly way to set this up.
     // Ideally it should
@@ -122,5 +123,47 @@ public class UiAgent {
     webSocketHandler.broadcastChart(chartData);
 
     return Map.of("status", "Chart rendered successfully");
+  }
+
+  /**
+   * Render a table in the UI
+   */
+  @Schema(description = "Display a table to present structured data in rows and columns. " +
+      "Use this tool when you need to show tabular data, lists, or results from other tools. " +
+      "Example: To show user data, use header=['Name', 'Age', 'Role'] and " +
+      "data=[['John', '25', 'Engineer'], ['Jane', '30', 'Designer']]")
+  public static Map<String, String> renderTable(
+      @Schema(
+          name = "caption",
+          description = "Optional caption/title for the table (e.g., 'User Directory' or 'Sales Report Q4 2024')"
+      ) String caption,
+      @Schema(
+          name = "header",
+          description = "Optional list of header column names. Should match the number of columns in each data row. " +
+              "Example: ['Name', 'Age', 'Department']"
+      ) List<String> header,
+      @Schema(
+          name = "data",
+          description = "Table data as a 2D array (list of rows, where each row is a list of cell values). " +
+              "All values should be strings. Each row should have the same number of columns. " +
+              "Example: [['John', '25', 'Engineering'], ['Jane', '30', 'Design'], ['Bob', '28', 'Marketing']]"
+      ) List<List<String>> data,
+      @Schema(
+          name = "footer",
+          description = "Optional list of footer cell values (e.g., totals or summary data). " +
+              "Should match the number of columns. Example: ['Total', '83', '3 Employees']"
+      ) List<String> footer
+  ) {
+    log.info("Rendering table with {} rows", data != null ? data.size() : 0);
+
+    java.util.Map<String, Object> tableData = new java.util.HashMap<>();
+    if (caption != null) tableData.put("caption", caption);
+    if (header != null) tableData.put("header", header);
+    tableData.put("data", data);
+    if (footer != null) tableData.put("footer", footer);
+
+    webSocketHandler.broadcastTable(tableData);
+
+    return Map.of("status", "Table rendered successfully");
   }
 }

@@ -117,6 +117,11 @@ public class FormWebSocketHandler extends TextWebSocketHandler {
         broadcastNotification("chart", chartData);
     }
 
+    // Broadcast table to all connected clients
+    public void broadcastTable(Map<String, Object> tableData) {
+        broadcastNotification("table", tableData);
+    }
+
     private void broadcastNotification(String method, Map<String, Object> params) {
         try {
             ObjectNode notification = objectMapper.createObjectNode();

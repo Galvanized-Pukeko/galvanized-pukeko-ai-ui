@@ -9,6 +9,7 @@ import PkButton from './components/PkButton.vue'
 import PkInputCounter from './components/PkInputCounter.vue'
 import PkBarChart from './components/PkBarChart.vue'
 import PkPieChart from './components/PkPieChart.vue'
+import PkTable from './components/PkTable.vue'
 import ChatInterface from './components/ChatInterface.vue'
 import PkNav from './components/PkNav.vue'
 import { connectionService, type ConnectionStatus, type ComponentConfig, type WebSocketMessage } from './services/connectionService'
@@ -30,6 +31,12 @@ const currentChart = ref<{
     }[]
   }
 } | null>(null)
+const currentTable = ref<{
+  caption?: string
+  header?: string[]
+  data: string[][]
+  footer?: string[]
+} | null>(null)
 const componentValues = ref<{
   input: Record<string, string>
   checkbox: Record<string, boolean>
@@ -48,7 +55,8 @@ const componentMap = markRaw({
   select: PkSelect,
   button: PkButton,
   counter: PkInputCounter,
-  nav: PkNav
+  nav: PkNav,
+  table: PkTable
 })
 
 /**
@@ -128,6 +136,7 @@ const getComponent = (type: string) => {
 let unsubscribeStatus: (() => void) | null = null
 let unsubscribeMessage: (() => void) | null = null
 let unsubscribeChartMessage: (() => void) | null = null
+let unsubscribeTableMessage: (() => void) | null = null
 
 // This all is really bad stuff and has to be refactored
 const handleRenderComponents = (message: WebSocketMessage) => {
@@ -180,6 +189,26 @@ const handleChartMessage = (message: WebSocketMessage) => {
   }
 }
 
+const handleTableMessage = (message: WebSocketMessage) => {
+  console.log('Received table message from server:', message)
+  // Cast to expected table message structure
+  const tableMessage = message as unknown as {
+    caption?: string
+    header?: string[]
+    data: string[][]
+    footer?: string[]
+  }
+
+  if (tableMessage.data) {
+    currentTable.value = {
+      caption: tableMessage.caption,
+      header: tableMessage.header,
+      data: tableMessage.data,
+      footer: tableMessage.footer
+    }
+  }
+}
+
 const handleSubmit = (event: Event) => {
   event.preventDefault()
   const allValues: Record<string, string | boolean | number> = {
@@ -224,6 +253,17 @@ const handleClearChart = () => {
   })
 }
 
+const handleClearTable = () => {
+  // Clear the current table
+  currentTable.value = null
+
+  // Send cancel message to server
+  connectionService.sendMessage({
+    type: 'cancel',
+    timestamp: Date.now()
+  })
+}
+
 const sendMessage = () => {
   connectionService.sendMessage({
     jsonrpc: '2.0',
@@ -243,6 +283,7 @@ onMounted(() => {
 
   unsubscribeMessage = connectionService.subscribeToMessage('form', handleRenderComponents)
   unsubscribeChartMessage = connectionService.subscribeToMessage('chart', handleChartMessage)
+  unsubscribeTableMessage = connectionService.subscribeToMessage('table', handleTableMessage)
 })
 
 onUnmounted(() => {
@@ -254,6 +295,9 @@ onUnmounted(() => {
   }
   if (unsubscribeChartMessage) {
     unsubscribeChartMessage()
+  }
+  if (unsubscribeTableMessage) {
+    unsubscribeTableMessage()
   }
   connectionService.disconnect()
 })
@@ -279,12 +323,12 @@ onUnmounted(() => {
             </span>
           </div>
 
-          <!-- Show only one section at a time: waiting message, form, or chart -->
-          <div v-if="!currentChart && serverComponents.length === 0" class="info">
+          <!-- Show only one section at a time: waiting message, form, chart, or table -->
+          <div v-if="!currentChart && !currentTable && serverComponents.length === 0" class="info">
             Waiting for server to send components...
           </div>
 
-          <PkForm v-else-if="!currentChart && serverComponents.length > 0" @submit="handleSubmit" class="dynamic-form">
+          <PkForm v-else-if="!currentChart && !currentTable && serverComponents.length > 0" @submit="handleSubmit" class="dynamic-form">
             <h2>Server-Requested Form</h2>
             <p class="form-info">server-rendered form</p>
 
@@ -326,7 +370,7 @@ onUnmounted(() => {
           </PkForm>
 
           <!-- Chart rendering section -->
-          <div v-else-if="currentChart" class="chart-section">
+          <div v-else-if="currentChart && !currentTable" class="chart-section">
             <h2>Server-Requested Chart</h2>
             <PkBarChart
               v-if="currentChart.type === 'bar'"
@@ -340,6 +384,22 @@ onUnmounted(() => {
             />
             <div class="chart-buttons">
               <PkButton type="button" @click="handleClearChart">
+                Clear
+              </PkButton>
+            </div>
+          </div>
+
+          <!-- Table rendering section -->
+          <div v-else-if="currentTable" class="table-section">
+            <h2>Server-Requested Table</h2>
+            <PkTable
+              :caption="currentTable.caption"
+              :header="currentTable.header"
+              :data="currentTable.data"
+              :footer="currentTable.footer"
+            />
+            <div class="table-buttons">
+              <PkButton type="button" @click="handleClearTable">
                 Clear
               </PkButton>
             </div>
@@ -401,6 +461,26 @@ onUnmounted(() => {
 }
 
 .chart-buttons {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.table-section {
+  margin: 2rem 0;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.table-section h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #374151;
+}
+
+.table-buttons {
   margin-top: 1rem;
   display: flex;
   gap: 0.5rem;
