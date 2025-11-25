@@ -131,7 +131,7 @@ public class UiAgent {
   @Schema(description = "Display a table to present structured data in rows and columns. " +
       "Use this tool when you need to show tabular data, lists, or results from other tools. " +
       "Example: To show user data, use header=['Name', 'Age', 'Role'] and " +
-      "data=[['John', '25', 'Engineer'], ['Jane', '30', 'Designer']]")
+      "data=[['John', '25', 'Engineer'], ['Jane', '30', 'Designer']] and footer=[]")
   public static Map<String, String> renderTable(
       @Schema(
           name = "caption",
@@ -150,8 +150,8 @@ public class UiAgent {
       ) List<List<String>> data,
       @Schema(
           name = "footer",
-          description = "Optional list of footer cell values (e.g., totals or summary data). " +
-              "Should match the number of columns. Example: ['Total', '83', '3 Employees']"
+          description = "List of footer cell values (e.g., totals or summary data). " +
+              "Example: ['Total', '83', '3 Employees']. Provide empty array if you don't need footer."
       ) List<String> footer
   ) {
     log.info("Rendering table with {} rows", data != null ? data.size() : 0);
