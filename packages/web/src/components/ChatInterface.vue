@@ -9,6 +9,7 @@ interface Message {
     text: string
     sender: 'user' | 'ai'
     toolCall?: string  // Name of the tool that was called
+    toolResponse?: string  // Stringified response from the tool
   }
 
   const messages = ref<Message[]>([])
@@ -51,23 +52,34 @@ interface Message {
     try {
       const response = await chatService.sendMessage(sessionId.value, text)
 
-      // Process all chunks to find function calls
-      const functionCalls: string[] = []
+      // Process all chunks to find function calls and their responses
+      const functionCallMap = new Map<string, { name: string, response?: any }>()
+      
       for (const chunk of response.chunks) {
         for (const part of chunk.content.parts) {
           if (part.functionCall) {
-            functionCalls.push(part.functionCall.name)
+            functionCallMap.set(part.functionCall.id, {
+              name: part.functionCall.name,
+              response: undefined
+            })
+          }
+          if (part.functionResponse) {
+            const existing = functionCallMap.get(part.functionResponse.id)
+            if (existing) {
+              existing.response = part.functionResponse.response
+            }
           }
         }
       }
 
-      // Add a message for each function call
-      for (const toolName of functionCalls) {
+      // Add a message for each function call with its response
+      for (const [id, { name, response: fnResponse }] of functionCallMap) {
         messages.value.push({
-          id: `${response.finalMessage.id}-tool-${toolName}`,
+          id: `${response.finalMessage.id}-tool-${id}`,
           text: '',
           sender: 'ai',
-          toolCall: toolName
+          toolCall: name,
+          toolResponse: fnResponse ? JSON.stringify(fnResponse, null, 2) : undefined
         })
       }
 
@@ -106,7 +118,13 @@ interface Message {
         :class="['message', msg.sender, { 'tool-call': msg.toolCall }]"
       >
         <div v-if="msg.toolCall" class="tool-call-content">
-          🔧 Called <strong>{{ msg.toolCall }}</strong> tool
+          <div class="tool-call-header">
+            🔧 Called <strong>{{ msg.toolCall }}</strong> tool
+          </div>
+          <details v-if="msg.toolResponse" class="tool-response-details">
+            <summary>View tool response</summary>
+            <pre class="tool-response-data">{{ msg.toolResponse }}</pre>
+          </details>
         </div>
         <div v-else class="message-content">
           {{ msg.text }}
@@ -215,6 +233,52 @@ interface Message {
 .tool-call-content strong {
   font-weight: 600;
   font-style: normal;
+}
+
+.tool-call-header {
+  margin-bottom: 0.25rem;
+}
+
+.tool-response-details {
+  margin-top: 0.5rem;
+  border-top: 1px solid #93c5fd;
+  padding-top: 0.5rem;
+}
+
+.tool-response-details summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: #2563eb;
+  user-select: none;
+  padding: 0.25rem 0;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.tool-response-details summary:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.tool-response-details[open] summary {
+  margin-bottom: 0.5rem;
+}
+
+.tool-response-data {
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  overflow-x: auto;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+  color: #334155;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .input-area {
