@@ -6,9 +6,9 @@
     "build": "tsc",
     "dev": "npm run build && node dist/mcp-http.js",
     "test": "vitest run",
-    "lint:oxlint": "oxlint . --fix -D correctness --ignore-path .gitignore",
-    "lint:eslint": "eslint . --fix",
-    "lint": "oxlint . --fix -D correctness --ignore-path .gitignore && eslint . --fix"
+    "lint:oxlint": "oxlint  --fix -D correctness --ignore-path .gitignore",
+    "lint:eslint": "eslint  --fix",
+    "lint": "oxlint  --fix -D correctness --ignore-path .gitignore && eslint . --fix"
   },
   "author": "",
   "license": "ISC",

@@ -2,8 +2,8 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createServer as createHttpServer } from 'http';
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { z } from "zod";
-import { log, error } from './utils/console.js';
-import { JsonRpcRequest, JsonRpcResponse, JsonRpcError } from './types/jsonrpc.js';
+import { log, error } from './utils/console';
+import { JsonRpcRequest, JsonRpcResponse, JsonRpcError } from './types/jsonrpc';
 
 const handleJsonRpcMethod = async (request: JsonRpcRequest, ws: WebSocket, mcpServer?: Server) => {
   const sendResponse = (result?: unknown, error?: JsonRpcError) => {

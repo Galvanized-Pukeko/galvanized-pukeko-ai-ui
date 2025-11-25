@@ -9,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import {z} from "zod";
 import {zodToJsonSchema} from "zod-to-json-schema";
-import { createWebSocketServer, WebSocketServerManager } from './websocket-server.js';
+import { createWebSocketServer, WebSocketServerManager } from './websocket-server';
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;

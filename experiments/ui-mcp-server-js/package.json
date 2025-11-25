@@ -12,9 +12,9 @@
     "mcp-http": "npm run build && node dist/mcp-boilerplate/mcp-http.js",
     "mcp-stdio": "npm run build && node dist/mcp-boilerplate/mcp-stdio.js",
     "dev-server-randomp": " npm run build && node dist/random-server.js",
-    "lint:oxlint": "oxlint . --fix -D correctness --ignore-path .gitignore",
-    "lint:eslint": "eslint . --fix",
-    "lint": "oxlint . --fix -D correctness --ignore-path .gitignore && eslint . --fix",
+    "lint:oxlint": "oxlint  --fix -D correctness --ignore-path .gitignore",
+    "lint:eslint": "eslint  --fix",
+    "lint": "oxlint  --fix -D correctness --ignore-path .gitignore && eslint . --fix",
     "chat": "gth chat"
   },
   "author": "",

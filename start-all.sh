@@ -10,14 +10,14 @@ cleanup() {
 # Trap SIGINT (Ctrl+C) and call cleanup
 trap cleanup SIGINT
 
-echo "Starting UI Server ADK..."
-cd packages/ui-server-adk
+echo "Starting UI ADK Agent..."
+cd packages/galvanized-pukeko-agent-adk
 mvn clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--server.port=8080 --adk.agents.source-dir=target" &
 ADK_PID=$!
 cd ../..
 
-echo "Starting Web UI..."
-cd packages/web
+echo "Starting Web Client..."
+cd packages/galvanized-pukeko-web-client
 npm run dev &
 WEB_PID=$!
 cd ../..
