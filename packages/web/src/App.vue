@@ -51,6 +51,80 @@ const componentMap = markRaw({
   nav: PkNav
 })
 
+/**
+ * Centralized component type configuration
+ * Defines how each component type should be initialized and which value store to use
+ */
+const componentTypeConfig: Record<string, {
+  valueStore: keyof typeof componentValues.value
+  defaultValue: (comp: ComponentConfig) => string | boolean
+}> = {
+  input: {
+    valueStore: 'input',
+    defaultValue: (comp) => comp.value || ''
+  },
+  checkbox: {
+    valueStore: 'checkbox',
+    defaultValue: () => false
+  },
+  radio: {
+    valueStore: 'radio',
+    defaultValue: (comp) => comp.value || 'option1'
+  },
+  select: {
+    valueStore: 'select',
+    defaultValue: (comp) => comp.value || ''
+  },
+  counter: {
+    valueStore: 'input',
+    defaultValue: (comp) => comp.value || ''
+  }
+}
+
+/**
+ * Component rendering configuration
+ * Defines how each component type should be rendered with its props
+ */
+const getComponentProps = (component: ComponentConfig, index: number): Record<string, any> | null => {
+  const key = component.label || `${component.type}_${index}`
+  const config = componentTypeConfig[component.type]
+  
+  if (!config) return null
+  
+  const valueStore = componentValues.value[config.valueStore]
+  
+  const baseProps = {
+    name: component.label,
+    placeholder: component.label,
+    label: component.label
+  }
+  
+  const modelProps = {
+    modelValue: valueStore[key],
+    'onUpdate:modelValue': (val: string | number | boolean) => {
+      if (config.valueStore === 'checkbox') {
+        valueStore[key] = val as never
+      } else {
+        valueStore[key] = String(val) as never
+      }
+    }
+  }
+  
+  // Special handling for specific component types
+  if (component.type === 'radio') {
+    return { ...baseProps, ...modelProps, value: 'option1' }
+  }
+  
+  return { ...baseProps, ...modelProps }
+}
+
+/**
+ * Type-safe component map accessor
+ */
+const getComponent = (type: string) => {
+  return componentMap[type as keyof typeof componentMap]
+}
+
 let unsubscribeStatus: (() => void) | null = null
 let unsubscribeMessage: (() => void) | null = null
 let unsubscribeChartMessage: (() => void) | null = null
@@ -69,22 +143,11 @@ const handleRenderComponents = (message: WebSocketMessage) => {
 
     message.components.forEach((comp, index) => {
       const key = comp.label || `${comp.type}_${index}`
-      switch (comp.type) {
-        case 'input':
-          componentValues.value.input[key] = comp.value || ''
-          break
-        case 'checkbox':
-          componentValues.value.checkbox[key] = false
-          break
-        case 'radio':
-          componentValues.value.radio[key] = comp.value || 'option1'
-          break
-        case 'select':
-          componentValues.value.select[key] = comp.value || ''
-          break
-        case 'counter':
-          componentValues.value.input[key] = comp.value || ''
-          break
+      const config = componentTypeConfig[comp.type]
+      
+      if (config) {
+        const valueStore = componentValues.value[config.valueStore]
+        valueStore[key] = config.defaultValue(comp) as never
       }
     })
   }
@@ -226,41 +289,12 @@ onUnmounted(() => {
             <p class="form-info">server-rendered form</p>
 
             <div v-for="(component, index) in serverComponents.filter(c => c.type !== 'button')" :key="`${component.type}_${index}`" class="form-group">
-              <component
-                :is="componentMap[component.type]"
-                v-if="component.type === 'input'"
-                :modelValue="componentValues.input[component.label || `${component.type}_${index}`]"
-                @update:modelValue="(val: string | number) => componentValues.input[component.label || `${component.type}_${index}`] = String(val)"
-                :placeholder="component.label"
-                :name="component.label"
-              />
-
-              <component
-                :is="componentMap[component.type]"
-                v-else-if="component.type === 'checkbox'"
-                :modelValue="componentValues.checkbox[component.label || `${component.type}_${index}`]"
-                @update:modelValue="(val: boolean) => componentValues.checkbox[component.label || `${component.type}_${index}`] = val"
-                :label="component.label"
-                :name="component.label"
-              />
-
-              <component
-                :is="componentMap[component.type]"
-                v-else-if="component.type === 'radio'"
-                :modelValue="componentValues.radio[component.label || `${component.type}_${index}`]"
-                @update:modelValue="(val: string | number) => componentValues.radio[component.label || `${component.type}_${index}`] = String(val)"
-                :name="component.label"
-                value="option1"
-                :label="component.label"
-              />
-
-              <div v-else-if="component.type === 'select'">
+              <!-- Select component needs special handling for options -->
+              <template v-if="component.type === 'select'">
                 <label>{{ component.label }}:</label>
                 <component
-                  :is="componentMap[component.type]"
-                  :modelValue="componentValues.select[component.label || `${component.type}_${index}`]"
-                  @update:modelValue="(val: string | number) => componentValues.select[component.label || `${component.type}_${index}`] = String(val)"
-                  :name="component.label"
+                  :is="getComponent(component.type)"
+                  v-bind="getComponentProps(component, index)"
                 >
                   <option value="">Select an option</option>
                   <option
@@ -271,7 +305,14 @@ onUnmounted(() => {
                     {{ option }}
                   </option>
                 </component>
-              </div>
+              </template>
+              
+              <!-- All other components use the same pattern -->
+              <component
+                v-else
+                :is="getComponent(component.type)"
+                v-bind="getComponentProps(component, index)"
+              />
             </div>
 
             <div class="form-buttons">
