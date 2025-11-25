@@ -3,6 +3,9 @@ package io.github.galvanized_pukeko;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.tools.Annotations.Schema;
 import com.google.adk.tools.FunctionTool;
+import com.google.adk.tools.mcp.McpToolset;
+import com.google.adk.tools.mcp.SseServerParameters;
+import com.google.adk.tools.mcp.StreamableHttpServerParameters;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -15,26 +18,41 @@ public class UiAgent {
   private static final Logger log = LoggerFactory.getLogger(UiAgent.class);
   private static FormWebSocketHandler webSocketHandler;
 
-  public static final LlmAgent ROOT_AGENT =
-      LlmAgent.builder()
-          .name("ui-agent")
-          .description("UI Agent that can render dynamic forms")
-          .model("gemini-2.5-flash")
-          .instruction(
-              """
-                  You are a helpful assistant that can show forms to collect information from users.
-                  When you need to collect structured data, use the 'renderForm' tool to display a form.
-                  
-                  Example: If a user asks to fill out a contact form, use renderForm with components like:
-                  - {"type": "input", "label": "Name", "value": ""}
-                  - {"type": "input", "label": "Email", "value": ""}
-                  """
-          )
-          .tools(
-              FunctionTool.create(UiAgent.class, "renderForm"),
-              FunctionTool.create(UiAgent.class, "renderChart")
-          )
+  public static final LlmAgent ROOT_AGENT;
+
+  static {
+    String jwt = System.getenv("PUKEKO_MCP_JWT");
+    var builder = LlmAgent.builder()
+        .name("ui-agent")
+        .description("UI Agent that can render dynamic forms")
+        .model("gemini-2.5-flash")
+        .instruction(
+            """
+                You are a helpful assistant that can show forms to collect information from users.
+                When you need to collect structured data, use the 'renderForm' tool to display a form.
+                
+                Example: If a user asks to fill out a contact form, use renderForm with components like:
+                - {"type": "input", "label": "Name", "value": ""}
+                - {"type": "input", "label": "Email", "value": ""}
+                """
+        );
+
+    java.util.List<Object> tools = new java.util.ArrayList<>();
+    tools.add(FunctionTool.create(UiAgent.class, "renderForm"));
+    tools.add(FunctionTool.create(UiAgent.class, "renderChart"));
+
+    if (jwt != null && !jwt.isEmpty()) {
+      log.info("PUKEKO_MCP_JWT found, adding MCP tools");
+      StreamableHttpServerParameters mcpServerParams = StreamableHttpServerParameters.builder("http://localhost:8081/mcp")
+          .headers(Map.of("Authorization", "Bearer " + jwt))
           .build();
+      tools.add(new McpToolset(mcpServerParams));
+    } else {
+      log.info("PUKEKO_MCP_JWT not found, skipping MCP tools");
+    }
+
+    ROOT_AGENT = builder.tools(tools).build();
+  }
 
   public UiAgent(FormWebSocketHandler handler) {
     log.info("Initializing UI Agent");
