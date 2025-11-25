@@ -40,6 +40,10 @@ public class UiAgent {
     tools.add(FunctionTool.create(UiAgent.class, "renderForm"));
     tools.add(FunctionTool.create(UiAgent.class, "renderChart"));
 
+    // FIXME this is an ugly way to set this up.
+    // Ideally it should
+    // 1. Detect type of connection from the provided link and init appropriate setup sse/http/stdio
+    // 2. It should be configured in a better way than via env vars
     if (jwt != null && !jwt.isEmpty()) {
       log.info("PUKEKO_MCP_JWT found, adding MCP tools");
       StreamableHttpServerParameters mcpServerParams = StreamableHttpServerParameters.builder("http://localhost:8081")

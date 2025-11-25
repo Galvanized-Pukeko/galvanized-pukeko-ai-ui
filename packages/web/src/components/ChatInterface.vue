@@ -1,14 +1,21 @@
 <script setup lang="ts">
-  import { ref, onMounted } from 'vue'
-  import PkButton from './PkButton.vue'
-  import PkInput from './PkInput.vue'
-  import { chatService } from '../services/chatService'
-  
-  const messages = ref<Array<{ id: number | string, text: string, sender: 'user' | 'ai' }>>([])
+import {onMounted, ref} from 'vue'
+import PkButton from './PkButton.vue'
+import PkInput from './PkInput.vue'
+import {chatService} from '../services/chatService'
+
+interface Message {
+    id: number | string
+    text: string
+    sender: 'user' | 'ai'
+    toolCall?: string  // Name of the tool that was called
+  }
+
+  const messages = ref<Message[]>([])
   const newMessage = ref('')
   const sessionId = ref<string | null>(null)
   const isLoading = ref(false)
-  
+
   onMounted(async () => {
     try {
       const session = await chatService.createSession()
@@ -27,32 +34,56 @@
       })
     }
   })
-  
+
   const sendMessage = async () => {
     if (!newMessage.value.trim() || !sessionId.value || isLoading.value) return
-    
+
     const text = newMessage.value
     messages.value.push({
       id: Date.now(),
       text: text,
       sender: 'user'
     })
-    
+
     newMessage.value = ''
     isLoading.value = true
-    
+
     try {
       const response = await chatService.sendMessage(sessionId.value, text)
-      
-      // Extract text from response
-      // The response structure has content.parts array
-      const aiText = response.content.parts.map(p => p.text).join('\n')
-      
-      messages.value.push({
-        id: response.id,
-        text: aiText,
-        sender: 'ai'
-      })
+
+      // Process all chunks to find function calls
+      const functionCalls: string[] = []
+      for (const chunk of response.chunks) {
+        for (const part of chunk.content.parts) {
+          if (part.functionCall) {
+            functionCalls.push(part.functionCall.name)
+          }
+        }
+      }
+
+      // Add a message for each function call
+      for (const toolName of functionCalls) {
+        messages.value.push({
+          id: `${response.finalMessage.id}-tool-${toolName}`,
+          text: '',
+          sender: 'ai',
+          toolCall: toolName
+        })
+      }
+
+      // Extract text from the final message
+      const aiText = response.finalMessage.content.parts
+        .filter(p => p.text)
+        .map(p => p.text)
+        .join('\n')
+
+      if (aiText.trim()) {
+        messages.value.push({
+          id: response.finalMessage.id,
+          text: aiText,
+          sender: 'ai'
+        })
+      }
     } catch (error) {
       console.error('Failed to send message:', error)
       messages.value.push({
@@ -69,20 +100,23 @@
 <template>
   <div class="chat-interface" :class="{ 'is-loading': isLoading }">
     <div class="messages">
-      <div 
-        v-for="msg in messages" 
-        :key="msg.id" 
-        :class="['message', msg.sender]"
+      <div
+        v-for="msg in messages"
+        :key="msg.id"
+        :class="['message', msg.sender, { 'tool-call': msg.toolCall }]"
       >
-        <div class="message-content">
+        <div v-if="msg.toolCall" class="tool-call-content">
+          🔧 Called <strong>{{ msg.toolCall }}</strong> tool
+        </div>
+        <div v-else class="message-content">
           {{ msg.text }}
         </div>
       </div>
     </div>
     <div class="input-area">
-      <PkInput 
-        v-model="newMessage" 
-        placeholder="Type a message..." 
+      <PkInput
+        v-model="newMessage"
+        placeholder="Type a message..."
         @keyup.enter="sendMessage"
         name="chat-input"
       />
@@ -161,6 +195,26 @@
   background-color: #f3f4f6;
   color: #1f2937;
   border-bottom-left-radius: 0.25rem;
+}
+
+.message.tool-call {
+  max-width: 60%;
+}
+
+.tool-call-content {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  background-color: #dbeafe;
+  color: #1e40af;
+  border-left: 3px solid #3b82f6;
+  font-style: italic;
+}
+
+.tool-call-content strong {
+  font-weight: 600;
+  font-style: normal;
 }
 
 .input-area {

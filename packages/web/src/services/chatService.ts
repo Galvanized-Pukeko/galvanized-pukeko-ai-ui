@@ -7,8 +7,24 @@ interface ChatSession {
     lastUpdateTime: number
 }
 
+interface FunctionCall {
+    id: string
+    name: string
+    args: Record<string, unknown>
+}
+
+interface FunctionResponse {
+    id: string
+    name: string
+    response: {
+        text_output?: Array<{ text: string }>
+    }
+}
+
 interface ChatMessagePart {
-    text: string
+    text?: string
+    functionCall?: FunctionCall
+    functionResponse?: FunctionResponse
 }
 
 interface ChatMessage {
@@ -27,6 +43,11 @@ interface ChatResponse {
         requestedAuthConfigs: Record<string, unknown>
     }
     timestamp: number
+}
+
+interface CompleteChatResponse {
+    chunks: ChatResponse[]
+    finalMessage: ChatResponse
 }
 
 class ChatService {
@@ -61,7 +82,7 @@ class ChatService {
         }
     }
 
-    async sendMessage(sessionId: string, text: string, userId: string = 'user'): Promise<ChatResponse> {
+    async sendMessage(sessionId: string, text: string, userId: string = 'user'): Promise<CompleteChatResponse> {
         console.log('[ChatService] Sending message:', { sessionId, text, userId })
 
         const payload = {
@@ -102,18 +123,42 @@ class ChatService {
             const responseText = await response.text()
             console.log('[ChatService] Raw response:', responseText)
 
-            // Parse SSE format - extract JSON from "data:" prefix
+            // Parse SSE format - extract all JSON chunks from "data:" prefix
             const lines = responseText.trim().split('\n')
+            const chunks: ChatResponse[] = []
+
             for (const line of lines) {
                 if (line.startsWith('data:')) {
                     const jsonStr = line.substring(5).trim() // Remove "data:" prefix
-                    const data = JSON.parse(jsonStr)
-                    console.log('[ChatService] Message response:', data)
-                    return data
+                    const data = JSON.parse(jsonStr) as ChatResponse
+                    console.log('[ChatService] Parsed chunk:', data)
+                    chunks.push(data)
                 }
             }
 
-            throw new Error('No data found in SSE response')
+            if (chunks.length === 0) {
+                throw new Error('No data found in SSE response')
+            }
+
+            // The last chunk with text content is the final message
+            let finalMessage = chunks[chunks.length - 1]
+
+            // Find the last chunk that has actual text (not just function calls/responses)
+            for (let i = chunks.length - 1; i >= 0; i--) {
+                const chunk = chunks[i]
+                if (chunk.content.parts.some(p => p.text && p.text.trim().length > 0)) {
+                    finalMessage = chunk
+                    break
+                }
+            }
+
+            console.log('[ChatService] Final message:', finalMessage)
+            console.log('[ChatService] Total chunks:', chunks.length)
+
+            return {
+                chunks,
+                finalMessage
+            }
         } catch (error) {
             console.error('[ChatService] Error sending message:', error)
             throw error
@@ -122,4 +167,5 @@ class ChatService {
 }
 
 export const chatService = new ChatService()
-export type { ChatSession, ChatResponse, ChatMessage }
+export type { ChatSession, ChatResponse, ChatMessage, CompleteChatResponse, ChatMessagePart }
+
