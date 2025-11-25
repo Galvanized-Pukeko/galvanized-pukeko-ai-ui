@@ -4,7 +4,6 @@ import com.google.adk.agents.LlmAgent;
 import com.google.adk.tools.Annotations.Schema;
 import com.google.adk.tools.FunctionTool;
 import com.google.adk.tools.mcp.McpToolset;
-import com.google.adk.tools.mcp.SseServerParameters;
 import com.google.adk.tools.mcp.StreamableHttpServerParameters;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +42,7 @@ public class UiAgent {
 
     if (jwt != null && !jwt.isEmpty()) {
       log.info("PUKEKO_MCP_JWT found, adding MCP tools");
-      StreamableHttpServerParameters mcpServerParams = StreamableHttpServerParameters.builder("http://localhost:8081/mcp")
+      StreamableHttpServerParameters mcpServerParams = StreamableHttpServerParameters.builder("http://localhost:8081")
           .headers(Map.of("Authorization", "Bearer " + jwt))
           .build();
       tools.add(new McpToolset(mcpServerParams));
