@@ -3,8 +3,9 @@ package io.github.galvanized_pukeko;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.tools.Annotations.Schema;
 import com.google.adk.tools.FunctionTool;
-import com.google.adk.tools.mcp.McpToolset;
-import com.google.adk.tools.mcp.StreamableHttpServerParameters;
+import io.github.galvanized_pukeko.config.McpConfiguration;
+import io.github.galvanized_pukeko.config.McpToolsetFactory;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -16,12 +17,41 @@ public class UiAgent {
 
   private static final Logger log = LoggerFactory.getLogger(UiAgent.class);
   private static FormWebSocketHandler webSocketHandler;
-
+  
+  // Static initialization for agent discovery by CompiledAgentLoader
+  // This uses environment variables for configuration to work without Spring context
   public static final LlmAgent ROOT_AGENT;
 
   static {
+    // Check if MCP should be enabled via environment variable
+    String mcpUrl = System.getenv("MCP_URL");
+    String mcpEnabled = System.getenv("MCP_ENABLED");
     String jwt = System.getenv("PUKEKO_MCP_JWT");
-    var builder = LlmAgent.builder()
+    
+    List<Object> tools = new ArrayList<>();
+    tools.add(FunctionTool.create(UiAgent.class, "renderForm"));
+    tools.add(FunctionTool.create(UiAgent.class, "renderChart"));
+    tools.add(FunctionTool.create(UiAgent.class, "renderTable"));
+    
+    // Add MCP tools if enabled via environment variables (for non-Spring usage)
+    if ("true".equalsIgnoreCase(mcpEnabled) && mcpUrl != null && !mcpUrl.isEmpty()) {
+      log.info("MCP enabled via environment variables, URL: {}", mcpUrl);
+      try {
+        // Create a temporary configuration from environment variables
+        McpConfiguration envConfig = new McpConfiguration();
+        envConfig.setEnabled(true);
+        envConfig.setUrl(mcpUrl);
+        envConfig.setJwt(jwt);
+        
+        // Use factory to create toolset
+        McpToolsetFactory factory = new McpToolsetFactory();
+        factory.create(envConfig).ifPresent(tools::add);
+      } catch (Exception e) {
+        log.error("Failed to initialize MCP from environment variables", e);
+      }
+    }
+    
+    ROOT_AGENT = LlmAgent.builder()
         .name("ui-agent")
         .description("UI Agent that can render dynamic forms")
         .model("gemini-2.5-flash")
@@ -34,28 +64,9 @@ public class UiAgent {
                 - {"type": "input", "label": "Name", "value": ""}
                 - {"type": "input", "label": "Email", "value": ""}
                 """
-        );
-
-    java.util.List<Object> tools = new java.util.ArrayList<>();
-    tools.add(FunctionTool.create(UiAgent.class, "renderForm"));
-    tools.add(FunctionTool.create(UiAgent.class, "renderChart"));
-    tools.add(FunctionTool.create(UiAgent.class, "renderTable"));
-
-    // FIXME this is an ugly way to set this up.
-    // Ideally it should
-    // 1. Detect type of connection from the provided link and init appropriate setup sse/http/stdio
-    // 2. It should be configured in a better way than via env vars
-    if (jwt != null && !jwt.isEmpty()) {
-      log.info("PUKEKO_MCP_JWT found, adding MCP tools");
-      StreamableHttpServerParameters mcpServerParams = StreamableHttpServerParameters.builder("http://localhost:8081")
-          .headers(Map.of("Authorization", "Bearer " + jwt))
-          .build();
-      tools.add(new McpToolset(mcpServerParams));
-    } else {
-      log.info("PUKEKO_MCP_JWT not found, skipping MCP tools");
-    }
-
-    ROOT_AGENT = builder.tools(tools).build();
+        )
+        .tools(tools)
+        .build();
   }
 
   public UiAgent(FormWebSocketHandler handler) {
