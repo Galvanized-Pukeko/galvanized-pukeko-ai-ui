@@ -14,6 +14,8 @@ import java.util.NoSuchElementException;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Primary;
 
 /**
@@ -21,11 +23,26 @@ import org.springframework.context.annotation.Primary;
  * configuration including resource handlers, view controllers, and bean definitions. Also scans the
  * custom agent package for additional components.
  */
-@SpringBootApplication(scanBasePackages = {
-    "com.google.adk.web",        // Scan ADK web components
-    "io.github.galvanized_pukeko"          // Scan custom agent components
-})
+@SpringBootApplication
+@ComponentScan(
+    basePackages = {
+        "com.google.adk.web",        // Scan ADK web components
+        "io.github.galvanized_pukeko"          // Scan custom agent components
+    },
+    excludeFilters = @ComponentScan.Filter(
+        type = FilterType.ASSIGNABLE_TYPE,
+        classes = AdkWebServer.class
+    )
+)
 public class UiAgentApplication extends AdkWebServer {
+
+  @Override
+  public void addViewControllers(org.springframework.web.servlet.config.annotation.ViewControllerRegistry registry) {
+    // Forward / to index.html so that the Vue app is served
+    registry.addViewController("/").setViewName("forward:/index.html");
+    // Redirect /dev-ui to / for backward compatibility
+    // registry.addRedirectViewController("/dev-ui", "/");
+  }
 
   public static void main(String[] args) {
     // Set WebSocket buffer size before starting the application
