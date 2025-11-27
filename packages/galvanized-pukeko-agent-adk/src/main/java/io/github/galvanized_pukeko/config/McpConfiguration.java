@@ -9,6 +9,7 @@ import java.util.Map;
 /**
  * Configuration properties for MCP (Model Context Protocol) server connection.
  * Supports three transport types: HTTP, SSE, and stdio.
+ * TODO add support for multiple MCP servers
  */
 @Configuration
 @ConfigurationProperties(prefix = "mcp")

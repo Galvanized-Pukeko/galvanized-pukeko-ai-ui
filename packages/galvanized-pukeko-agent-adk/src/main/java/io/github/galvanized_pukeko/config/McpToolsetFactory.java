@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 /**
  * Factory for creating MCP toolsets based on configuration.
  * Supports three transport types: HTTP, SSE, and stdio.
+ * TODO add support for multiple MCP servers
  */
 @Component
 public class McpToolsetFactory {

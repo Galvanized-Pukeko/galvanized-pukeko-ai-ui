@@ -9,7 +9,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-// WARNING a copy from https://github.com/google/adk-java/tree/main/a2a (due to lack of mvn package)
+// WARNING a copy from https://github.com/google/adk-java/tree/main/a2a (due to absence in google-adk-a2a)
+
 /**
  * Registers the transport-only A2A webservice stack.
  *
@@ -23,6 +24,9 @@ import org.springframework.context.annotation.Configuration;
  *       directly.
  *   <li>Add optional remote-proxy wiring for cases where no local agent bean is available.
  * </ul>
+ *
+ * @apiNote **EXPERIMENTAL:** Subject to change, rename, or removal in any future patch release. Do
+ *     not use in production code.
  */
 @Configuration
 @ComponentScan(basePackages = "com.google.adk.webservice")

@@ -2,9 +2,6 @@ package com.google.adk.webservice;
 
 import com.google.adk.a2a.A2ASendMessageExecutor;
 import com.google.adk.a2a.ResponseConverter;
-import com.google.adk.agents.BaseAgent;
-import io.a2a.spec.AgentCapabilities;
-import io.a2a.spec.AgentCard;
 import io.a2a.spec.JSONRPCError;
 import io.a2a.spec.Message;
 import io.a2a.spec.MessageSendParams;
@@ -14,10 +11,14 @@ import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-// WARNING a copy from https://github.com/google/adk-java/tree/main/a2a (due to lack of mvn package)
-/** Core service that bridges the A2A JSON-RPC sendMessage API to a local ADK runner. */
+// WARNING a copy from https://github.com/google/adk-java/tree/main/a2a (due to absence in google-adk-a2a)
+/**
+ * Core service that bridges the A2A JSON-RPC sendMessage API to a local ADK runner.
+ *
+ * @apiNote **EXPERIMENTAL:** Subject to change, rename, or removal in any future patch release. Do
+ *     not use in production code.
+ */
 @Service
 public class A2ARemoteService {
 
@@ -26,19 +27,9 @@ public class A2ARemoteService {
   private static final int ERROR_CODE_INTERNAL_ERROR = -32603;
 
   private final A2ASendMessageExecutor executor;
-  private final String appName;
-  private final String appDescription;
-  private final String appUrl;
 
-  public A2ARemoteService(
-      A2ASendMessageExecutor executor,
-      BaseAgent agent,
-      @Value("${a2a.remote.appUrl:http://localhost:8080/a2a/remote/v1/message:send}") String appUrl
-  ) {
+  public A2ARemoteService(A2ASendMessageExecutor executor) {
     this.executor = executor;
-    this.appName = agent.name();
-    this.appDescription = agent.description();
-    this.appUrl = appUrl;
   }
 
   public SendMessageResponse handle(SendMessageRequest request) {
@@ -79,29 +70,6 @@ public class A2ARemoteService {
       logger.error("Failed to process remote A2A request", e);
       return errorResponse(request, e);
     }
-  }
-
-  public AgentCard getAgentCard() {
-    logger.debug("Generating agent card for {}", appName);
-
-    // Define agent capabilities
-    AgentCapabilities capabilities = new AgentCapabilities.Builder()
-        .streaming(false)
-        .pushNotifications(false)
-        .stateTransitionHistory(false)
-        .extensions(List.of())
-        .build();
-
-    return new AgentCard.Builder()
-        .name(appName)
-        .description(appDescription)
-        .url(appUrl)
-        .version("1.0.0")
-        .capabilities(capabilities)
-        .defaultInputModes(List.of("text"))
-        .defaultOutputModes(List.of("text"))
-        .skills(List.of())
-        .build();
   }
 
   private static Message ensureContextId(Message message) {
