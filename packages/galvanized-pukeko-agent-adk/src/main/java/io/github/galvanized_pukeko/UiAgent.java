@@ -1,8 +1,11 @@
 package io.github.galvanized_pukeko;
 
+import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.tools.Annotations.Schema;
 import com.google.adk.tools.FunctionTool;
+import io.github.galvanized_pukeko.config.A2aAgentFactory;
+import io.github.galvanized_pukeko.config.A2aConfiguration;
 import io.github.galvanized_pukeko.config.McpConfiguration;
 import io.github.galvanized_pukeko.config.McpToolsetFactory;
 import java.util.ArrayList;
@@ -10,49 +13,61 @@ import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Configuration;
 
-@Configuration
 public class UiAgent {
 
   private static final Logger log = LoggerFactory.getLogger(UiAgent.class);
   private static FormWebSocketHandler webSocketHandler;
-  
-  // Static initialization for agent discovery by CompiledAgentLoader
-  // This uses environment variables for configuration to work without Spring context
-  public static final LlmAgent ROOT_AGENT;
 
-  static {
-    // Check if MCP should be enabled via environment variable
-    String mcpUrl = System.getenv("MCP_URL");
-    String mcpEnabled = System.getenv("MCP_ENABLED");
-    String jwt = System.getenv("PUKEKO_MCP_JWT");
+  /**
+   * Factory method to create the UI agent with MCP and A2A configurations.
+   * This is called by UiAgentApplication's custom AgentLoader.
+   *
+   * @param handler WebSocket handler for UI interactions
+   * @param mcpConfig MCP configuration from application.properties
+   * @param mcpFactory Factory for creating MCP toolsets
+   * @param a2aConfig A2A configuration from application.properties
+   * @param a2aFactory Factory for creating A2A remote agents
+   * @return Configured LlmAgent with tools and sub-agents
+   */
+  public static LlmAgent createAgent(
+      FormWebSocketHandler handler,
+      McpConfiguration mcpConfig,
+      McpToolsetFactory mcpFactory,
+      A2aConfiguration a2aConfig,
+      A2aAgentFactory a2aFactory
+  ) {
+    // Note this will actually not be loaded until you send first message.
+    log.info("Creating UI Agent with MCP and A2A configurations");
+
+    // Store handler statically for tools to access
+    // TODO: Refactor tools to not rely on static state if possible, but for now this bridges the gap
+    webSocketHandler = handler;
     
+    // Build tools list
     List<Object> tools = new ArrayList<>();
     tools.add(FunctionTool.create(UiAgent.class, "renderForm"));
     tools.add(FunctionTool.create(UiAgent.class, "renderChart"));
     tools.add(FunctionTool.create(UiAgent.class, "renderTable"));
     
-    // Add MCP tools if enabled via environment variables (for non-Spring usage)
-    if ("true".equalsIgnoreCase(mcpEnabled) && mcpUrl != null && !mcpUrl.isEmpty()) {
-      log.info("MCP enabled via environment variables, URL: {}", mcpUrl);
-      try {
-        // Create a temporary configuration from environment variables
-        McpConfiguration envConfig = new McpConfiguration();
-        envConfig.setEnabled(true);
-        envConfig.setUrl(mcpUrl);
-        envConfig.setJwt(jwt);
-        
-        // Use factory to create toolset
-        McpToolsetFactory factory = new McpToolsetFactory();
-        factory.create(envConfig).ifPresent(tools::add);
-      } catch (Exception e) {
-        log.error("Failed to initialize MCP from environment variables", e);
-      }
-    }
+    // Add MCP toolset if configured
+    mcpFactory.create(mcpConfig).ifPresent(toolset -> {
+      log.info("Adding MCP toolset to UI Agent");
+      tools.add(toolset);
+    });
     
-    ROOT_AGENT = LlmAgent.builder()
-        .name("ui-agent")
+    // Build sub-agents list
+    List<BaseAgent> subAgents = new ArrayList<>();
+    
+    // Add A2A remote agent if configured
+    a2aFactory.create(a2aConfig).ifPresent(remoteAgent -> {
+      log.info("Adding A2A remote agent '{}' to UI Agent", a2aConfig.getName());
+      subAgents.add(remoteAgent);
+    });
+    
+    // Build the agent
+    var agentBuilder = LlmAgent.builder()
+        .name("pukeko-ui-agent")
         .description("UI Agent that can render dynamic forms")
         .model("gemini-2.5-flash")
         .instruction(
@@ -65,13 +80,14 @@ public class UiAgent {
                 - {"type": "input", "label": "Email", "value": ""}
                 """
         )
-        .tools(tools)
-        .build();
-  }
-
-  public UiAgent(FormWebSocketHandler handler) {
-    log.info("Initializing UI Agent");
-    webSocketHandler = handler;
+        .tools(tools);
+    
+    // Only add subAgents if the list is not empty
+    if (!subAgents.isEmpty()) {
+      agentBuilder.subAgents(subAgents);
+    }
+    
+    return agentBuilder.build();
   }
 
   /**

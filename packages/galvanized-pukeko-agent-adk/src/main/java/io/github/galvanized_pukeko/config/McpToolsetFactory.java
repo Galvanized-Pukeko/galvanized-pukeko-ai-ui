@@ -64,7 +64,8 @@ public class McpToolsetFactory {
   private Optional<McpToolset> createHttpToolset(McpConfiguration config) {
     log.info("Creating HTTP MCP toolset");
     
-    var builder = StreamableHttpServerParameters.builder(config.getUrl());
+    var builder = StreamableHttpServerParameters.builder()
+        .url(config.getUrl());
     
     // Add JWT authentication header if provided
     if (config.getJwt() != null && !config.getJwt().isEmpty()) {

@@ -15,12 +15,12 @@ This example demonstrates how to use `galvanized-pukeko-agent-adk` as a Maven de
 
 Start remote Demo A2A agent (`cd demo-agent`)
 ```bash
-mvn clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--server.port=8088 --adk.agents.source-dir=target"
+mvn clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--adk.agents.source-dir=target"
 ```
 
 Start UI demo agent (`cd demo-ui-agent`)
 ```bash
-mvn clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--server.port=8080 --adk.agents.source-dir=target"
+mvn clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--adk.agents.source-dir=target"
 ```
 
 ### Access the UI
