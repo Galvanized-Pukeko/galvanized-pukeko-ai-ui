@@ -146,7 +146,7 @@ class ChatService {
             // Find the last chunk that has actual text (not just function calls/responses)
             for (let i = chunks.length - 1; i >= 0; i--) {
                 const chunk = chunks[i]
-                if (chunk.content.parts.some(p => p.text && p.text.trim().length > 0)) {
+                if (chunk.content.parts && chunk.content.parts.some(p => p.text && p.text.trim().length > 0)) {
                     finalMessage = chunk
                     break
                 }

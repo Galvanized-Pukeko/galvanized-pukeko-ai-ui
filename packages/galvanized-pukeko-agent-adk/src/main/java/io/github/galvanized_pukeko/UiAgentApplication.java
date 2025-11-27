@@ -1,5 +1,7 @@
 package io.github.galvanized_pukeko;
 
+import static io.github.galvanized_pukeko.UiAgent.PUKEKO_UI_AGENT_NAME;
+
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.tools.FunctionTool;
@@ -94,13 +96,13 @@ public class UiAgentApplication extends AdkWebServer {
     public ImmutableList<String> listAgents() {
       log.info("Listing agents...");
 
-      return ImmutableList.of("pukeko-ui-agent");
+      return ImmutableList.of(PUKEKO_UI_AGENT_NAME);
     }
 
     @Override
     public BaseAgent loadAgent(String name) {
       log.info("Loading agent [{}]", name);
-      if ("pukeko-ui-agent".equals(name)) {
+      if (PUKEKO_UI_AGENT_NAME.equals(name)) {
         return uiAgent;
       }
       throw new NoSuchElementException("Agent not found: " + name);

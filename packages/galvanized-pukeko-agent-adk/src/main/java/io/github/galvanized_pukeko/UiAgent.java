@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 public class UiAgent {
 
   private static final Logger log = LoggerFactory.getLogger(UiAgent.class);
+  public static final String PUKEKO_UI_AGENT_NAME = "pukeko-ui-agent";
   private static FormWebSocketHandler webSocketHandler;
 
   /**
@@ -67,7 +68,7 @@ public class UiAgent {
     
     // Build the agent
     var agentBuilder = LlmAgent.builder()
-        .name("pukeko-ui-agent")
+        .name(PUKEKO_UI_AGENT_NAME)
         .description("UI Agent that can render dynamic forms")
         .model("gemini-2.5-flash")
         .instruction(
