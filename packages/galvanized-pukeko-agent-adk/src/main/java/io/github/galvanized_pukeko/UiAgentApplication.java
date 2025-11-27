@@ -22,6 +22,8 @@ import org.springframework.context.annotation.Primary;
  * Main application class for the UI Agent server. Extends AdkWebServer to inherit all ADK web
  * configuration including resource handlers, view controllers, and bean definitions. Also scans the
  * custom agent package for additional components.
+ * AdkWebServer comes from adk-dev, we probably need to create all our implementations
+ * to avoid including the entire adk-dev.
  */
 @SpringBootApplication
 @ComponentScan(
