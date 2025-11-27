@@ -55,7 +55,7 @@ class ChatService {
 
     async createSession(userId: string = 'user'): Promise<ChatSession> {
         console.log('[ChatService] Creating session for user:', userId)
-        const url = `${this.baseUrl}/apps/ui-agent/users/${userId}/sessions`
+        const url = `${this.baseUrl}/apps/pukeko-ui-agent/users/${userId}/sessions`
         console.log('[ChatService] Request URL:', url)
 
         try {
@@ -86,7 +86,7 @@ class ChatService {
         console.log('[ChatService] Sending message:', { sessionId, text, userId })
 
         const payload = {
-            appName: 'ui-agent',
+            appName: 'pukeko-ui-agent',
             userId,
             sessionId,
             newMessage: {

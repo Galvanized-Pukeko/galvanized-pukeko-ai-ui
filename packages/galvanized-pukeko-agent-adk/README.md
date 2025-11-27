@@ -36,7 +36,7 @@ mvn clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--server.
 
 The server will start on port 8080 and serve:
 - Web UI at `http://localhost:8080/`
-- Agent API endpoints at `/apps/ui-agent/`
+- Agent API endpoints at `/apps/pukeko-ui-agent/`
 - WebSocket endpoint at `/ws`
 
 ### Configuration
@@ -98,7 +98,7 @@ This script will:
 ### Creating a Session
 
 ```bash
-curl 'http://localhost:8080/apps/ui-agent/users/user/sessions' \
+curl 'http://localhost:8080/apps/pukeko-ui-agent/users/user/sessions' \
   -X POST \
   -H "Content-Type: application/json" \
   -H 'Accept: application/json'
@@ -108,7 +108,7 @@ Response:
 ```json
 {
   "id": "0c6cbd90-c832-43bc-accd-f47bf78d1cf7",
-  "appName": "ui-agent",
+  "appName": "pukeko-ui-agent",
   "userId": "user",
   "state": {},
   "events": [],
@@ -123,7 +123,7 @@ curl 'http://localhost:8080/run_sse' \
   -H 'Accept: text/event-stream' \
   -H 'Content-Type: application/json' \
   --data-raw '{
-    "appName": "ui-agent",
+    "appName": "pukeko-ui-agent",
     "userId": "user",
     "sessionId": "0c6cbd90-c832-43bc-accd-f47bf78d1cf7",
     "newMessage": {
@@ -143,22 +143,6 @@ The UI Agent provides the following tools:
 - **renderTable**: Show tabular data
 
 ## Development
-
-### Project Structure
-
-```
-src/main/java/io/github/galvanized_pukeko/
-├── UiAgent.java                    # Agent with UI rendering tools
-├── UiAgentApplication.java         # Main Spring Boot application
-├── FormWebSocketHandler.java      # WebSocket handler for forms
-└── config/
-    ├── McpConfiguration.java       # MCP configuration properties
-    └── McpToolsetFactory.java      # Factory for MCP toolset creation
-
-src/main/resources/
-├── application.properties          # Application configuration
-└── browser/                        # Built web client (generated)
-```
 
 ### Stopping the Server
 

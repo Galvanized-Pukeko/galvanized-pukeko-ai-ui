@@ -1,7 +1,9 @@
 package io.github.galvanized_pukeko.config;
 
 import com.google.adk.a2a.RemoteA2AAgent;
+import io.a2a.spec.AgentCapabilities;
 import io.a2a.spec.AgentCard;
+import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,11 +42,21 @@ public class A2aAgentFactory {
     log.info("Creating RemoteA2AAgent for URL: {}", config.getUrl());
 
     try {
+      // Create AgentCapabilities
+      AgentCapabilities capabilities = new AgentCapabilities.Builder().build();
+
       // Create AgentCard with the remote agent's metadata
+      // TODO this should be using well-known agent card
       AgentCard agentCard = new AgentCard.Builder()
           .url(config.getUrl())
           .name(config.getName())
+          .version("0.0.1")
           .description(config.getDescription() != null ? config.getDescription() : "")
+          .capabilities(capabilities)
+          .defaultInputModes(List.of("text"))
+          .defaultOutputModes(List.of("text"))
+          .skills(List.of())
+          .security(List.of())
           .build();
 
       // Build RemoteA2AAgent
