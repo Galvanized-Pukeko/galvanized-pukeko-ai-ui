@@ -70,7 +70,7 @@ public class UiAgent {
     var agentBuilder = LlmAgent.builder()
         .name(PUKEKO_UI_AGENT_NAME)
         .description("UI Agent that can render dynamic forms")
-        .model("gemini-2.5-flash")
+        .model("gemini-2.5-pro")
         .instruction(
             """
                 You are a helpful assistant that can show forms to collect information from users.
@@ -79,6 +79,8 @@ public class UiAgent {
                 Example: If a user asks to fill out a contact form, use renderForm with components like:
                 - {"type": "input", "label": "Name", "value": ""}
                 - {"type": "input", "label": "Email", "value": ""}
+                
+                Use renderForm and renderTable tools eagerly whenever you have data to collect from users or to present to user.
                 """
         )
         .tools(tools);
@@ -163,12 +165,14 @@ public class UiAgent {
   public static Map<String, String> renderTable(
       @Schema(
           name = "caption",
-          description = "Optional caption/title for the table (e.g., 'User Directory' or 'Sales Report Q4 2024')"
+          description = "Optional caption/title for the table (e.g., 'User Directory' or 'Sales Report Q4 2024')",
+          optional = true
       ) String caption,
       @Schema(
           name = "header",
           description = "Optional list of header column names. Should match the number of columns in each data row. " +
-              "Example: ['Name', 'Age', 'Department']"
+              "Example: ['Name', 'Age', 'Department']",
+          optional = true
       ) List<String> header,
       @Schema(
           name = "data",
@@ -179,7 +183,8 @@ public class UiAgent {
       @Schema(
           name = "footer",
           description = "List of footer cell values (e.g., totals or summary data). " +
-              "Example: ['Total', '83', '3 Employees']. Provide empty array if you don't need footer."
+              "Example: ['Total', '83', '3 Employees']. Provide empty array if you don't need footer.",
+          optional = true
       ) List<String> footer
   ) {
     log.info("Rendering table with {} rows", data != null ? data.size() : 0);

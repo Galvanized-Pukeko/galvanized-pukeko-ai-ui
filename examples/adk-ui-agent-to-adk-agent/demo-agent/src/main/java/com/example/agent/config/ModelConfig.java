@@ -3,7 +3,7 @@ package com.example.agent.config;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 import com.anthropic.vertex.backends.VertexBackend;
-import com.example.agent.HelloTimeAgent;
+import com.example.agent.ServiceAgent;
 import com.google.adk.models.Claude;
 import com.google.auth.oauth2.GoogleCredentials;
 import org.slf4j.Logger;
@@ -15,7 +15,7 @@ import java.util.Properties;
 
 public class ModelConfig {
 
-    private static final Logger log = LoggerFactory.getLogger(HelloTimeAgent.class);
+    private static final Logger log = LoggerFactory.getLogger(ServiceAgent.class);
 
     private static final Properties properties = new Properties();
 

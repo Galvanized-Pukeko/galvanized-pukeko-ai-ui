@@ -15,7 +15,7 @@ public class AgentCliRunner {
 
     public static void main(String[] args) {
         RunConfig runConfig = RunConfig.builder().build();
-        InMemoryRunner runner = new InMemoryRunner(new HelloTimeAgent().initAgent());
+        InMemoryRunner runner = new InMemoryRunner(new ServiceAgent().initAgent());
 
         Session session = runner
                 .sessionService()

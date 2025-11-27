@@ -59,6 +59,12 @@
       <!-- Use a released version from https://github.com/a2aproject/a2a-java/releases -->
       <version>${io.a2a.sdk.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <version>5.10.1</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>

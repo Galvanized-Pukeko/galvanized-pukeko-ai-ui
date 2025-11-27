@@ -5,108 +5,109 @@ import PkInput from './PkInput.vue'
 import {chatService} from '../services/chatService'
 
 interface Message {
-    id: number | string
-    text: string
-    sender: 'user' | 'ai'
-    toolCall?: string  // Name of the tool that was called
-    toolResponse?: string  // Stringified response from the tool
-  }
+  id: number | string
+  text: string
+  sender: 'user' | 'ai'
+  toolCall?: string  // Name of the tool that was called
+  toolResponse?: string  // Stringified response from the tool
+}
 
-  const messages = ref<Message[]>([])
-  const newMessage = ref('')
-  const sessionId = ref<string | null>(null)
-  const isLoading = ref(false)
+const messages = ref<Message[]>([])
+const newMessage = ref('')
+const sessionId = ref<string | null>(null)
+const isLoading = ref(false)
 
-  onMounted(async () => {
-    try {
-      const session = await chatService.createSession()
-      sessionId.value = session.id
-      messages.value.push({
-        id: Date.now(),
-        text: 'Hello! How can I help you today?',
-        sender: 'ai'
-      })
-    } catch (error) {
-      console.error('Failed to init session:', error)
-      messages.value.push({
-        id: Date.now(),
-        text: 'Error connecting to chat server.',
-        sender: 'ai'
-      })
-    }
-  })
-
-  const sendMessage = async () => {
-    if (!newMessage.value.trim() || !sessionId.value || isLoading.value) return
-
-    const text = newMessage.value
+onMounted(async () => {
+  try {
+    const session = await chatService.createSession()
+    sessionId.value = session.id
     messages.value.push({
       id: Date.now(),
-      text: text,
-      sender: 'user'
+      text: 'Hello! How can I help you today?',
+      sender: 'ai'
     })
+  } catch (error) {
+    console.error('Failed to init session:', error)
+    messages.value.push({
+      id: Date.now(),
+      text: 'Error connecting to chat server.',
+      sender: 'ai'
+    })
+  }
+})
 
-    newMessage.value = ''
-    isLoading.value = true
+const sendMessage = async () => {
+  if (!newMessage.value.trim() || !sessionId.value || isLoading.value) return
 
-    try {
-      const response = await chatService.sendMessage(sessionId.value, text)
+  const text = newMessage.value
+  messages.value.push({
+    id: Date.now(),
+    text: text,
+    sender: 'user'
+  })
 
-      // Process all chunks to find function calls and their responses
-      const functionCallMap = new Map<string, { name: string, response?: any }>()
-      
-      for (const chunk of response.chunks) {
-        for (const part of chunk.content.parts) {
-          if (part.functionCall) {
-            functionCallMap.set(part.functionCall.id, {
-              name: part.functionCall.name,
-              response: undefined
-            })
-          }
-          if (part.functionResponse) {
-            const existing = functionCallMap.get(part.functionResponse.id)
-            if (existing) {
-              existing.response = part.functionResponse.response
-            }
+  newMessage.value = ''
+  isLoading.value = true
+
+  try {
+    const response = await chatService.sendMessage(sessionId.value, text)
+
+    // Process all chunks to find function calls and their responses
+    const functionCallMap = new Map<string, { name: string, response?: any }>()
+
+    for (const chunk of response.chunks) {
+      if (!chunk.content || !chunk.content.parts) continue
+      for (const part of chunk.content.parts) {
+        if (part.functionCall) {
+          functionCallMap.set(part.functionCall.id, {
+            name: part.functionCall.name,
+            response: undefined
+          })
+        }
+        if (part.functionResponse) {
+          const existing = functionCallMap.get(part.functionResponse.id)
+          if (existing) {
+            existing.response = part.functionResponse.response
           }
         }
       }
+    }
 
-      // Add a message for each function call with its response
-      for (const [id, { name, response: fnResponse }] of functionCallMap) {
-        messages.value.push({
-          id: `${response.finalMessage.id}-tool-${id}`,
-          text: '',
-          sender: 'ai',
-          toolCall: name,
-          toolResponse: fnResponse ? JSON.stringify(fnResponse, null, 2) : undefined
-        })
-      }
-
-      // Extract text from the final message
-      const aiText = response.finalMessage.content.parts
-        .filter(p => p.text)
-        .map(p => p.text)
-        .join('\n')
-
-      if (aiText.trim()) {
-        messages.value.push({
-          id: response.finalMessage.id,
-          text: aiText,
-          sender: 'ai'
-        })
-      }
-    } catch (error) {
-      console.error('Failed to send message:', error)
+    // Add a message for each function call with its response
+    for (const [id, {name, response: fnResponse}] of functionCallMap) {
       messages.value.push({
-        id: Date.now(),
-        text: 'Error sending message. Please try again.',
+        id: `${response.finalMessage.id}-tool-${id}`,
+        text: '',
+        sender: 'ai',
+        toolCall: name,
+        toolResponse: fnResponse ? JSON.stringify(fnResponse, null, 2) : undefined
+      })
+    }
+
+    // Extract text from the final message
+    const aiText = (response.finalMessage.content.parts) ? response.finalMessage.content.parts
+    .filter(p => p.text)
+    .map(p => p.text)
+    .join('\n') : "";
+
+    if (aiText.trim()) {
+      messages.value.push({
+        id: response.finalMessage.id,
+        text: aiText,
         sender: 'ai'
       })
-    } finally {
-      isLoading.value = false
     }
+  } catch (error) {
+    console.error('Failed to send message:', error)
+    messages.value.push({
+      id: Date.now(),
+      text: 'Error sending message. Please try again.',
+      sender: 'ai'
+    })
+  } finally {
+    isLoading.value = false
   }
+}
 </script>
 
 <template>
@@ -170,8 +171,12 @@ interface Message {
 }
 
 @keyframes spin {
-  0% { transform: translate(-50%, -50%) rotate(0deg); }
-  100% { transform: translate(-50%, -50%) rotate(360deg); }
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
 }
 
 .messages {
