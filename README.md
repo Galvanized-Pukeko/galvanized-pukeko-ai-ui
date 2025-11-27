@@ -38,15 +38,16 @@ graph LR
 
 ### Components
 
-1. **Web UI (`packages/web`)**:
-    - A Vue.js application running on **port 5555**.
-    - Provides a chat interface and a dynamic form renderer.
+1. **[Web Client](packages/galvanized-pukeko-web-client/)** (`packages/galvanized-pukeko-web-client`):
+    - A Vue.js application that provides a chat interface and dynamic form renderer.
+    - Can run standalone on **port 5555** for development, or be served from the ADK agent.
     - Connects to the Agent via HTTP/SSE for chat messages and WebSockets for form rendering.
 
-2. **UI Server ADK (`packages/ui-server-adk`)**:
+2. **[Agent ADK](packages/galvanized-pukeko-agent-adk/)** (`packages/galvanized-pukeko-agent-adk`):
     - A Spring Boot application running on **port 8080**.
-    - Hosts the `UiAgent` which handles user interactions and triggers form rendering.
-    - Exposes endpoints for SSE (`/run_sse`) and WebSockets (`/ws`).
+    - Extends Google ADK to host the `UiAgent` with dynamic UI rendering capabilities.
+    - Serves the built web client from `/` and exposes API endpoints.
+    - Supports optional MCP (Model Context Protocol) integration for external tools.
 
 ## Getting Started
 
@@ -58,42 +59,67 @@ graph LR
 
 ### Quick Start
 
-We provide a convenience script to start both the UI Server ADK and the Web UI in parallel.
+#### Option 1: Standalone Agent (Recommended)
+
+The Agent ADK includes a built-in web client. Simply start the agent:
+
+```bash
+cd packages/galvanized-pukeko-agent-adk
+mvn clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--server.port=8080 --adk.agents.source-dir=target"
+```
+
+Then navigate to `http://localhost:8080` in your browser.
+
+#### Option 2: Development Mode
+
+For web client development, run both services separately:
 
 ```bash
 ./start-all.sh
 ```
 
 This will:
+1. Start the **Agent ADK** on port 8080
+2. Start the **Web Client** dev server on port 5555
 
-1. Start the **UI Server ADK** on port 8080.
-2. Start the **Web UI** on port 5555.
-
-Once started, navigate to `http://localhost:5555` in your browser.
+Navigate to `http://localhost:5555` for hot-reload development.
 
 ### Manual Startup
 
-If you prefer to start the services individually:
-
-**1. Start the UI Server ADK:**
+**Start the Agent ADK:**
 
 ```bash
-cd packages/ui-server-adk
+cd packages/galvanized-pukeko-agent-adk
 mvn clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--server.port=8080 --adk.agents.source-dir=target"
 ```
 
-**2. Start the Web UI:**
+**Start the Web Client (development only):**
 
 ```bash
-cd packages/web
+cd packages/galvanized-pukeko-web-client
+npm install
 npm run dev
 ```
 
+### Deploying Web Client to Agent
+
+After making changes to the web client, deploy it to the agent:
+
+```bash
+cd packages/galvanized-pukeko-web-client
+./deploy-to-adk.sh
+```
+
+This builds the web client and copies it to the agent's resources directory.
+
 ## Usage
 
-1. Open `http://localhost:5555`.
+1. Open `http://localhost:8080` (or `http://localhost:5555` in development mode).
 2. Type "Hello" in the chat to verify connectivity.
-3. Type "Show me a contact form" to see the dynamic form rendering in action.
+3. Try these commands to see dynamic UI rendering:
+   - "Show me a contact form" - Renders a dynamic form
+   - "Show me a chart of month lengths" - Displays a chart
+   - "Show me a table of suppliers" - Renders a data table
 
 ## Testing
 

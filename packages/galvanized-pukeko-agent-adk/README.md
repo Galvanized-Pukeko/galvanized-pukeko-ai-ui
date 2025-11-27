@@ -1,47 +1,174 @@
-# Java ADK UI agent
+# Galvanized Pukeko Agent ADK
 
-## Using locally
+A Spring Boot application that extends the Google ADK (Agent Development Kit) to provide a UI-enabled agent with dynamic form rendering capabilities. The agent can interact with users through chat and render dynamic UI components including forms, charts, and tables.
 
-Start the server:
+## Features
+
+- **Dynamic UI Rendering**: Render forms, charts, and tables dynamically through agent tools
+- **WebSocket Integration**: Real-time communication for form updates
+- **MCP Support**: Optional integration with Model Context Protocol servers
+- **Embedded Web Client**: Serves the Vue.js web client from the same server
+- **SSE Streaming**: Server-sent events for chat responses
+
+## Architecture
+
+This application extends `AdkWebServer` from the Google ADK framework and provides:
+
+- **UiAgent**: An LLM-powered agent with tools for rendering UI components
+- **FormWebSocketHandler**: WebSocket handler for real-time form communication
+- **MCP Integration**: Optional toolset integration via Model Context Protocol
+
+## Getting Started
+
+### Prerequisites
+
+- Java 17+
+- Maven 3.6+
+- (Optional) Node.js 18+ for web client development
+
+### Running the Server
+
+Start the server with:
+
 ```bash
 mvn clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--server.port=8080 --adk.agents.source-dir=target"
 ```
-(Not sure if -Dexec.mainClass=io.github.galvanized_pukeko.UiAgentApplication is actually needed)
 
-Create a new session:
+The server will start on port 8080 and serve:
+- Web UI at `http://localhost:8080/`
+- Agent API endpoints at `/apps/ui-agent/`
+- WebSocket endpoint at `/ws`
+
+### Configuration
+
+Configuration is managed through `src/main/resources/application.properties`:
+
+#### CORS Configuration
+
+```properties
+adk.web.cors.origins=http://localhost:5555,https://localhost:5555
+adk.web.cors.methods=GET,POST,PUT,DELETE,OPTIONS
+adk.web.cors.headers=*
+adk.web.cors.allow-credentials=true
+```
+
+#### MCP (Model Context Protocol) Configuration
+
+Enable MCP to connect to external tool servers:
+
+```properties
+# Enable or disable MCP integration
+mcp.enabled=true
+
+# Full URL for MCP server (supports http://, https://, sse://, stdio://)
+mcp.url=http://localhost:8081
+
+# JWT token for authentication (optional)
+mcp.jwt=${PUKEKO_MCP_JWT:}
+```
+
+For stdio transport:
+
+```properties
+mcp.url=stdio://npx
+mcp.command=npx
+mcp.args=-y,@modelcontextprotocol/server-everything
+```
+
+## Web Client Integration
+
+The application serves a built Vue.js web client from `src/main/resources/browser/`. 
+
+To update the web client:
+
+1. Navigate to `packages/galvanized-pukeko-web-client`
+2. Run the deployment script:
+
 ```bash
-'http://localhost:8080/apps/ui-agent/users/user/sessions' \              
--X 'POST' \
--H "Content-Type: application/json" \
--H 'Accept: application/json, text/plain, */*'
+cd ../galvanized-pukeko-web-client
+./deploy-to-adk.sh
 ```
 
-Returns JSON like this
+This script will:
+- Build the web client
+- Copy the build artifacts to `src/main/resources/browser/`
+
+## API Usage
+
+### Creating a Session
+
+```bash
+curl 'http://localhost:8080/apps/ui-agent/users/user/sessions' \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H 'Accept: application/json'
+```
+
+Response:
 ```json
-{"id":"0c6cbd90-c832-43bc-accd-f47bf78d1cf7","appName":"ui-agent","userId":"user","state":{},"events":[],"lastUpdateTime":1.763716899419022E9}
+{
+  "id": "0c6cbd90-c832-43bc-accd-f47bf78d1cf7",
+  "appName": "ui-agent",
+  "userId": "user",
+  "state": {},
+  "events": [],
+  "lastUpdateTime": 1763716899419022
+}
 ```
 
-Session ID can now be reused to call other endpoints,
+### Sending a Message
 
-for example:
 ```bash
 curl 'http://localhost:8080/run_sse' \
   -H 'Accept: text/event-stream' \
-  -H 'Accept-Language: en-AU,en-GB;q=0.9,en;q=0.8,en-US;q=0.7' \
-  -H 'Connection: keep-alive' \
   -H 'Content-Type: application/json' \
-  --data-raw '{"appName":"ui-agent","userId":"user","sessionId":"0c6cbd90-c832-43bc-accd-f47bf78d1cf7","newMessage":{"role":"user","parts":[{"text":"How are you today?"}]},"streaming":false,"stateDelta":null}'
+  --data-raw '{
+    "appName": "ui-agent",
+    "userId": "user",
+    "sessionId": "0c6cbd90-c832-43bc-accd-f47bf78d1cf7",
+    "newMessage": {
+      "role": "user",
+      "parts": [{"text": "Show me a contact form"}]
+    },
+    "streaming": false
+  }'
 ```
 
-Returns JSON like this:
-```json
-{"id":"bac4f660-074c-43c4-865d-f650507477a5","invocationId":"e-e13cc145-d84d-4bfc-8268-bb2480b81c51","author":"ui-agent","content":{"parts":[{"text":"As an AI, I don't experience \"days\" or have feelings in the way humans do, but I'm ready and functioning perfectly!\n\nHow can I help you today?"}],"role":"model"},"actions":{"stateDelta":{},"artifactDelta":{},"requestedAuthConfigs":{}},"timestamp":1763717198184}
+## Available Agent Tools
+
+The UI Agent provides the following tools:
+
+- **renderForm**: Render dynamic forms with various input components
+- **renderChart**: Display charts (pie, bar, line, etc.)
+- **renderTable**: Show tabular data
+
+## Development
+
+### Project Structure
+
+```
+src/main/java/io/github/galvanized_pukeko/
+├── UiAgent.java                    # Agent with UI rendering tools
+├── UiAgentApplication.java         # Main Spring Boot application
+├── FormWebSocketHandler.java      # WebSocket handler for forms
+└── config/
+    ├── McpConfiguration.java       # MCP configuration properties
+    └── McpToolsetFactory.java      # Factory for MCP toolset creation
+
+src/main/resources/
+├── application.properties          # Application configuration
+└── browser/                        # Built web client (generated)
 ```
 
-## Stopping the server
+### Stopping the Server
 
-In the case you have a server dangling and occupying the port:
+If you need to kill a dangling server process:
 
 ```bash
 lsof -ti:8080 | xargs kill -9 2>/dev/null || true
 ```
+
+## Related Documentation
+
+- [Root README](../../README.md) - Overall project documentation
+- [Web Client](../galvanized-pukeko-web-client/) - Vue.js web client source
