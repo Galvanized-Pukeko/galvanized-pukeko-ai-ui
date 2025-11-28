@@ -9,7 +9,8 @@ import PkButton from './components/PkButton.vue'
 import PkInputCounter from './components/PkInputCounter.vue'
 import PkBarChart from './components/PkBarChart.vue'
 import PkPieChart from './components/PkPieChart.vue'
-import PkNav from './components/PkNav.vue'
+import PkNavHeader from './components/PkNavHeader.vue'
+import PkLogo from './components/PkLogo.vue'
 import PkTable from './components/PkTable.vue'
 
 // Component values
@@ -73,7 +74,52 @@ const handleFormSubmit = (event: Event) => {
 
 <template>
   <div class="app">
-    <PkNav></PkNav>
+    <PkNavHeader>
+      <template #logo>
+        <PkLogo />
+      </template>
+      <template #nav-links>
+        <button class="nav-link">Company</button>
+        <button class="nav-link">Catalogue</button>
+        <button class="nav-link">Stores</button>
+      </template>
+      <template #nav-controls>
+        <a href="#" class="nav-control nav-control-search">
+          <span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11 3C15.4183 3 19 6.58172 19 11C19 12.939 18.3088 14.7158 17.1611 16.1006L21.7637 20.7031C21.8418 20.7812 21.8418 20.9082 21.7637 20.9863L20.9863 21.7637C20.9082 21.8418 20.7812 21.8418 20.7031 21.7637L16.1006 17.1611C14.7158 18.3088 12.939 19 11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3ZM11 4.54883C7.43687 4.54883 4.54883 7.43687 4.54883 11C4.54883 14.5631 7.43687 17.4512 11 17.4512C14.5631 17.4512 17.4512 14.5631 17.4512 11C17.4512 7.43687 14.5631 4.54883 11 4.54883Z" fill="black"/>
+            </svg>
+          </span>
+        </a>
+        <a href="#" class="nav-control nav-control-cart">
+          <span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11.9998 2.25C13.9868 2.25 15.6123 3.79552 15.741 5.75H18.3259C18.7705 5.75022 19.1514 6.05784 19.2507 6.4834L19.2664 6.57031L21.2117 20.6699C21.2904 21.2408 20.8465 21.75 20.2703 21.75H3.72925C3.15314 21.7498 2.70914 21.2407 2.78784 20.6699L4.73315 6.57031L4.74878 6.4834C4.84804 6.0579 5.22909 5.75037 5.67358 5.75H8.25854C8.3872 3.79559 10.0128 2.25015 11.9998 2.25ZM4.36011 20.25H19.6394L17.8464 7.25H15.7498V9.5H14.2498V7.25H9.74976V9.5H8.24976V7.25H6.15308L4.36011 20.25ZM11.9998 3.75C10.8418 3.75014 9.88879 4.62514 9.7644 5.75H14.2351C14.1107 4.62508 13.1578 3.75 11.9998 3.75Z" fill="black"/>
+            </svg>
+          </span>
+        </a>
+        <div class="nav-control nav-control-currency">
+          <PkSelect
+            :modelValue="selectValue"
+            @update:modelValue="(val: string | number) => (selectValue = String(val))"
+            selectId="currencySelect"
+            label=""
+            class="select-control"
+          >
+            <option value="USD">USD</option>
+            <option value="AUD">AUD</option>
+            <option value="NZD">NZD</option>
+          </PkSelect>
+        </div>
+        <a href="#" class="nav-control nav-control-profile">
+          <span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 13.25C16.7279 13.25 19.75 16.2721 19.75 20V20.7998C19.75 21.3245 19.3245 21.75 18.7998 21.75H5.2002C4.67552 21.75 4.25 21.3245 4.25 20.7998V20C4.25 16.2721 7.27208 13.25 11 13.25H13ZM11 14.75C8.10051 14.75 5.75 17.1005 5.75 20V20.25H18.25V20C18.25 17.1005 15.8995 14.75 13 14.75H11ZM12 2.25C14.6234 2.25 16.75 4.37665 16.75 7C16.75 9.62335 14.6234 11.75 12 11.75C9.37665 11.75 7.25 9.62335 7.25 7C7.25 4.37665 9.37665 2.25 12 2.25ZM12 3.75C10.2051 3.75 8.75 5.20507 8.75 7C8.75 8.79493 10.2051 10.25 12 10.25C13.7949 10.25 15.25 8.79493 15.25 7C15.25 5.20507 13.7949 3.75 12 3.75Z" fill="black"/>
+            </svg>
+          </span>
+        </a>
+      </template>
+    </PkNavHeader>
     <h1>Pukeko UI Component Kitchen Sink</h1>
     <p class="form-info">A showcase of all available components without external dependencies</p>
 
@@ -212,4 +258,44 @@ const handleFormSubmit = (event: Event) => {
 <style scoped>
 /* See packages/client/src/assets/global.css for global styles */
 /* Place only things specific to KitchenSink here */
+
+.nav-link {
+  padding: var(--padding-third, 0.5rem) var(--padding-twothird, 1rem);
+  text-decoration: none;
+  color: var(--text-button-sec-idle, #374151);
+  border-radius: var(--border-radius-small-box, 4px);
+  transition: var(--transition-normal, all 0.2s);
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-size: 1rem;
+  font-family: inherit;
+  background: none;
+}
+
+.nav-link:hover {
+  background: var(--bg-button-nob-active, #f3f4f6);
+  border: var(--border-button-nob-active, 1px solid #d1d5db);
+  color: var(--text-button-nob-active, #111827);
+}
+
+.nav-control {
+  padding: var(--padding-third, 0.5rem) var(--padding-twothird, 1rem);
+  background: var(--bg-button-nob-idle, #fff);
+  border: 1px solid transparent;
+  border-radius: var(--border-radius-small-box, 4px);
+  color: var(--text-button-nob-idle, #374151);
+  cursor: pointer;
+  font-size: 1rem;
+  font-family: inherit;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  transition: var(--transition-normal, all 0.2s);
+}
+
+.nav-control:hover {
+  background: var(--bg-button-nob-active, #f3f4f6);
+  border: var(--border-button-nob-active, 1px solid #d1d5db);
+  color: var(--text-button-nob-active, #111827);
+}
 </style>

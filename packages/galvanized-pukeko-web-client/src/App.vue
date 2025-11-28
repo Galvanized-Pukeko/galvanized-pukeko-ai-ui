@@ -11,7 +11,8 @@ import PkBarChart from './components/PkBarChart.vue'
 import PkPieChart from './components/PkPieChart.vue'
 import PkTable from './components/PkTable.vue'
 import ChatInterface from './components/ChatInterface.vue'
-import PkNav from './components/PkNav.vue'
+import PkNavHeader from './components/PkNavHeader.vue'
+import PkLogo from './components/PkLogo.vue'
 import { connectionService, type ConnectionStatus, type ComponentConfig, type WebSocketMessage } from './services/connectionService'
 
 const serverComponents = ref<ComponentConfig[]>([])
@@ -55,7 +56,7 @@ const componentMap = markRaw({
   select: PkSelect,
   button: PkButton,
   counter: PkInputCounter,
-  nav: PkNav,
+  nav: PkNavHeader,
   table: PkTable
 })
 
@@ -96,17 +97,17 @@ const componentTypeConfig: Record<string, {
 const getComponentProps = (component: ComponentConfig, index: number): Record<string, any> | null => {
   const key = component.label || `${component.type}_${index}`
   const config = componentTypeConfig[component.type]
-  
+
   if (!config) return null
-  
+
   const valueStore = componentValues.value[config.valueStore]
-  
+
   const baseProps = {
     name: component.label,
     placeholder: component.label,
     label: component.label
   }
-  
+
   const modelProps = {
     modelValue: valueStore[key],
     'onUpdate:modelValue': (val: string | number | boolean) => {
@@ -117,12 +118,12 @@ const getComponentProps = (component: ComponentConfig, index: number): Record<st
       }
     }
   }
-  
+
   // Special handling for specific component types
   if (component.type === 'radio') {
     return { ...baseProps, ...modelProps, value: 'option1' }
   }
-  
+
   return { ...baseProps, ...modelProps }
 }
 
@@ -153,7 +154,7 @@ const handleRenderComponents = (message: WebSocketMessage) => {
     message.components.forEach((comp, index) => {
       const key = comp.label || `${comp.type}_${index}`
       const config = componentTypeConfig[comp.type]
-      
+
       if (config) {
         const valueStore = componentValues.value[config.valueStore]
         valueStore[key] = config.defaultValue(comp) as never
@@ -305,109 +306,142 @@ onUnmounted(() => {
 
 <template>
   <div class="app-container">
-    <div class="split-screen">
-      <!-- Left Side: Chat Interface -->
-      <div class="chat-panel">
-        <ChatInterface />
-      </div>
-
-      <!-- Right Side: Form/Content -->
-      <div class="content-panel">
-        <div class="app-content">
-          <h1>Pukeko UI Components Demo</h1>
-
+    <!-- Header -->
+    <header id="galvanized-pukeko-ui-nav-header" class="app-header">
+      <PkNavHeader>
+        <template #logo>
+          <PkLogo />
+        </template>
+        <template #nav-links>
+          <a href="https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui/" class="nav-link" target="_blank" rel="noopener noreferrer">
+            About Galvanized Pukeko
+          </a>
+        </template>
+        <template #nav-controls>
           <div class="status">
-            WebSocket Status:
-            <span :class="['status-badge', `status-${wsStatus}`]">
-              {{ wsStatus }}
-            </span>
+                <span :class="['status-badge', `status-${wsStatus}`]">
+                  WebSockets {{ wsStatus }}
+                </span>
+          </div>
+        </template>
+      </PkNavHeader>
+    </header>
+
+    <!-- Main layout with sidebars and content -->
+    <div class="app-main-layout">
+      <!-- Left Sidebar -->
+      <aside id="galvanized-pukeko-ui-nav-left-sidebar" class="app-left-sidebar">
+        <!-- Empty by default -->
+      </aside>
+
+      <!-- Main Content Area -->
+      <main class="app-main-content">
+        <div class="split-screen">
+          <!-- Left Side: Chat Interface -->
+          <div class="chat-panel">
+            <ChatInterface />
           </div>
 
-          <!-- Show only one section at a time: waiting message, form, chart, or table -->
-          <div v-if="!currentChart && !currentTable && serverComponents.length === 0" class="info">
-            Waiting for server to send components...
-          </div>
+          <!-- Right Side: Form/Content -->
+          <div class="content-panel">
+            <div class="app-content">
+              <!-- Show only one section at a time: waiting message, form, chart, or table -->
+              <div v-if="!currentChart && !currentTable && serverComponents.length === 0" class="info">
+                Waiting for server to send components...
+              </div>
 
-          <PkForm v-else-if="!currentChart && !currentTable && serverComponents.length > 0" @submit="handleSubmit" class="dynamic-form">
-            <h2>Server-Requested Form</h2>
-            <p class="form-info">server-rendered form</p>
+              <PkForm v-else-if="!currentChart && !currentTable && serverComponents.length > 0" @submit="handleSubmit" class="dynamic-form">
+                <h2>Server-Requested Form</h2>
+                <p class="form-info">server-rendered form</p>
 
-            <div v-for="(component, index) in serverComponents.filter(c => c.type !== 'button')" :key="`${component.type}_${index}`" class="form-group">
-              <!-- Select component needs special handling for options -->
-              <template v-if="component.type === 'select'">
-                <label>{{ component.label }}:</label>
-                <component
-                  :is="getComponent(component.type)"
-                  v-bind="getComponentProps(component, index)"
-                >
-                  <option value="">Select an option</option>
-                  <option
-                    v-for="option in component.options"
-                    :key="option"
-                    :value="option"
-                  >
-                    {{ option }}
-                  </option>
-                </component>
-              </template>
-              
-              <!-- All other components use the same pattern -->
-              <component
-                v-else
-                :is="getComponent(component.type)"
-                v-bind="getComponentProps(component, index)"
-              />
+                <div v-for="(component, index) in serverComponents.filter(c => c.type !== 'button')" :key="`${component.type}_${index}`" class="form-group">
+                  <!-- Select component needs special handling for options -->
+                  <template v-if="component.type === 'select'">
+                    <label>{{ component.label }}:</label>
+                    <component
+                      :is="getComponent(component.type)"
+                      v-bind="getComponentProps(component, index)"
+                    >
+                      <option value="">Select an option</option>
+                      <option
+                        v-for="option in component.options"
+                        :key="option"
+                        :value="option"
+                      >
+                        {{ option }}
+                      </option>
+                    </component>
+                  </template>
+
+                  <!-- All other components use the same pattern -->
+                  <component
+                    v-else
+                    :is="getComponent(component.type)"
+                    v-bind="getComponentProps(component, index)"
+                  />
+                </div>
+
+                <div class="form-buttons">
+                  <PkButton type="submit">
+                    {{ formLabels.submitLabel || 'Submit' }}
+                  </PkButton>
+                  <PkButton type="button" @click="handleCancel">
+                    {{ formLabels.cancelLabel || 'Cancel' }}
+                  </PkButton>
+                </div>
+              </PkForm>
+
+              <!-- Chart rendering section -->
+              <div v-else-if="currentChart && !currentTable" class="chart-section">
+                <h2>Server-Requested Chart</h2>
+                <PkBarChart
+                  v-if="currentChart.type === 'bar'"
+                  :data="currentChart.data"
+                  :title="currentChart.title"
+                />
+                <PkPieChart
+                  v-if="currentChart.type === 'pie'"
+                  :data="currentChart.data"
+                  :title="currentChart.title"
+                />
+                <div class="chart-buttons">
+                  <PkButton type="button" @click="handleClearChart">
+                    Clear
+                  </PkButton>
+                </div>
+              </div>
+
+              <!-- Table rendering section -->
+              <div v-else-if="currentTable" class="table-section">
+                <h2>Server-Requested Table</h2>
+                <PkTable
+                  :caption="currentTable.caption"
+                  :header="currentTable.header"
+                  :data="currentTable.data"
+                  :footer="currentTable.footer"
+                />
+                <div class="table-buttons">
+                  <PkButton type="button" @click="handleClearTable">
+                    Clear
+                  </PkButton>
+                </div>
+              </div>
             </div>
-
-            <div class="form-buttons">
-              <PkButton type="submit">
-                {{ formLabels.submitLabel || 'Submit' }}
-              </PkButton>
-              <PkButton type="button" @click="handleCancel">
-                {{ formLabels.cancelLabel || 'Cancel' }}
-              </PkButton>
-            </div>
-          </PkForm>
-
-          <!-- Chart rendering section -->
-          <div v-else-if="currentChart && !currentTable" class="chart-section">
-            <h2>Server-Requested Chart</h2>
-            <PkBarChart
-              v-if="currentChart.type === 'bar'"
-              :data="currentChart.data"
-              :title="currentChart.title"
-            />
-            <PkPieChart
-              v-if="currentChart.type === 'pie'"
-              :data="currentChart.data"
-              :title="currentChart.title"
-            />
-            <div class="chart-buttons">
-              <PkButton type="button" @click="handleClearChart">
-                Clear
-              </PkButton>
-            </div>
-          </div>
-
-          <!-- Table rendering section -->
-          <div v-else-if="currentTable" class="table-section">
-            <h2>Server-Requested Table</h2>
-            <PkTable
-              :caption="currentTable.caption"
-              :header="currentTable.header"
-              :data="currentTable.data"
-              :footer="currentTable.footer"
-            />
-            <div class="table-buttons">
-              <PkButton type="button" @click="handleClearTable">
-                Clear
-              </PkButton>
-            </div>
+            <!--button @click="sendMessage">send message</button-->
           </div>
         </div>
-        <button @click="sendMessage">send message</button>
-      </div>
+      </main>
+
+      <!-- Right Sidebar -->
+      <aside id="galvanized-pukeko-ui-nav-right-sidebar" class="app-right-sidebar">
+        <!-- Empty by default -->
+      </aside>
     </div>
+
+    <!-- Footer -->
+    <footer id="galvanized-pukeko-ui-nav-footer" class="app-footer">
+      <!-- Empty by default -->
+    </footer>
   </div>
 </template>
 
@@ -418,7 +452,55 @@ onUnmounted(() => {
 .app-container {
   height: 100vh;
   width: 100vw;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   overflow: hidden;
+}
+
+.app-header {
+  grid-row: 1;
+  z-index: 100;
+}
+
+.app-main-layout {
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  overflow: hidden;
+}
+
+.app-left-sidebar {
+  grid-column: 1;
+  overflow-y: auto;
+  /* Empty by default, will take no space unless content is added */
+}
+
+.app-left-sidebar:empty {
+  display: none;
+}
+
+.app-main-content {
+  grid-column: 2;
+  overflow: hidden;
+}
+
+.app-right-sidebar {
+  grid-column: 3;
+  overflow-y: auto;
+  /* Empty by default, will take no space unless content is added */
+}
+
+.app-right-sidebar:empty {
+  display: none;
+}
+
+.app-footer {
+  grid-row: 3;
+  /* Empty by default, will take no space unless content is added */
+}
+
+.app-footer:empty {
+  display: none;
 }
 
 .split-screen {
@@ -484,5 +566,25 @@ onUnmounted(() => {
   margin-top: 1rem;
   display: flex;
   gap: 0.5rem;
+}
+
+.nav-link {
+  padding: var(--padding-third, 0.5rem) var(--padding-twothird, 1rem);
+  text-decoration: none;
+  color: var(--text-button-sec-idle, #374151);
+  border-radius: var(--border-radius-small-box, 4px);
+  transition: var(--transition-normal, all 0.2s);
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-size: 1rem;
+  font-family: inherit;
+  background: none;
+  display: inline-block;
+}
+
+.nav-link:hover {
+  background: var(--bg-button-nob-active, #f3f4f6);
+  border: var(--border-button-nob-active, 1px solid #d1d5db);
+  color: var(--text-button-nob-active, #111827);
 }
 </style>
