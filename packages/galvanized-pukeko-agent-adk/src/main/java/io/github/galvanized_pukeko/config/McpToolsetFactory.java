@@ -69,6 +69,7 @@ public class McpToolsetFactory {
     
     // Add JWT authentication header if provided
     if (config.getJwt() != null && !config.getJwt().isEmpty()) {
+      log.info("Securing HTTP toolset with JWT");
       builder.headers(Map.of("Authorization", "Bearer " + config.getJwt()));
     }
     
@@ -90,6 +91,7 @@ public class McpToolsetFactory {
     
     // Add JWT authentication header if provided
     if (config.getJwt() != null && !config.getJwt().isEmpty()) {
+      log.info("Securing SSE toolset with JWT");
       Map<String, Object> headers = new HashMap<>();
       headers.put("Authorization", "Bearer " + config.getJwt());
       builder.headers(headers);
