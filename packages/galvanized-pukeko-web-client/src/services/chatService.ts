@@ -50,12 +50,14 @@ interface CompleteChatResponse {
     finalMessage: ChatResponse
 }
 
+import { configService } from './configService'
+
 class ChatService {
-    private baseUrl: string = 'http://localhost:8080'
 
     async createSession(userId: string = 'user'): Promise<ChatSession> {
         console.log('[ChatService] Creating session for user:', userId)
-        const url = `${this.baseUrl}/apps/pukeko-ui-agent/users/${userId}/sessions`
+        const config = configService.get()
+        const url = `${config.baseUrl}/apps/${config.appName}/users/${userId}/sessions`
         console.log('[ChatService] Request URL:', url)
 
         try {
@@ -85,8 +87,9 @@ class ChatService {
     async sendMessage(sessionId: string, text: string, userId: string = 'user'): Promise<CompleteChatResponse> {
         console.log('[ChatService] Sending message:', { sessionId, text, userId })
 
+        const config = configService.get()
         const payload = {
-            appName: 'pukeko-ui-agent',
+            appName: config.appName,
             userId,
             sessionId,
             newMessage: {
@@ -98,7 +101,7 @@ class ChatService {
         }
 
         console.log('[ChatService] Request payload:', JSON.stringify(payload, null, 2))
-        const url = `${this.baseUrl}/run_sse`
+        const url = `${config.baseUrl}/run_sse`
         console.log('[ChatService] Request URL:', url)
 
         try {

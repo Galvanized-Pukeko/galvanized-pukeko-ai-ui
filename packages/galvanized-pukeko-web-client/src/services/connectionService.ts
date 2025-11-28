@@ -25,19 +25,16 @@ interface PendingRequest {
   reject: (error: Error) => void
 }
 
+import { configService } from './configService'
+
 class ConnectionService {
   private ws: WebSocket | null = null
   private messageHandlers: Map<string, Set<MessageHandler>> = new Map()
   private statusHandlers: Set<StatusHandler> = new Set()
   private currentStatus: ConnectionStatus = 'disconnected'
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null
-  private wsUrl: string
   private requestId = 0
   private pendingRequests: Map<string | number, PendingRequest> = new Map()
-
-  constructor(url: string = 'ws://localhost:8080/ws') {
-    this.wsUrl = url
-  }
 
   connect(): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
@@ -45,7 +42,8 @@ class ConnectionService {
     }
 
     this.updateStatus('connecting')
-    this.ws = new WebSocket(this.wsUrl)
+    const config = configService.get()
+    this.ws = new WebSocket(config.wsUrl)
 
     this.ws.onopen = () => {
       console.log('Connected to WebSocket server')
