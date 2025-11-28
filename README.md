@@ -133,6 +133,8 @@ To run the tests, ensure the application is running (see [Getting Started](#gett
 npx playwright test
 ```
 
+If playwright complaints that browser is not found, run `npx playwright install` to download the browser.
+
 ### Running Tests with UI
 
 To run the tests in interactive UI mode:
