@@ -12,7 +12,7 @@ trap cleanup SIGINT
 
 echo "Starting UI ADK Agent..."
 cd packages/galvanized-pukeko-agent-adk
-mvn clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--server.port=8080 --adk.agents.source-dir=target" &
+./mvnw clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--server.port=8080 --adk.agents.source-dir=target" &
 ADK_PID=$!
 cd ../..
 

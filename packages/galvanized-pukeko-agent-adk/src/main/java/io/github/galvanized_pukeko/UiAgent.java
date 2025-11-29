@@ -6,6 +6,7 @@ import com.google.adk.tools.Annotations.Schema;
 import com.google.adk.tools.FunctionTool;
 import io.github.galvanized_pukeko.config.A2aAgentFactory;
 import io.github.galvanized_pukeko.config.A2aConfiguration;
+import io.github.galvanized_pukeko.config.AiConfiguration;
 import io.github.galvanized_pukeko.config.McpConfiguration;
 import io.github.galvanized_pukeko.config.McpToolsetFactory;
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ public class UiAgent {
    * This is called by UiAgentApplication's custom AgentLoader.
    *
    * @param handler WebSocket handler for UI interactions
+   * @param aiConfig AI configuration from application.properties
    * @param mcpConfig MCP configuration from application.properties
    * @param mcpFactory Factory for creating MCP toolsets
    * @param a2aConfig A2A configuration from application.properties
@@ -33,13 +35,14 @@ public class UiAgent {
    */
   public static LlmAgent createAgent(
       FormWebSocketHandler handler,
+      AiConfiguration aiConfig,
       McpConfiguration mcpConfig,
       McpToolsetFactory mcpFactory,
       A2aConfiguration a2aConfig,
       A2aAgentFactory a2aFactory
   ) {
     // Note this will actually not be loaded until you send first message.
-    log.info("Creating UI Agent with MCP and A2A configurations");
+    log.info("Creating UI Agent with model '{}' and MCP/A2A configurations", aiConfig.getModel());
 
     // Store handler statically for tools to access
     // TODO: Refactor tools to not rely on static state if possible, but for now this bridges the gap
@@ -70,7 +73,7 @@ public class UiAgent {
     var agentBuilder = LlmAgent.builder()
         .name(PUKEKO_UI_AGENT_NAME)
         .description("UI Agent that can render dynamic forms")
-        .model("gemini-2.5-pro")
+        .model(aiConfig.getModel())
         .instruction(
             """
                 You are a helpful assistant that can show forms to collect information from users.

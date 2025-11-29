@@ -10,6 +10,7 @@ import com.google.adk.web.AgentLoader;
 import com.google.common.collect.ImmutableList;
 import io.github.galvanized_pukeko.config.A2aAgentFactory;
 import io.github.galvanized_pukeko.config.A2aConfiguration;
+import io.github.galvanized_pukeko.config.AiConfiguration;
 import io.github.galvanized_pukeko.config.McpConfiguration;
 import io.github.galvanized_pukeko.config.McpToolsetFactory;
 import java.util.ArrayList;
@@ -73,23 +74,25 @@ public class UiAgentApplication extends AdkWebServer {
   @Primary
   public AgentLoader agentLoader(
       FormWebSocketHandler webSocketHandler,
+      AiConfiguration aiConfig,
       McpConfiguration mcpConfig,
       McpToolsetFactory mcpFactory,
       A2aConfiguration a2aConfig,
       A2aAgentFactory a2aFactory
   ) {
     log.info("creating agent loader");
-    return new UiAgentLoader(webSocketHandler, mcpConfig, mcpFactory, a2aConfig, a2aFactory);
+    return new UiAgentLoader(webSocketHandler, aiConfig, mcpConfig, mcpFactory, a2aConfig, a2aFactory);
   }
 
   private static class UiAgentLoader implements AgentLoader {
 
     private LlmAgent uiAgent;
 
-    public UiAgentLoader(FormWebSocketHandler webSocketHandler, McpConfiguration mcpConfig,
-        McpToolsetFactory mcpFactory, A2aConfiguration a2aConfig, A2aAgentFactory a2aFactory) {
-      this.uiAgent = UiAgent.createAgent(webSocketHandler, mcpConfig, mcpFactory, a2aConfig,
-          a2aFactory);
+    public UiAgentLoader(FormWebSocketHandler webSocketHandler, AiConfiguration aiConfig,
+        McpConfiguration mcpConfig, McpToolsetFactory mcpFactory, A2aConfiguration a2aConfig,
+        A2aAgentFactory a2aFactory) {
+      this.uiAgent = UiAgent.createAgent(webSocketHandler, aiConfig, mcpConfig, mcpFactory,
+          a2aConfig, a2aFactory);
     }
 
     @Override
