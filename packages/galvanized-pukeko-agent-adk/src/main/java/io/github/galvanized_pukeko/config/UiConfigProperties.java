@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConfigurationProperties(prefix = "adk.ui")
+@ConfigurationProperties(prefix = "pukeko.ui")
 public class UiConfigProperties {
 
   private String baseUrl = "http://localhost:8080";

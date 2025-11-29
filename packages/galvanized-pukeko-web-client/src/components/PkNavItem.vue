@@ -16,8 +16,6 @@ const componentTag = computed(() => hasLink.value ? 'a' : 'div')
     :is="componentTag"
     :href="href"
     :class="['config-item', { 'is-link': hasLink }]"
-    :target="hasLink ? '_blank' : undefined"
-    :rel="hasLink ? 'noopener noreferrer' : undefined"
   >
     <img v-if="img" :src="img" class="config-item-img" alt="" />
     <span v-if="text" class="config-item-text">{{ text }}</span>
