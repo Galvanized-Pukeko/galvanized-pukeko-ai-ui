@@ -13,7 +13,7 @@ public class UiConfigController {
     this.properties = properties;
   }
 
-  @GetMapping("/config")
+  @GetMapping("/config.json")
   public UiConfigProperties getConfig() {
     return properties;
   }

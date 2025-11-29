@@ -62,6 +62,12 @@ graph LR
 #### Option 1: Standalone Agent (Recommended)
 
 The Agent ADK includes a built-in web client. Simply start the agent:
+ADK needs Java:
+(instructions for MacOS)
+```bash
+brew install temurin@21
+brew install jenv
+```
 
 ```bash
 cd packages/galvanized-pukeko-agent-adk

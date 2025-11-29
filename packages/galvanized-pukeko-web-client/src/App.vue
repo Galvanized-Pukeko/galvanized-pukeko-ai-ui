@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, markRaw } from 'vue'
+import {ref, onMounted, onUnmounted, markRaw} from 'vue'
 import PkForm from './components/PkForm.vue'
 import PkInput from './components/PkInput.vue'
 import PkCheckbox from './components/PkCheckbox.vue'
@@ -13,8 +13,16 @@ import PkTable from './components/PkTable.vue'
 import ChatInterface from './components/ChatInterface.vue'
 import PkNavHeader from './components/PkNavHeader.vue'
 import PkLogo from './components/PkLogo.vue'
-import { connectionService, type ConnectionStatus, type ComponentConfig, type WebSocketMessage } from './services/connectionService'
+import PkNavItem from './components/PkNavItem.vue'
+import {configService, UiConfig} from './services/configService';
+import {
+  connectionService,
+  type ConnectionStatus,
+  type ComponentConfig,
+  type WebSocketMessage
+} from './services/connectionService'
 
+const uiConfig = ref<UiConfig | null>(configService.get())
 const serverComponents = ref<ComponentConfig[]>([])
 const formLabels = ref<{ submitLabel?: string; cancelLabel?: string }>({})
 const wsStatus = ref<ConnectionStatus>('disconnected')
@@ -44,7 +52,7 @@ const componentValues = ref<{
   radio: Record<string, string>
   select: Record<string, string>
   counter: Record<string, string>
-}>({ input: {}, checkbox: {}, radio: {}, select: {}, counter: {} })
+}>({input: {}, checkbox: {}, radio: {}, select: {}, counter: {}})
 
 /**
  * This is going to be coming from config in future.
@@ -94,6 +102,7 @@ const componentTypeConfig: Record<string, {
  * Component rendering configuration
  * Defines how each component type should be rendered with its props
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const getComponentProps = (component: ComponentConfig, index: number): Record<string, any> | null => {
   const key = component.label || `${component.type}_${index}`
   const config = componentTypeConfig[component.type]
@@ -121,10 +130,10 @@ const getComponentProps = (component: ComponentConfig, index: number): Record<st
 
   // Special handling for specific component types
   if (component.type === 'radio') {
-    return { ...baseProps, ...modelProps, value: 'option1' }
+    return {...baseProps, ...modelProps, value: 'option1'}
   }
 
-  return { ...baseProps, ...modelProps }
+  return {...baseProps, ...modelProps}
 }
 
 /**
@@ -149,7 +158,7 @@ const handleRenderComponents = (message: WebSocketMessage) => {
       cancelLabel: message.cancelLabel
     }
     // Reset form values when new components arrive
-    componentValues.value = { input: {}, checkbox: {}, radio: {}, select: {}, counter: {} }
+    componentValues.value = {input: {}, checkbox: {}, radio: {}, select: {}, counter: {}}
 
     message.components.forEach((comp, index) => {
       const key = comp.label || `${comp.type}_${index}`
@@ -231,7 +240,7 @@ const handleSubmit = (event: Event) => {
 
 const handleCancel = () => {
   // Clear all form values
-  componentValues.value = { input: {}, checkbox: {}, radio: {}, select: {}, counter: {} }
+  componentValues.value = {input: {}, checkbox: {}, radio: {}, select: {}, counter: {}}
 
   // Reset values based on current components
   serverComponents.value = [];
@@ -265,16 +274,6 @@ const handleClearTable = () => {
   })
 }
 
-const sendMessage = () => {
-  connectionService.sendMessage({
-    jsonrpc: '2.0',
-    method: 'cancel',
-    type: 'cancel',
-    timestamp: Date.now(),
-    id: crypto.randomUUID()
-  })
-};
-
 onMounted(() => {
   connectionService.connect()
 
@@ -285,7 +284,7 @@ onMounted(() => {
   unsubscribeMessage = connectionService.subscribeToMessage('form', handleRenderComponents)
   unsubscribeChartMessage = connectionService.subscribeToMessage('chart', handleChartMessage)
   unsubscribeTableMessage = connectionService.subscribeToMessage('table', handleTableMessage)
-})
+});
 
 onUnmounted(() => {
   if (unsubscribeStatus) {
@@ -301,7 +300,7 @@ onUnmounted(() => {
     unsubscribeTableMessage()
   }
   connectionService.disconnect()
-})
+});
 </script>
 
 <template>
@@ -310,10 +309,27 @@ onUnmounted(() => {
     <header id="galvanized-pukeko-ui-nav-header" class="app-header">
       <PkNavHeader>
         <template #logo>
-          <PkLogo />
+          <PkNavItem
+            v-if="uiConfig?.logo"
+            :text="uiConfig.logo.text"
+            :href="uiConfig.logo.href"
+            :img="uiConfig.logo.img"
+          />
+          <PkLogo v-else/>
         </template>
         <template #nav-links>
-          <a href="https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui/" class="nav-link" target="_blank" rel="noopener noreferrer">
+          <template v-if="uiConfig?.header">
+            <PkNavItem
+              v-for="(item, index) in uiConfig.header"
+              :key="index"
+              :text="item.text"
+              :href="item.href"
+              :img="item.img"
+              class="nav-link-item"
+            />
+          </template>
+          <a v-else href="https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui/"
+             class="nav-link" target="_blank" rel="noopener noreferrer">
             About Galvanized Pukeko
           </a>
         </template>
@@ -339,22 +355,25 @@ onUnmounted(() => {
         <div class="split-screen">
           <!-- Left Side: Chat Interface -->
           <div class="chat-panel">
-            <ChatInterface />
+            <ChatInterface/>
           </div>
 
           <!-- Right Side: Form/Content -->
           <div class="content-panel">
             <div class="app-content">
               <!-- Show only one section at a time: waiting message, form, chart, or table -->
-              <div v-if="!currentChart && !currentTable && serverComponents.length === 0" class="info">
+              <div v-if="!currentChart && !currentTable && serverComponents.length === 0"
+                   class="info">
                 Waiting for server to send components...
               </div>
 
-              <PkForm v-else-if="!currentChart && !currentTable && serverComponents.length > 0" @submit="handleSubmit" class="dynamic-form">
+              <PkForm v-else-if="!currentChart && !currentTable && serverComponents.length > 0"
+                      @submit="handleSubmit" class="dynamic-form">
                 <h2>Server-Requested Form</h2>
                 <p class="form-info">server-rendered form</p>
 
-                <div v-for="(component, index) in serverComponents.filter(c => c.type !== 'button')" :key="`${component.type}_${index}`" class="form-group">
+                <div v-for="(component, index) in serverComponents.filter(c => c.type !== 'button')"
+                     :key="`${component.type}_${index}`" class="form-group">
                   <!-- Select component needs special handling for options -->
                   <template v-if="component.type === 'select'">
                     <label>{{ component.label }}:</label>
@@ -440,7 +459,16 @@ onUnmounted(() => {
 
     <!-- Footer -->
     <footer id="galvanized-pukeko-ui-nav-footer" class="app-footer">
-      <!-- Empty by default -->
+      <div v-if="uiConfig?.footer" class="footer-content">
+        <PkNavItem
+          v-for="(item, index) in uiConfig.footer"
+          :key="index"
+          :text="item.text"
+          :href="item.href"
+          :img="item.img"
+          class="footer-item"
+        />
+      </div>
     </footer>
   </div>
 </template>
@@ -496,11 +524,36 @@ onUnmounted(() => {
 
 .app-footer {
   grid-row: 3;
-  /* Empty by default, will take no space unless content is added */
+  background-color: var(--bg-input-idle);
+  border-top: var(--line-separator-subtle);
 }
 
 .app-footer:empty {
   display: none;
+}
+
+.footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--padding-twothird);
+  padding: var(--padding-third);
+  height: calc(var(--padding-twothird) * 3);
+}
+
+.footer-item {
+  color: var(--text-button-sec-idle);
+}
+
+.nav-link-item {
+  padding: var(--padding-third) var(--padding-twothird);
+  border-radius: var(--border-radius-small-box);
+  transition: var(--transition-normal);
+}
+
+.nav-link-item:hover {
+  background: var(--bg-button-nob-active);
+  color: var(--text-button-nob-active);
 }
 
 .split-screen {

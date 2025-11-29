@@ -131,7 +131,7 @@ class ConnectionService {
     }
   }
 
-  sendJsonRpcRequest(method: string, params?: unknown): Promise<unknown> {
+  sendJsonRpcRequest(method: string, params?: object | unknown[]): Promise<unknown> {
     return new Promise((resolve, reject) => {
       if (this.ws?.readyState !== WebSocket.OPEN) {
         reject(new Error('WebSocket is not connected'))
@@ -151,7 +151,7 @@ class ConnectionService {
     })
   }
 
-  sendJsonRpcNotification(method: string, params?: unknown): void {
+  sendJsonRpcNotification(method: string, params?: object | unknown[]): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       const notification: JsonRpcNotification = {
         jsonrpc: '2.0',
