@@ -11,6 +11,7 @@ public class UiConfigProperties {
   private String baseUrl = "http://localhost:8080";
   private String wsUrl = "ws://localhost:8080/ws";
   private String appName = "pukeko-ui-agent";
+  private String pageTitle = "Galvanized Pukeko";
 
   private UiConfigItem logo;
   private List<UiConfigItem> header;
@@ -38,6 +39,14 @@ public class UiConfigProperties {
 
   public void setAppName(String appName) {
     this.appName = appName;
+  }
+
+  public String getPageTitle() {
+    return pageTitle;
+  }
+
+  public void setPageTitle(String pageTitle) {
+    this.pageTitle = pageTitle;
   }
 
   public UiConfigItem getLogo() {
@@ -70,6 +79,7 @@ public class UiConfigProperties {
         "baseUrl='" + baseUrl + '\'' +
         ", wsUrl='" + wsUrl + '\'' +
         ", appName='" + appName + '\'' +
+        ", pageTitle='" + pageTitle + '\'' +
         ", logo=" + logo +
         ", header=" + header +
         ", footer=" + footer +

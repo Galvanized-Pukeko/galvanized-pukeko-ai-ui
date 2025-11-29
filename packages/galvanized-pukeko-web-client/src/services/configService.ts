@@ -8,6 +8,7 @@ export interface UiConfig {
   baseUrl: string
   wsUrl: string
   appName: string
+  pageTitle?: string
   configUrl?: string
   logo?: UiConfigItem
   header?: UiConfigItem[]

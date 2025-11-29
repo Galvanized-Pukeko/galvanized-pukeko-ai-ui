@@ -275,6 +275,10 @@ const handleClearTable = () => {
 }
 
 onMounted(() => {
+  if (uiConfig.value?.pageTitle) {
+    document.title = uiConfig.value.pageTitle
+  }
+
   connectionService.connect()
 
   unsubscribeStatus = connectionService.subscribeToStatus((status) => {
