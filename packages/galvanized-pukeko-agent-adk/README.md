@@ -102,6 +102,9 @@ pukeko.ui.base-url=http://localhost:8080
 pukeko.ui.ws-url=ws://localhost:8080/ws
 pukeko.ui.app-name=pukeko-ui-agent
 
+# Browser page title (default: Galvanized Pukeko)
+pukeko.ui.page-title=My Application
+
 # Logo configuration
 pukeko.ui.logo.text=My App
 pukeko.ui.logo.href=https://example.com
