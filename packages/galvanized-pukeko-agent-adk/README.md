@@ -23,7 +23,6 @@ This application extends `AdkWebServer` from the Google ADK framework and provid
 ### Prerequisites
 
 - Java 17+
-- Maven 3.6+
 - (Optional) Node.js 18+ for web client development
 
 ### Running the Server
@@ -31,7 +30,7 @@ This application extends `AdkWebServer` from the Google ADK framework and provid
 Start the server with:
 
 ```bash
-mvn clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--server.port=8080 --adk.agents.source-dir=target"
+./mvnw clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--server.port=8080 --adk.agents.source-dir=target"
 ```
 
 The server will start on port 8080 and serve:
@@ -42,6 +41,21 @@ The server will start on port 8080 and serve:
 ### Configuration
 
 Configuration is managed through `src/main/resources/application.properties`:
+
+#### UI Configuration
+
+```properties
+pukeko.ui.base-url=http://localhost:8085
+pukeko.ui.ws-url=ws://localhost:8085/ws
+pukeko.ui.app-name=pukeko-ui-agent
+
+# Optional: Configure logo, header, and footer items
+pukeko.ui.logo.text=My App
+pukeko.ui.logo.href=https://example.com
+pukeko.ui.header[0].text=Docs
+pukeko.ui.header[0].href=https://example.com/docs
+pukeko.ui.footer[0].text=© 2025 My Company
+```
 
 #### CORS Configuration
 
