@@ -33,7 +33,7 @@
   cursor: pointer;
 }
 
-.nav-logo svg {
+.nav-logo :deep(svg) {
   width: 40px;
   height: 40px;
   margin-right: var(--padding-third);

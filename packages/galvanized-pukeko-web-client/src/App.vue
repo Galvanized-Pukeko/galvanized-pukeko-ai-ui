@@ -363,8 +363,9 @@ onUnmounted(() => {
             <div class="app-content">
               <!-- Show only one section at a time: waiting message, form, chart, or table -->
               <div v-if="!currentChart && !currentTable && serverComponents.length === 0"
-                   class="info">
-                Waiting for server to send components...
+                   id="galvanized-pukeko-ui-waiting-placeholder"
+                   class="waiting-placeholder">
+                <PkLogo />
               </div>
 
               <PkForm v-else-if="!currentChart && !currentTable && serverComponents.length > 0"
@@ -639,5 +640,19 @@ onUnmounted(() => {
   background: var(--bg-button-nob-active, #f3f4f6);
   border: var(--border-button-nob-active, 1px solid #d1d5db);
   color: var(--text-button-nob-active, #111827);
+}
+
+.waiting-placeholder {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 40%;
+  margin: 0 auto;
+  opacity: 0.1;
+  padding: 2rem 0;
+}
+
+.waiting-placeholder :deep(svg) {
+  width: 100%;
 }
 </style>
