@@ -328,10 +328,6 @@ onUnmounted(() => {
               class="nav-link-item"
             />
           </template>
-          <a v-else href="https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui/"
-             class="nav-link" target="_blank" rel="noopener noreferrer">
-            About Galvanized Pukeko
-          </a>
         </template>
         <template #nav-controls>
           <div class="status">
