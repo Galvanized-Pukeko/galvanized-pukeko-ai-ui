@@ -152,6 +152,10 @@ let unsubscribeTableMessage: (() => void) | null = null
 const handleRenderComponents = (message: WebSocketMessage) => {
   console.log('Received message from server:', message)
   if (message.components) {
+    // Clear other content types to allow this form to be displayed
+    currentChart.value = null
+    currentTable.value = null
+
     serverComponents.value = message.components
     formLabels.value = {
       submitLabel: message.submitLabel,
@@ -191,6 +195,10 @@ const handleChartMessage = (message: WebSocketMessage) => {
   }
 
   if (chartMessage.chartType && chartMessage.title && chartMessage.data) {
+    // Clear other content types to allow this chart to be displayed
+    currentTable.value = null
+    serverComponents.value = []
+
     currentChart.value = {
       type: chartMessage.chartType,
       title: chartMessage.title,
@@ -210,6 +218,10 @@ const handleTableMessage = (message: WebSocketMessage) => {
   }
 
   if (tableMessage.data) {
+    // Clear other content types to allow this table to be displayed
+    currentChart.value = null
+    serverComponents.value = []
+
     currentTable.value = {
       caption: tableMessage.caption,
       header: tableMessage.header,
