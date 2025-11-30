@@ -3,22 +3,17 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   Tool,
-  ToolSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import {z} from "zod";
-import {zodToJsonSchema} from "zod-to-json-schema";
+import {z} from "zod/v4";
 import {readFileSync, readdirSync} from "fs";
 import {join, dirname} from "path";
 import {fileURLToPath} from "url";
 
-const ToolInputSchema = ToolSchema.shape.inputSchema;
-type ToolInput = z.infer<typeof ToolInputSchema>;
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const serverContext = {
-  mcpServer: undefined as Server,
+const serverContext: { mcpServer: Server | undefined } = {
+  mcpServer: undefined,
 }
 
 function validateFilename(filename: string): void {
@@ -35,7 +30,7 @@ function listFiles(): string[] {
   try {
     return readdirSync(filesDir).filter(file => file.endsWith('.csv'));
   } catch (error) {
-    throw new Error('Unable to read files directory', error);
+    throw new Error('Unable to read files directory', { cause: error });
   }
 }
 
@@ -86,14 +81,14 @@ export const createServer = () => {
       {
         name: ToolName.READ_CSV,
         description: "Reads data from provided CSV file.",
-        inputSchema: zodToJsonSchema(z.object({
+        inputSchema: z.toJSONSchema(z.object({
           filename: z.string().describe("Name of the CSV file to read")
-        })) as ToolInput,
+        })) as Tool["inputSchema"],
       },
       {
         name: ToolName.LIST_REPORTS,
         description: "Lists available CSV files in the reports directory.",
-        inputSchema: zodToJsonSchema(z.object({})) as ToolInput,
+        inputSchema: z.toJSONSchema(z.object({})) as Tool["inputSchema"],
       }
     ];
 

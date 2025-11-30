@@ -1,16 +1,17 @@
 {
-  "extends": "@galvanized-pukeko-ai-ui/web/tsconfig.json",
   "compilerOptions": {
     "composite": true,
     "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.server.tsbuildinfo",
     "target": "ES2022",
-    "module": "ES2022",
-    "moduleResolution": "bundler",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "outDir": "dist",
     "rootDir": "./src",
-    "types": ["node"]
+    "types": ["node"],
+    "strict": true,
+    "skipLibCheck": true
   },
   "include": [
     "src/**/*"

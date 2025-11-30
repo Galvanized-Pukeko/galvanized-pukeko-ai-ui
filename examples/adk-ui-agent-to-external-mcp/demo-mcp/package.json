@@ -1,6 +1,7 @@
 {
   "name": "@galvanized-pukeko-ai-ui/demo-mcp",
   "version": "0.0.1",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "build": "tsc",
@@ -14,6 +15,9 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "gaunt-sloth-assistant": "^0.8.12"
+    "gaunt-sloth-assistant": "^1.0.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.5"
   }
 }

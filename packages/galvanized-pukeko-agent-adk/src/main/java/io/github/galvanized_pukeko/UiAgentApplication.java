@@ -4,7 +4,6 @@ import static io.github.galvanized_pukeko.UiAgent.PUKEKO_UI_AGENT_NAME;
 
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.LlmAgent;
-import com.google.adk.tools.FunctionTool;
 import com.google.adk.web.AdkWebServer;
 import com.google.adk.web.AgentLoader;
 import com.google.common.collect.ImmutableList;
@@ -13,8 +12,7 @@ import io.github.galvanized_pukeko.config.A2aConfiguration;
 import io.github.galvanized_pukeko.config.AiConfiguration;
 import io.github.galvanized_pukeko.config.McpConfiguration;
 import io.github.galvanized_pukeko.config.McpToolsetFactory;
-import java.util.ArrayList;
-import java.util.List;
+import io.github.galvanized_pukeko.config.PromptLoader;
 import java.util.NoSuchElementException;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -78,10 +76,11 @@ public class UiAgentApplication extends AdkWebServer {
       McpConfiguration mcpConfig,
       McpToolsetFactory mcpFactory,
       A2aConfiguration a2aConfig,
-      A2aAgentFactory a2aFactory
+      A2aAgentFactory a2aFactory,
+      PromptLoader promptLoader
   ) {
     log.info("creating agent loader");
-    return new UiAgentLoader(webSocketHandler, aiConfig, mcpConfig, mcpFactory, a2aConfig, a2aFactory);
+    return new UiAgentLoader(webSocketHandler, aiConfig, mcpConfig, mcpFactory, a2aConfig, a2aFactory, promptLoader);
   }
 
   private static class UiAgentLoader implements AgentLoader {
@@ -90,9 +89,9 @@ public class UiAgentApplication extends AdkWebServer {
 
     public UiAgentLoader(FormWebSocketHandler webSocketHandler, AiConfiguration aiConfig,
         McpConfiguration mcpConfig, McpToolsetFactory mcpFactory, A2aConfiguration a2aConfig,
-        A2aAgentFactory a2aFactory) {
+        A2aAgentFactory a2aFactory, PromptLoader promptLoader) {
       this.uiAgent = UiAgent.createAgent(webSocketHandler, aiConfig, mcpConfig, mcpFactory,
-          a2aConfig, a2aFactory);
+          a2aConfig, a2aFactory, promptLoader);
     }
 
     @Override

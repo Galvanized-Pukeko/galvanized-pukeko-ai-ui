@@ -1,8 +1,9 @@
 # Release Howto
 
-Needs GPG with a published key to be present.
+## Prerequisites
 
-Needs .m2/settings.xml to be present, codes to be acquired from sonatype.
+- GPG with a published key
+- `.m2/settings.xml` with Sonatype credentials:
 ```xml
 <server>
   <id>central</id>
@@ -11,6 +12,16 @@ Needs .m2/settings.xml to be present, codes to be acquired from sonatype.
 </server>
 ```
 
+## Local Development
+
+For local testing without GPG signing or javadoc generation:
 ```bash
-./mvnw deploy
+mvn clean install
+```
+
+## Release to Maven Central
+
+Activate the `release` profile to enable GPG signing, source jars, and javadocs:
+```bash
+mvn clean deploy -Prelease
 ```

@@ -9,6 +9,7 @@ import io.github.galvanized_pukeko.config.A2aConfiguration;
 import io.github.galvanized_pukeko.config.AiConfiguration;
 import io.github.galvanized_pukeko.config.McpConfiguration;
 import io.github.galvanized_pukeko.config.McpToolsetFactory;
+import io.github.galvanized_pukeko.config.PromptLoader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ public class UiAgent {
    * @param mcpFactory Factory for creating MCP toolsets
    * @param a2aConfig A2A configuration from application.properties
    * @param a2aFactory Factory for creating A2A remote agents
+   * @param promptLoader Loader for external prompt files
    * @return Configured LlmAgent with tools and sub-agents
    */
   public static LlmAgent createAgent(
@@ -39,66 +41,60 @@ public class UiAgent {
       McpConfiguration mcpConfig,
       McpToolsetFactory mcpFactory,
       A2aConfiguration a2aConfig,
-      A2aAgentFactory a2aFactory
+      A2aAgentFactory a2aFactory,
+      PromptLoader promptLoader
   ) {
-    // Note this will actually not be loaded until you send first message.
-    log.info("Creating UI Agent with model '{}' and MCP/A2A configurations", aiConfig.getModel());
+    // Validate required configuration
+    String description = aiConfig.getDescription();
+    if (description == null || description.isBlank()) {
+      throw new IllegalStateException("pukeko.ai.description must be configured in application.properties");
+    }
+
+    log.info("Creating UI Agent with model '{}' and prompt path '{}'",
+        aiConfig.getModel(), aiConfig.getPromptPath());
+    log.info("Agent description: {}", description);
 
     // Store handler statically for tools to access
     // TODO: Refactor tools to not rely on static state if possible, but for now this bridges the gap
     webSocketHandler = handler;
-    
+
+    // Load the agent prompt from configured path
+    String instruction = promptLoader.loadPrompt(aiConfig.getPromptPath());
+
     // Build tools list
     List<Object> tools = new ArrayList<>();
     tools.add(FunctionTool.create(UiAgent.class, "renderForm"));
     tools.add(FunctionTool.create(UiAgent.class, "renderChart"));
     tools.add(FunctionTool.create(UiAgent.class, "renderTable"));
-    
+
     // Add MCP toolset if configured
     mcpFactory.create(mcpConfig).ifPresent(toolset -> {
       log.info("Adding MCP toolset to UI Agent");
       tools.add(toolset);
     });
-    
+
     // Build sub-agents list
     List<BaseAgent> subAgents = new ArrayList<>();
-    
+
     // Add A2A remote agent if configured
     a2aFactory.create(a2aConfig).ifPresent(remoteAgent -> {
       log.info("Adding A2A remote agent '{}' to UI Agent", a2aConfig.getName());
       subAgents.add(remoteAgent);
     });
-    
+
     // Build the agent
     var agentBuilder = LlmAgent.builder()
         .name(PUKEKO_UI_AGENT_NAME)
-        .description("UI Agent that renders forms, charts, and tables for user interaction and data visualization")
+        .description(description)
         .model(aiConfig.getModel())
-        .instruction(
-            """
-                You are a helpful assistant with UI rendering capabilities.
-
-                Use these tools to create rich, interactive responses:
-                - **renderForm**: Collect structured input from users (e.g., contact forms, surveys, settings)
-                - **renderTable**: Display tabular data clearly (e.g., search results, lists, comparisons)
-                - **renderChart**: Visualize numerical data (e.g., statistics, trends, distributions)
-
-                Guidelines:
-                - Use forms when you need user input before proceeding
-                - Use tables for structured data with multiple fields per item
-                - Use charts (bar/pie) when visualizing quantities or proportions
-                - Prefer rendering UI components over plain text when presenting data
-
-                If you have sub-agents available, delegate specialized tasks to them when appropriate.
-                """
-        )
+        .instruction(instruction)
         .tools(tools);
-    
+
     // Only add subAgents if the list is not empty
     if (!subAgents.isEmpty()) {
       agentBuilder.subAgents(subAgents);
     }
-    
+
     return agentBuilder.build();
   }
 
