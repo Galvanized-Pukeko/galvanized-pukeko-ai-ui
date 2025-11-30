@@ -44,10 +44,11 @@ public class UiAgent {
       A2aAgentFactory a2aFactory,
       PromptLoader promptLoader
   ) {
-    // Validate required configuration
+    // Validate required configuration (should have been set by AiConfiguration from defaults if not configured)
     String description = aiConfig.getDescription();
     if (description == null || description.isBlank()) {
-      throw new IllegalStateException("pukeko.ai.description must be configured in application.properties");
+      throw new IllegalStateException(
+          "pukeko.ai.description must be configured in application.properties or pukeko-defaults.properties");
     }
 
     log.info("Creating UI Agent with model '{}' and prompt path '{}'",

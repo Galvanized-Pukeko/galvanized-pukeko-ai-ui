@@ -3,22 +3,24 @@ package io.github.galvanized_pukeko.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+/**
+ * AI configuration for the Pukeko agent.
+ * Defaults are loaded from pukeko-defaults.properties via PukekoDefaultsConfiguration.
+ */
 @Component
 @ConfigurationProperties(prefix = "pukeko.ai")
 public class AiConfiguration {
 
-  private String model = "gemini-2.5-pro";
+  private String model;
 
   /**
    * Path to the agent prompt file (markdown).
    * Supports classpath: prefix for resources or file: prefix for external files.
-   * Default: classpath:prompts/ui-agent-prompt.md
    */
-  private String promptPath = "classpath:prompts/ui-agent-prompt.md";
+  private String promptPath;
 
   /**
    * Agent description used for agent identification and sub-agent delegation.
-   * Required - must be configured in application.properties.
    */
   private String description;
 
