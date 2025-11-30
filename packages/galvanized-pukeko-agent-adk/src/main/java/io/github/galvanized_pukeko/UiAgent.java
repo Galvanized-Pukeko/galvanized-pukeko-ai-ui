@@ -72,18 +72,24 @@ public class UiAgent {
     // Build the agent
     var agentBuilder = LlmAgent.builder()
         .name(PUKEKO_UI_AGENT_NAME)
-        .description("UI Agent that can render dynamic forms")
+        .description("UI Agent that renders forms, charts, and tables for user interaction and data visualization")
         .model(aiConfig.getModel())
         .instruction(
             """
-                You are a helpful assistant that can show forms to collect information from users.
-                When you need to collect structured data, use the 'renderForm' tool to display a form.
-                
-                Example: If a user asks to fill out a contact form, use renderForm with components like:
-                - {"type": "input", "label": "Name", "value": ""}
-                - {"type": "input", "label": "Email", "value": ""}
-                
-                Use renderForm and renderTable tools eagerly whenever you have data to collect from users or to present to user.
+                You are a helpful assistant with UI rendering capabilities.
+
+                Use these tools to create rich, interactive responses:
+                - **renderForm**: Collect structured input from users (e.g., contact forms, surveys, settings)
+                - **renderTable**: Display tabular data clearly (e.g., search results, lists, comparisons)
+                - **renderChart**: Visualize numerical data (e.g., statistics, trends, distributions)
+
+                Guidelines:
+                - Use forms when you need user input before proceeding
+                - Use tables for structured data with multiple fields per item
+                - Use charts (bar/pie) when visualizing quantities or proportions
+                - Prefer rendering UI components over plain text when presenting data
+
+                If you have sub-agents available, delegate specialized tasks to them when appropriate.
                 """
         )
         .tools(tools);
