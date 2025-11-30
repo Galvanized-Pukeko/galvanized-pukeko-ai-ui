@@ -7,20 +7,27 @@ This example demonstrates how to use `galvanized-pukeko-agent-adk` as a Maven de
 - Java 17+
 - Maven 3.6+
 - Node.js 18+ (for Playwright tests)
-- `galvanized-pukeko-agent-adk` version `0.0.1-SNAPSHOT` installed in local Maven repository (TODO remove this when published to Maven Central)
 
 ## Running the Example
 
 ### Start Both Agents
 
+The easiest way to start both agents:
+
+```bash
+./start-all.sh
+```
+
+Or start them individually in separate terminals:
+
 Start remote Demo A2A agent (`cd demo-agent`)
 ```bash
-mvn clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--adk.agents.source-dir=target"
+./mvnw clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--adk.agents.source-dir=target"
 ```
 
 Start UI demo agent (`cd demo-ui-agent`)
 ```bash
-mvn clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--adk.agents.source-dir=target"
+./mvnw clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--adk.agents.source-dir=target"
 ```
 
 ### Access the UI
@@ -95,9 +102,9 @@ adk.a2a.agents.demo-agent.description=A demo agent that can answer questions
 
 ## Key Files
 
-- [`ui-agent/pom.xml`](file:///Users/andrei.kondratev/wrk/galvanized-pukeko-ai-ui/examples/adk-ui-agent-to-adk-agent/ui-agent/pom.xml) - Maven dependency on `galvanized-pukeko-agent-adk`
-- [`ui-agent/src/main/java/io/github/galvanized_pukeko/DemoUiAgent.java`](file:///Users/andrei.kondratev/wrk/galvanized-pukeko-ai-ui/examples/adk-ui-agent-to-adk-agent/ui-agent/src/main/java/io/github/galvanized_pukeko/DemoUiAgent.java) - Main application class
-- [`ui-agent/src/main/resources/application.properties`](file:///Users/andrei.kondratev/wrk/galvanized-pukeko-ai-ui/examples/adk-ui-agent-to-adk-agent/ui-agent/src/main/resources/application.properties) - Configuration
+- [`demo-ui-agent/pom.xml`](demo-ui-agent/pom.xml) - Maven dependency on `galvanized-pukeko-agent-adk`
+- [`demo-ui-agent/src/main/java/io/github/galvanized_pukeko/DemoUiAgentApplication.java`](demo-ui-agent/src/main/java/io/github/galvanized_pukeko/DemoUiAgentApplication.java) - Main application class
+- [`demo-ui-agent/src/main/resources/application.properties`](demo-ui-agent/src/main/resources/application.properties) - Configuration
 
 ## Stopping the Agents
 

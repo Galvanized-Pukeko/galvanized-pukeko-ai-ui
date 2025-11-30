@@ -40,7 +40,7 @@ export GOOGLE_CLOUD_LOCATION="global"
 
 Start server
 ```bash
-mvn clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--adk.agents.source-dir=target"
+./mvnw clean compile exec:java -Dexec.classpathScope=compile -Dexec.args="--adk.agents.source-dir=target"
 ```
 
 Create new session:

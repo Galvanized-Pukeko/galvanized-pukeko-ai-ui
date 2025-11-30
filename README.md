@@ -23,7 +23,7 @@ This project is organized as a monorepo containing the following packages:
 
 | Package | Description | Documentation |
 |---------|-------------|---------------|
-| [`galvanized-pukeko-agent-adk`](packages/galvanized-pukeko-agent-adk/) | Spring Boot application extending Google ADK with UI rendering capabilities | [README](packages/galvanized-pukeko-agent-adk/README.md) |
+| [`galvanized-pukeko-agent-adk`](packages/galvanized-pukeko-agent-adk/) | Spring Boot application extending Google ADK with UI rendering capabilities. Available on [Maven Central](https://central.sonatype.com/artifact/io.github.galvanized-pukeko/galvanized-pukeko-agent-adk). | [README](packages/galvanized-pukeko-agent-adk/README.md) |
 | [`galvanized-pukeko-web-client`](packages/galvanized-pukeko-web-client/) | Vue.js application providing chat interface and dynamic component renderer | [README](packages/galvanized-pukeko-web-client/README.md) |
 
 ## System Architecture

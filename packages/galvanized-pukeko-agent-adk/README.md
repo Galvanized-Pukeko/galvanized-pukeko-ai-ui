@@ -1,5 +1,7 @@
 # Galvanized Pukeko Agent ADK
 
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.galvanized-pukeko/galvanized-pukeko-agent-adk.svg)](https://central.sonatype.com/artifact/io.github.galvanized-pukeko/galvanized-pukeko-agent-adk)
+
 A Spring Boot application that extends the [Google ADK (Agent Development Kit)](https://github.com/google/adk-java) to provide a UI-enabled agent with dynamic form, chart, and table rendering capabilities.
 
 > **Part of the [Galvanized Pukeko](../../README.md) monorepo** - See the root README for project overview and getting started guide.
@@ -52,6 +54,24 @@ This application extends `AdkWebServer` from the Google ADK framework and provid
 | `FormWebSocketHandler` | WebSocket handler for real-time UI communication |
 | `McpToolsetFactory` | Optional MCP toolset integration |
 | `A2aAgentFactory` | Optional A2A remote agent integration |
+
+## Installation
+
+Add the dependency to your `pom.xml`:
+
+```xml
+<dependency>
+  <groupId>io.github.galvanized-pukeko</groupId>
+  <artifactId>galvanized-pukeko-agent-adk</artifactId>
+  <version>0.0.1</version>
+</dependency>
+```
+
+Or for Gradle (`build.gradle`):
+
+```groovy
+implementation 'io.github.galvanized-pukeko:galvanized-pukeko-agent-adk:0.0.1'
+```
 
 ## Getting Started
 
@@ -311,6 +331,13 @@ src/main/
     ├── application.properties
     └── browser/                   # Built web client
 ```
+
+## Examples
+
+See the [examples](../../examples/) directory for complete working examples:
+
+- [ADK UI Agent to ADK Agent](../../examples/adk-ui-agent-to-adk-agent/) - UI agent communicating with another ADK agent via A2A
+- [ADK UI Agent to External MCP](../../examples/adk-ui-agent-to-external-mcp/) - UI agent connecting to external MCP servers
 
 ## Related Documentation
 
