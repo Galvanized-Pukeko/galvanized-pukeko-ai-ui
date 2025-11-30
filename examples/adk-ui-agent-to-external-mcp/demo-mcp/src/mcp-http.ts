@@ -1,5 +1,4 @@
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { InMemoryEventStore } from '@modelcontextprotocol/sdk/examples/shared/inMemoryEventStore.js';
 import express, { Request, Response } from "express";
 import { createServer } from "./server.js";
 import { randomUUID } from 'node:crypto';
@@ -25,10 +24,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
       const { server, cleanup } = createServer();
 
       // New initialization request
-      const eventStore = new InMemoryEventStore();
+      // Note: eventStore removed for compatibility with Java MCP client
+      // The Java client can't handle empty SSE events sent for resumability
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
-        eventStore, // Enable resumability
         onsessioninitialized: (sessionId: string) => {
           // Store the transport by session ID when session is initialized
           // This avoids race conditions where requests might come in before the session is stored
