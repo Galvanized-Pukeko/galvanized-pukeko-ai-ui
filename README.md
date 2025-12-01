@@ -11,7 +11,7 @@ Galvanized Pukeko is a framework that enables LLM-powered agents to dynamically 
 
 ![galvanized-pukeko-logo.png](assets/galvanized-pukeko-logo.png)
 
-[![Watch the demo](https://img.youtube.com/vi/rfiUhsaDtrU/0.jpg)](https://youtu.be/rfiUhsaDtrU)
+A quick demo on YouTube: https://youtu.be/rfiUhsaDtrU
 
 ## Features
 
