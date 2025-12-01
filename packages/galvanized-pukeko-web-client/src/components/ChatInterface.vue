@@ -36,6 +36,54 @@ onMounted(async () => {
   }
 })
 
+const processAgentResponse = (response: Awaited<ReturnType<typeof chatService.sendMessage>>) => {
+  // Process all chunks to find function calls and their responses
+  const functionCallMap = new Map<string, { name: string, response?: any }>()
+
+  for (const chunk of response.chunks) {
+    if (!chunk.content || !chunk.content.parts) continue
+    for (const part of chunk.content.parts) {
+      if (part.functionCall) {
+        functionCallMap.set(part.functionCall.id, {
+          name: part.functionCall.name,
+          response: undefined
+        })
+      }
+      if (part.functionResponse) {
+        const existing = functionCallMap.get(part.functionResponse.id)
+        if (existing) {
+          existing.response = part.functionResponse.response
+        }
+      }
+    }
+  }
+
+  // Add a message for each function call with its response
+  for (const [id, {name, response: fnResponse}] of functionCallMap) {
+    messages.value.push({
+      id: `${response.finalMessage.id}-tool-${id}`,
+      text: '',
+      sender: 'ai',
+      toolCall: name,
+      toolResponse: fnResponse ? JSON.stringify(fnResponse, null, 2) : undefined
+    })
+  }
+
+  // Extract text from the final message
+  const aiText = (response.finalMessage.content.parts) ? response.finalMessage.content.parts
+  .filter(p => p.text)
+  .map(p => p.text)
+  .join('\n') : "";
+
+  if (aiText.trim()) {
+    messages.value.push({
+      id: response.finalMessage.id,
+      text: aiText,
+      sender: 'ai'
+    })
+  }
+}
+
 const sendMessage = async () => {
   if (!newMessage.value.trim() || !sessionId.value || isLoading.value) return
 
@@ -51,52 +99,7 @@ const sendMessage = async () => {
 
   try {
     const response = await chatService.sendMessage(sessionId.value, text)
-
-    // Process all chunks to find function calls and their responses
-    const functionCallMap = new Map<string, { name: string, response?: any }>()
-
-    for (const chunk of response.chunks) {
-      if (!chunk.content || !chunk.content.parts) continue
-      for (const part of chunk.content.parts) {
-        if (part.functionCall) {
-          functionCallMap.set(part.functionCall.id, {
-            name: part.functionCall.name,
-            response: undefined
-          })
-        }
-        if (part.functionResponse) {
-          const existing = functionCallMap.get(part.functionResponse.id)
-          if (existing) {
-            existing.response = part.functionResponse.response
-          }
-        }
-      }
-    }
-
-    // Add a message for each function call with its response
-    for (const [id, {name, response: fnResponse}] of functionCallMap) {
-      messages.value.push({
-        id: `${response.finalMessage.id}-tool-${id}`,
-        text: '',
-        sender: 'ai',
-        toolCall: name,
-        toolResponse: fnResponse ? JSON.stringify(fnResponse, null, 2) : undefined
-      })
-    }
-
-    // Extract text from the final message
-    const aiText = (response.finalMessage.content.parts) ? response.finalMessage.content.parts
-    .filter(p => p.text)
-    .map(p => p.text)
-    .join('\n') : "";
-
-    if (aiText.trim()) {
-      messages.value.push({
-        id: response.finalMessage.id,
-        text: aiText,
-        sender: 'ai'
-      })
-    }
+    processAgentResponse(response)
   } catch (error) {
     console.error('Failed to send message:', error)
     messages.value.push({
@@ -108,6 +111,40 @@ const sendMessage = async () => {
     isLoading.value = false
   }
 }
+
+/**
+ * Send a form message to the agent (called from App.vue on form submit/cancel)
+ */
+const sendFormMessage = async (text: string) => {
+  if (!sessionId.value || isLoading.value) return
+
+  messages.value.push({
+    id: Date.now(),
+    text: text,
+    sender: 'user'
+  })
+
+  isLoading.value = true
+
+  try {
+    const response = await chatService.sendMessage(sessionId.value, text)
+    processAgentResponse(response)
+  } catch (error) {
+    console.error('Failed to send form message:', error)
+    messages.value.push({
+      id: Date.now(),
+      text: 'Error sending message. Please try again.',
+      sender: 'ai'
+    })
+  } finally {
+    isLoading.value = false
+  }
+}
+
+defineExpose({
+  sessionId,
+  sendFormMessage
+})
 </script>
 
 <template>

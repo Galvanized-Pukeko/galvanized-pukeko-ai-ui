@@ -54,6 +54,9 @@ const componentValues = ref<{
   counter: Record<string, string>
 }>({input: {}, checkbox: {}, radio: {}, select: {}, counter: {}})
 
+// Ref to ChatInterface component to call sendFormMessage
+const chatInterfaceRef = ref<InstanceType<typeof ChatInterface> | null>(null)
+
 /**
  * This is going to be coming from config in future.
  */
@@ -231,7 +234,7 @@ const handleTableMessage = (message: WebSocketMessage) => {
   }
 }
 
-const handleSubmit = (event: Event) => {
+const handleSubmit = async (event: Event) => {
   event.preventDefault()
   const allValues: Record<string, string | boolean | number> = {
     ...componentValues.value.input,
@@ -242,26 +245,34 @@ const handleSubmit = (event: Event) => {
   }
   console.log('Form submitted with values:', allValues)
 
-  // Send form submission to server
-  connectionService.sendMessage({
-    type: 'form_submit',
-    data: allValues,
-    timestamp: Date.now()
-  })
+  // Format form data as readable message
+  const formattedMessage = 'Form submitted: ' + Object.entries(allValues)
+    .map(([key, value]) => `${key}=${value}`)
+    .join(', ')
+
+  // Clear the form display
+  serverComponents.value = []
+  componentValues.value = {input: {}, checkbox: {}, radio: {}, select: {}, counter: {}}
+
+  // Send to agent via chat interface
+  if (chatInterfaceRef.value) {
+    // XXX this piece is a bit brittle, as it assumes that the chat interface and UI renderer are
+    // always mounted together (back-end handlers currently just log the submission).
+    await chatInterfaceRef.value.sendFormMessage(formattedMessage)
+  }
 }
 
-const handleCancel = () => {
+const handleCancel = async () => {
   // Clear all form values
   componentValues.value = {input: {}, checkbox: {}, radio: {}, select: {}, counter: {}}
 
   // Reset values based on current components
-  serverComponents.value = [];
+  serverComponents.value = []
 
-  // Send cancel message to server
-  connectionService.sendMessage({
-    type: 'cancel',
-    timestamp: Date.now()
-  })
+  // Send cancel message to agent via chat interface
+  if (chatInterfaceRef.value) {
+    await chatInterfaceRef.value.sendFormMessage('Form cancelled')
+  }
 }
 
 const handleClearChart = () => {
@@ -367,7 +378,7 @@ onUnmounted(() => {
         <div class="split-screen">
           <!-- Left Side: Chat Interface -->
           <div class="chat-panel">
-            <ChatInterface/>
+            <ChatInterface ref="chatInterfaceRef"/>
           </div>
 
           <!-- Right Side: Form/Content -->

@@ -62,12 +62,15 @@ public class FormWebSocketHandler extends TextWebSocketHandler {
     }
 
     private void handleFormSubmit(WebSocketSession session, JsonNode params, JsonNode id) {
+        // TODO: the message is currently looped back to the agent in UI,
+        // ideally we should send it back to the agent from here and then tell UI to sync
         log.info("Form submitted: {}", params);
-        // TODO: Process form data with agent session
         sendResponse(session, id, Map.of("success", true));
     }
 
     private void handleCancel(WebSocketSession session, JsonNode params, JsonNode id) {
+        // TODO: the message is currently looped back to the agent in UI,
+        // ideally we should send it back to the agent from here and then tell UI to sync
         log.info("Form cancelled");
         sendResponse(session, id, Map.of("success", true));
     }
