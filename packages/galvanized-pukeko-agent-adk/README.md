@@ -19,30 +19,37 @@ A Spring Boot application that extends the [Google ADK (Agent Development Kit)](
 
 This application extends `AdkWebServer` from the Google ADK framework and provides:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    UiAgentApplication                        │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
-│  │   UiAgent   │  │ FormWebSocket   │  │  Static Files   │ │
-│  │   (LLM)     │  │    Handler      │  │  (/browser/*)   │ │
-│  └─────────────┘  └─────────────────┘  └─────────────────┘ │
-│         │                  │                               │
-│  ┌──────┴──────┐          │                               │
-│  │   Tools:    │          │                               │
-│  │ renderForm  │◄─────────┘                               │
-│  │ renderChart │                                          │
-│  │ renderTable │                                          │
-│  └─────────────┘                                          │
-│         │                                                  │
-│  ┌──────┴──────────────────────────────────┐              │
-│  │        Optional Integrations:           │              │
-│  │  ┌─────────┐      ┌─────────────────┐   │              │
-│  │  │   MCP   │      │  A2A Remote     │   │              │
-│  │  │ Toolset │      │    Agents       │   │              │
-│  │  └─────────┘      └─────────────────┘   │              │
-│  └─────────────────────────────────────────┘              │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart RL
+    subgraph UiAgentApplication["UiAgentApplication"]
+        subgraph Components["Core Components"]
+            UiAgent["UiAgent<br/>(LLM)"]
+            WebSocket["FormWebSocket<br/>Handler"]
+            Static["Static Files<br/>(/browser/*)"]
+        end
+
+        subgraph Tools
+            direction LR
+            renderForm
+            renderChart
+            renderTable
+        end
+
+        UiAgent --> Tools
+        WebSocket --> Tools
+    end
+
+    subgraph Integrations
+        MCP["MCP<br/>Toolset"]
+        A2A["A2A Remote<br/>Agents"]
+    end
+
+    Components --> Integrations
+
+    Browser["Browser<br/>(Vue.js Client)"]
+    Browser <-->|WebSocket| WebSocket
+    Browser <-->|HTTP/SSE| UiAgent
+    Browser -->|GET| Static
 ```
 
 ### Core Components

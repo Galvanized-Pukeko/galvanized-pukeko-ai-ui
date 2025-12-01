@@ -115,6 +115,26 @@ lsof -ti:8080 | xargs kill -9
 lsof -ti:8081 | xargs kill -9
 ```
 
+## Deploying to Google Cloud Run
+
+The UI agent can be deployed to Google Cloud Run:
+
+```bash
+cd demo-ui-agent
+
+# Set your GCP project
+export TEST_AGENT_GCP_PROJECT=your-gcp-project-id
+
+# Deploy
+./deploy.sh
+```
+
+Prerequisites:
+- Google Cloud CLI (`gcloud`) installed and authenticated
+- A GCP project with Cloud Run and Vertex AI APIs enabled
+
+The deployment script uses Vertex AI for model access, which supports both Gemini and Anthropic models from the Model Garden.
+
 ## Related Documentation
 
 - [galvanized-pukeko-agent-adk README](../../packages/galvanized-pukeko-agent-adk/README.md)
