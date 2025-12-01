@@ -7,7 +7,11 @@
 
 Galvanized Pukeko is a framework that enables LLM-powered agents to dynamically render forms, charts, and tables when interacting with users. It eliminates the need for static HTML pages while maintaining consistent formatting and branded interfaces.
 
+> Status: This is a proof-of-concept; expect frequent changes and occasional breakage while we iterate.
+
 ![galvanized-pukeko-logo.png](assets/galvanized-pukeko-logo.png)
+
+[![Watch the demo](https://img.youtube.com/vi/rfiUhsaDtrU/0.jpg)](https://youtu.be/rfiUhsaDtrU)
 
 ## Features
 

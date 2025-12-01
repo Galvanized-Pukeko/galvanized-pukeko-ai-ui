@@ -4,6 +4,8 @@
 
 A Spring Boot application that extends the [Google ADK (Agent Development Kit)](https://github.com/google/adk-java) to provide a UI-enabled agent with dynamic form, chart, and table rendering capabilities.
 
+> Status: This package is a proof-of-concept; expect frequent changes and occasional breakage while we iterate.
+
 > **Part of the [Galvanized Pukeko](../../README.md) monorepo** - See the root README for project overview and getting started guide.
 
 ## Features
