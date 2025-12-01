@@ -6,7 +6,7 @@
 
   <groupId>io.github.galvanized-pukeko</groupId>
   <artifactId>galvanized-pukeko-agent-adk</artifactId>
-  <version>0.0.3-SNAPSHOT</version>
+  <version>0.0.3</version>
   <url>https://galvanized-pukeko.github.io/</url>
   <packaging>jar</packaging>
   <name>Galvanized Pukeko Agent ADK</name>
