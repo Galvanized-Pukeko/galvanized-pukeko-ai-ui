@@ -46,7 +46,12 @@ flowchart RL
 
     Components --> Integrations
 
-    Browser["Browser<br/>(Vue.js Client)"]
+    subgraph Browser["Browser (Vue)"]
+        direction LR
+        UIRenderer["UI Renderer"]
+        ChatInterface["Chat Interface"]
+    end
+    
     Browser <-->|WebSocket| WebSocket
     Browser <-->|HTTP/SSE| UiAgent
     Browser -->|GET| Static
