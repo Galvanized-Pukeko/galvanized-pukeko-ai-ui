@@ -16,4 +16,4 @@ EXPOSE 8080
 # Use a shell so ${PORT} expands and quote exec.args so agent source-dir is passed correctly.
 ENTRYPOINT ["sh", "-c", "mvn compile exec:java \
     -Dexec.classpathScope=compile \
-    -Dexec.args='--server.port=${PORT:-8080} --adk.agents.source-dir=target'"]
+    -Dexec.args='--server.port=${PORT:-8080} --adk.agents.source-dir=target --adk.web.cors.origins=https://${WEB_HOST} --pukeko.ui.base-url=https://${WEB_HOST} --pukeko.ui.ws-url=wss://${WEB_HOST}/ws'"]

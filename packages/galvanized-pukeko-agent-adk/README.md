@@ -130,8 +130,8 @@ Customize the web client appearance:
 
 ```properties
 # Base URLs (auto-detected if not set)
-pukeko.ui.base-url=http://localhost:8080
-pukeko.ui.ws-url=ws://localhost:8080/ws
+pukeko.ui.base-url=http://localhost:${PORT:8080}
+pukeko.ui.ws-url=ws://localhost:${PORT:8080}/ws
 pukeko.ui.app-name=pukeko-ui-agent
 
 # Browser page title (default: Galvanized Pukeko)
@@ -154,8 +154,6 @@ pukeko.ui.footer[0].href=https://example.com
 ```
 
 ### CORS Configuration
-
-For development with separate frontend:
 
 ```properties
 adk.web.cors.origins=http://localhost:5555,https://localhost:5555
@@ -343,6 +341,44 @@ src/main/
     ├── application.properties
     └── browser/                   # Built web client
 ```
+
+## Deploying to Google Cloud Run
+
+The UI agent can be deployed to Google Cloud Run:
+
+```bash
+# Set your GCP project
+export TEST_AGENT_GCP_PROJECT=your-gcp-project-id
+# Set the host (no protocol) for the UI and CORS configuration (Cloud Run URL or custom domain)
+export TEST_AGENT_HOST=test-agent-service-xyz-ue.a.run.app
+
+# Deploy
+./deploy.sh
+```
+
+Prerequisites:
+- Google Cloud CLI (`gcloud`) installed and authenticated
+- A GCP project with Cloud Run and Vertex AI APIs enabled
+
+The deployment script uses Vertex AI for model access, which supports both Gemini and Anthropic models from the Model Garden.
+
+**Note:** When deploying to Cloud Run, ensure your MCP server is also accessible from the cloud environment, or update `application.properties` to point to a cloud-hosted MCP server.
+
+The deployment script uses Vertex AI for model access, which supports both Gemini and Anthropic models from the Model Garden.
+
+You need to configure your URLs and CORS for your deployment. The `deploy.sh` script sets `WEB_HOST=$TEST_AGENT_HOST`, which is used to derive the UI base URL, WebSocket URL, and CORS origins.
+```
+pukeko.ui.base-url=https://your-domain.com
+pukeko.ui.ws-url=wss://your-domain.com/ws
+adk.web.cors.origins=https://your-domain.com,wss://your-domain.com
+adk.web.cors.methods=GET,POST,PUT,DELETE,OPTIONS
+adk.web.cors.headers=*
+adk.web.cors.allow-credentials=true
+adk.web.cors.max-age=3600
+adk.web.cors.mapping=/**
+```
+
+Important! The websockets need 1G of memory, configure your instance size to have 1G of memory; default 512 is not enough.
 
 ## Examples
 

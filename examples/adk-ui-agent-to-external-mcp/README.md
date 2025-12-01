@@ -119,6 +119,8 @@ cd demo-ui-agent
 
 # Set your GCP project
 export TEST_AGENT_GCP_PROJECT=your-gcp-project-id
+# Set the host (no protocol) used for UI URLs and CORS
+export TEST_AGENT_HOST=demo-ui-agent-xyz-ue.a.run.app
 
 # Deploy
 ./deploy.sh
@@ -131,6 +133,22 @@ Prerequisites:
 The deployment script uses Vertex AI for model access, which supports both Gemini and Anthropic models from the Model Garden.
 
 **Note:** When deploying to Cloud Run, ensure your MCP server is also accessible from the cloud environment, or update `application.properties` to point to a cloud-hosted MCP server.
+
+Set `TEST_AGENT_HOST` to the Cloud Run hostname (or your custom domain) without `https://`; `deploy.sh` forwards it as `WEB_HOST` to configure base URLs and CORS.
+
+You need to configure your URLs and CORS for your deployment
+```
+pukeko.ui.base-url=https://your-domain.com
+pukeko.ui.ws-url=wss://your-domain.com/ws
+adk.web.cors.origins=https://your-domain.com,wss://your-domain.com
+adk.web.cors.methods=GET,POST,PUT,DELETE,OPTIONS
+adk.web.cors.headers=*
+adk.web.cors.allow-credentials=true
+adk.web.cors.max-age=3600
+adk.web.cors.mapping=/**
+```
+
+Important! The websockets need 1G of memory, configure your instance size to have 1G of memory; default 512 is not enough.
 
 ## Related Documentation
 

@@ -106,8 +106,13 @@ public class FormWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        log.info("WebSocket connection closed: {}", session.getId());
+        log.info("WebSocket connection closed: {} code={} reason={}", session.getId(), status.getCode(), status.getReason());
         sessions.remove(session.getId());
+    }
+
+    @Override
+    public void handleTransportError(WebSocketSession session, Throwable exception) {
+        log.warn("WebSocket transport error for session {}: {}", session != null ? session.getId() : "unknown", exception.getMessage(), exception);
     }
 
     // Broadcast form to all connected clients

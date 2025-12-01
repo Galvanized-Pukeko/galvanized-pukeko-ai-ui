@@ -72,6 +72,7 @@ First you need to define your GCP project name.
 
 ```bash
 export TEST_AGENT_GCP_PROJECT="{your-gcp-project-name}"
+export TEST_AGENT_HOST="{your-service-hostname}" # e.g. demo-agent-abc123-ue.a.run.app
 sh deploy.sh
 ```
 
@@ -79,6 +80,7 @@ Grab the service URL from the deploy command and keep it in an environment varia
 ```bash
 export APP_URL="https://YOUR-SERVICE-URL.a.run.app"
 ```
+If you're using the default Cloud Run URL, set `TEST_AGENT_HOST` to the hostname portion of `APP_URL` (without `https://`).
 
 Create a session on the hosted service.
 (normally post goes to /apps/hello-time-agent/users/user1/sessions/ and creates a new UUID, but for testing we can always create the same ID)
