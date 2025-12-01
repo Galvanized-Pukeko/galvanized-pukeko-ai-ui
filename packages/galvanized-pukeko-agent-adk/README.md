@@ -1,4 +1,4 @@
-# Galvanized Pukeko Agent ADK
+# Galvanized Pukeko Agent ADK-Java
 
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.galvanized-pukeko/galvanized-pukeko-agent-adk.svg)](https://central.sonatype.com/artifact/io.github.galvanized-pukeko/galvanized-pukeko-agent-adk)
 
