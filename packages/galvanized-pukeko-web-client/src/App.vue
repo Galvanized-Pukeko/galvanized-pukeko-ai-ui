@@ -389,7 +389,6 @@ onUnmounted(() => {
                      :key="`${component.type}_${index}`" class="form-group">
                   <!-- Select component needs special handling for options -->
                   <template v-if="component.type === 'select'">
-                    <label>{{ component.label }}:</label>
                     <component
                       :is="getComponent(component.type)"
                       v-bind="getComponentProps(component, index)"

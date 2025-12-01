@@ -106,7 +106,9 @@ public class UiAgent {
   public static Map<String, String> renderForm(
       @Schema(
           name = "components",
-          description = "List of form components. Each component should have 'type' (input/select/checkbox), 'label', and optional 'value' or 'options'"
+          description = "List of form components. Each component should have 'type' (input/select/checkbox), 'label', and optional 'value'. " +
+              "For 'select' type, include 'options' as a simple array of strings where each string serves as BOTH the value AND the display label. " +
+              "Example select component: {\"type\": \"select\", \"label\": \"Country\", \"options\": [\"USA\", \"Canada\", \"UK\"]}"
       ) List<Map<String, Object>> components,
       @Schema(
           name = "submitLabel",
