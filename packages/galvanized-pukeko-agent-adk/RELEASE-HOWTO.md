@@ -16,12 +16,12 @@
 
 For local testing without GPG signing or javadoc generation:
 ```bash
-mvn clean install
+./mvnw clean install
 ```
 
 ## Release to Maven Central
 
 Activate the `release` profile to enable GPG signing, source jars, and javadocs:
 ```bash
-mvn clean deploy -Prelease
+./mvnw clean deploy -Prelease
 ```
