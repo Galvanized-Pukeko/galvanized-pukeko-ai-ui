@@ -108,6 +108,5 @@
     order: 3;
     flex-wrap: wrap;
   }
-
 }
 </style>
