@@ -96,7 +96,7 @@ Navigate to `http://localhost:8080` in your browser.
 For web client development with hot-reload:
 
 ```bash
-./start-all.sh
+./start-dev.sh
 ```
 
 This starts:
