@@ -13,6 +13,7 @@ import PkTable from './components/PkTable.vue'
 import ChatInterface from './components/ChatInterface.vue'
 import PkNavHeader from './components/PkNavHeader.vue'
 import PkLogo from './components/PkLogo.vue'
+import PkLogoLarge from './components/PkLogoLarge.vue'
 import PkNavItem from './components/PkNavItem.vue'
 import {configService, UiConfig} from './services/configService';
 import {
@@ -388,7 +389,7 @@ onUnmounted(() => {
               <div v-if="!currentChart && !currentTable && serverComponents.length === 0"
                    id="galvanized-pukeko-ui-waiting-placeholder"
                    class="waiting-placeholder">
-                <PkLogo />
+                <PkLogoLarge />
               </div>
 
               <PkForm v-else-if="!currentChart && !currentTable && serverComponents.length > 0"
@@ -670,11 +671,12 @@ onUnmounted(() => {
   align-items: center;
   width: 40%;
   margin: 0 auto;
-  opacity: 0.1;
+  opacity: 0.2;
   padding: 2rem 0;
 }
 
 .waiting-placeholder :deep(svg) {
-  width: 100%;
+  height: 70vh;
+  aspect-ratio: auto;
 }
 </style>

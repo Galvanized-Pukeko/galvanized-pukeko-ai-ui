@@ -106,6 +106,7 @@ body {
   margin: 0;
   padding: 0;
   text-wrap: pretty;
+  font-family: Figtree, sans-serif;
 }
 
 .app {
