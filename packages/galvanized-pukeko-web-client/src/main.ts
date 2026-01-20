@@ -1,9 +1,9 @@
-import './assets/global.css'
+import '@galvanized-pukeko-ai-ui/web-lib/style.css'
 
 import { createApp } from 'vue'
 import App from './App.vue'
 
-import { configService } from './services/configService'
+import { configService } from '@galvanized-pukeko-ai-ui/web-lib'
 
 async function init() {
     await configService.load()

@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import PkForm from './components/PkForm.vue'
-import PkInput from './components/PkInput.vue'
-import PkCheckbox from './components/PkCheckbox.vue'
-import PkRadio from './components/PkRadio.vue'
-import PkSelect from './components/PkSelect.vue'
-import PkButton from './components/PkButton.vue'
-import PkInputCounter from './components/PkInputCounter.vue'
-import PkBarChart from './components/PkBarChart.vue'
-import PkPieChart from './components/PkPieChart.vue'
-import PkNavHeader from './components/PkNavHeader.vue'
-import PkLogo from './components/PkLogo.vue'
-import PkTable from './components/PkTable.vue'
+import {
+  PkForm,
+  PkInput,
+  PkCheckbox,
+  PkRadio,
+  PkSelect,
+  PkButton,
+  PkInputCounter,
+  PkBarChart,
+  PkPieChart,
+  PkNavHeader,
+  PkLogo,
+  PkTable
+} from '@galvanized-pukeko-ai-ui/web-lib'
 
 // Component values
 const inputValue = ref('')
@@ -63,8 +65,8 @@ const handleFormSubmit = (event: Event) => {
   console.log('Form Values:', {
     input: inputValue.value,
     number: numberValue.value,
-    checkbox: checkboxValue1.value,
-    checkbox: checkboxValue2.value,
+    checkbox1: checkboxValue1.value,
+    checkbox2: checkboxValue2.value,
     radio: radioValue.value,
     select: selectValue.value,
     counter: counterValue.value,

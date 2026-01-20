@@ -42,6 +42,6 @@
     "vue-tsc": "^2.2.12"
   },
   "workspaces": [
-    "packages/galvanized-pukeko-web-client"
+    "packages/*"
   ]
 }
