@@ -13,14 +13,14 @@ Ensure `npm config set git-tag-version true` is configured.
 
 **For patch releases** (e.g., 0.0.1 to 0.0.2):
 ```bash
-cd packages/galvanized-pukeko-web-lib
+cd packages/galvanized-pukeko-vue-ui
 npm version patch -m "Release notes"
 git push --follow-tags
 ```
 
 **For minor releases** (e.g., 0.0.1 to 0.1.0):
 ```bash
-cd packages/galvanized-pukeko-web-lib
+cd packages/galvanized-pukeko-vue-ui
 npm version minor -m "Release notes"
 git push --follow-tags
 ```
@@ -52,7 +52,7 @@ npm login
 
 Build the library before publishing:
 ```bash
-cd packages/galvanized-pukeko-web-lib
+cd packages/galvanized-pukeko-vue-ui
 npm run build
 ```
 
