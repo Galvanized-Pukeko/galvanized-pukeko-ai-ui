@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CoreApp } from '@galvanized-pukeko-ai-ui/web-lib'
+import { CoreApp } from '@galvanized-pukeko/vue-ui'
 
 // Since configService is now in the library, we might need to initialize it or it's shared?
 // In the original App.vue, configService.get() was called.

@@ -13,7 +13,7 @@ import {
   PkNavHeader,
   PkLogo,
   PkTable
-} from '@galvanized-pukeko-ai-ui/web-lib'
+} from '@galvanized-pukeko/vue-ui'
 
 // Component values
 const inputValue = ref('')

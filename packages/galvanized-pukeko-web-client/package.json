@@ -1,5 +1,5 @@
 {
-  "name": "@galvanized-pukeko-ai-ui/web",
+  "name": "@galvanized-pukeko/web-client",
   "version": "0.0.1",
   "main": "index.js",
   "scripts": {
@@ -20,6 +20,6 @@
   "description": "",
   "dependencies": {
     "chart.js": "^4.5.1",
-    "@galvanized-pukeko-ai-ui/web-lib": "^0.0.1"
+    "@galvanized-pukeko/vue-ui": "^0.0.1"
   }
 }

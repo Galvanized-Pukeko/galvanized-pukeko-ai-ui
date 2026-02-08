@@ -25,8 +25,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@galvanized-pukeko-ai-ui/web-lib/style.css': fileURLToPath(new URL('../galvanized-pukeko-web-lib/src/assets/global.css', import.meta.url)),
-      '@galvanized-pukeko-ai-ui/web-lib': fileURLToPath(new URL('../galvanized-pukeko-web-lib/src', import.meta.url))
+      '@galvanized-pukeko/vue-ui/style.css': fileURLToPath(new URL('../galvanized-pukeko-web-lib/src/assets/global.css', import.meta.url)),
+      '@galvanized-pukeko/vue-ui': fileURLToPath(new URL('../galvanized-pukeko-web-lib/src', import.meta.url))
     },
     preserveSymlinks: true
   },

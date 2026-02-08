@@ -1,5 +1,5 @@
 {
-  "extends": "@galvanized-pukeko-ai-ui/web/tsconfig.json",
+  "extends": "@galvanized-pukeko/web-client/tsconfig.json",
   "compilerOptions": {
     "composite": true,
     "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.server.tsbuildinfo",
