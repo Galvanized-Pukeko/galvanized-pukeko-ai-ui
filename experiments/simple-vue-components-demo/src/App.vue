@@ -1,9 +1,24 @@
 <template>
   <div class="demo-app">
-    <header class="demo-header">
-      <PkLogoLarge />
-      <h1>Galvanized Pukeko Vue UI Components</h1>
-    </header>
+    <PkNavHeader>
+      <template #logo>
+        <PkLogo />
+      </template>
+      <template #nav-links>
+        <button class="nav-link">Company</button>
+        <button class="nav-link">Catalogue</button>
+        <button class="nav-link">Stores</button>
+      </template>
+      <template #nav-controls>
+        <a href="#" class="nav-control nav-control-profile">
+          <span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 13.25C16.7279 13.25 19.75 16.2721 19.75 20V20.7998C19.75 21.3245 19.3245 21.75 18.7998 21.75H5.2002C4.67552 21.75 4.25 21.3245 4.25 20.7998V20C4.25 16.2721 7.27208 13.25 11 13.25H13ZM11 14.75C8.10051 14.75 5.75 17.1005 5.75 20V20.25H18.25V20C18.25 17.1005 15.8995 14.75 13 14.75H11ZM12 2.25C14.6234 2.25 16.75 4.37665 16.75 7C16.75 9.62335 14.6234 11.75 12 11.75C9.37665 11.75 7.25 9.62335 7.25 7C7.25 4.37665 9.37665 2.25 12 2.25ZM12 3.75C10.2051 3.75 8.75 5.20507 8.75 7C8.75 8.79493 10.2051 10.25 12 10.25C13.7949 10.25 15.25 8.79493 15.25 7C15.25 5.20507 13.7949 3.75 12 3.75Z" fill="black"/>
+            </svg>
+          </span>
+        </a>
+      </template>
+    </PkNavHeader>
 
     <main class="demo-content">
       <section class="demo-section">
@@ -111,7 +126,6 @@ import {
   PkBarChart,
   PkPieChart,
   PkTable,
-  PkLogoLarge
 } from '@galvanized-pukeko/vue-ui'
 
 const formData = ref({
