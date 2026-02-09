@@ -2,11 +2,16 @@ import { fileURLToPath, URL } from 'node:url'
 import { resolve } from 'path'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import dts from 'unplugin-dts/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
+    dts({
+      insertTypesEntry: true,
+      rollupTypes: true,
+    }),
   ],
   build: {
     lib: {
