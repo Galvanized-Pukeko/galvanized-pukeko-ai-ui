@@ -11,7 +11,7 @@
       "import": "./dist/vue-ui.es.js",
       "require": "./dist/vue-ui.umd.js"
     },
-    "./style.css": "./dist/style.css"
+    "./style.css": "./dist/vue-ui.css"
   },
   "files": [
     "dist"
@@ -29,10 +29,10 @@
     "vue": "^3.5.12"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.1.4",
+    "@vitejs/plugin-vue": "^6.0.0",
     "typescript": "~5.6.2",
     "unplugin-dts": "^1.0.0-beta.6",
-    "vite": "^5.4.10",
-    "vue-tsc": "^2.1.8"
+    "vite": "^7.0.0",
+    "vue-tsc": "^2.2.12"
   }
 }
