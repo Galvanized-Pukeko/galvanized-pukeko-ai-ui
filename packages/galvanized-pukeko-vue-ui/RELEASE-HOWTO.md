@@ -4,24 +4,40 @@
 
 Before releasing, review changes with Gaunt Sloth:
 ```bash
-git --no-pager diff v0.0.1..HEAD | gth review
+git --no-pager diff @galvanized-pukeko/vue-ui@0.0.1..HEAD -- packages/galvanized-pukeko-vue-ui | gth review
 ```
 
-Ensure `npm config set git-tag-version true` is configured.
-
 **Important:** The `files` block in package.json strictly controls what gets released; it overrides `.npmignore`.
+
+### Prerequisites (monorepo)
+
+`npm version` requires a clean working tree. In a monorepo, other packages may have pending changes. **Commit all changes from the repo root before versioning:**
+
+```bash
+git add -A && git commit -m "pre-release housekeeping"
+```
+
+### Tagging convention
+
+Tags use the full scoped package name: `@galvanized-pukeko/vue-ui@<version>`
+
+Configure npm to use this format:
+```bash
+cd packages/galvanized-pukeko-vue-ui
+npm config set --location project tag-version-prefix "@galvanized-pukeko/vue-ui@"
+```
 
 **For patch releases** (e.g., 0.0.1 to 0.0.2):
 ```bash
 cd packages/galvanized-pukeko-vue-ui
-npm version patch -m "Release notes"
+npm version patch -m "@galvanized-pukeko/vue-ui@%s"
 git push --follow-tags
 ```
 
 **For minor releases** (e.g., 0.0.1 to 0.1.0):
 ```bash
 cd packages/galvanized-pukeko-vue-ui
-npm version minor -m "Release notes"
+npm version minor -m "@galvanized-pukeko/vue-ui@%s"
 git push --follow-tags
 ```
 
@@ -70,21 +86,21 @@ Review the file list before confirming publication. The package will be publishe
 **Using KDE Kompare:**
 ```bash
 git config --global diff.tool kompare
-git difftool v0.0.1 HEAD -d
+git difftool @galvanized-pukeko/vue-ui@0.0.1 HEAD -d
 ```
 
 **Using vimdiff:**
 ```bash
 git config --global diff.tool vimdiff
-git difftool v0.0.1 HEAD
+git difftool @galvanized-pukeko/vue-ui@0.0.1 HEAD
 ```
 
 ## Cleaning up the mess
 
 Delete accidental tags:
 ```bash
-git tag -d v0.0.2
-git push --delete origin v0.0.2
+git tag -d @galvanized-pukeko/vue-ui@0.0.2
+git push --delete origin @galvanized-pukeko/vue-ui@0.0.2
 ```
 
 Delete accidental npm versions:
