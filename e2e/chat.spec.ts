@@ -16,7 +16,7 @@ test.describe('Chat Interface', () => {
 
         await expect(page.locator('.message.user', { hasText: 'Hello via Button' })).toBeVisible();
 
-        await page.waitForTimeout(3000); // Silly timeout for stability
+        await expect(page.locator('.is-loading')).not.toBeVisible({ timeout: 30000 });
 
         // Wait for AI response
         const aiMessage = page.locator('.message.ai').last();
@@ -33,7 +33,7 @@ test.describe('Chat Interface', () => {
 
         await expect(page.locator('.message.user', { hasText: 'Hello via Enter' })).toBeVisible();
 
-        await page.waitForTimeout(3000); // Silly timeout for stability
+        await expect(page.locator('.is-loading')).not.toBeVisible({ timeout: 30000 });
 
         // Wait for AI response
         const aiMessage = page.locator('.message.ai').last();
@@ -46,10 +46,12 @@ test.describe('Chat Interface', () => {
         await expect(page.getByText('Click Send or press Enter to send your message')).toBeVisible();
     });
 
-    test('should render form when requested', async ({ page }) => {
+    test('should render form when requested', async ({ page }, testInfo) => {
         const input = page.locator('input[name="chat-input"]');
         await input.fill('Show me a contact form with name and email fields');
         await input.press('Enter');
+
+        await expect(page.locator('.is-loading')).not.toBeVisible({ timeout: 30000 });
 
         // Wait for form to appear
         await expect(page.locator('.dynamic-form')).toBeVisible({ timeout: 30000 });
@@ -64,6 +66,8 @@ test.describe('Chat Interface', () => {
         // Request chart
         await input.fill('Show me a bar chart of sales. Q1: 100, Q2: 150, Q3: 200, Q4: 300');
         await input.press('Enter');
+
+        await expect(page.locator('.is-loading')).not.toBeVisible({ timeout: 30000 });
 
         // Wait for chart to appear
         await expect(page.locator('.chart-section')).toBeVisible({ timeout: 30000 });
