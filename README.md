@@ -50,7 +50,7 @@ graph LR
         Agent2["Agent 2"]
     end
 
-    UI -->|HTTP/SSE /run_sse| UIAgent
+    UI -->|AG-UI| UIAgent
     UI <-->|WebSocket /ws| UIAgent
     UIAgent <-.->|A2A| Agent1
     UIAgent <-.->|MCP| Agent2
@@ -61,7 +61,7 @@ graph LR
 1. **[Web Client](packages/galvanized-pukeko-web-client/)** (`packages/galvanized-pukeko-web-client`):
    - Vue.js application providing chat interface and dynamic form renderer
    - Runs standalone on **port 5555** for development, or served from the ADK agent
-   - Communicates via HTTP/SSE for chat and WebSockets for UI rendering
+   - Communicates via AG-UI for chat and WebSockets for UI rendering
 
 2. **[Agent ADK](packages/galvanized-pukeko-agent-adk/)** (`packages/galvanized-pukeko-agent-adk`):
    - Spring Boot application running on **port 8080**
