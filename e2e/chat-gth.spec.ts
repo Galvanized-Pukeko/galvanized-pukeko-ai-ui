@@ -38,4 +38,13 @@ test.describe('Chat Interface (Gaunt Sloth AG-UI)', () => {
         await expect(aiMessage).not.toContainText('Error');
         await expect(aiMessage).toContainText('Enter');
     });
+
+    test('should use identity from system prompt', async ({ page }) => {
+        const input = page.locator('input[name="chat-input"]');
+        await input.fill('What is your name? Reply in one sentence.');
+        await input.press('Enter');
+        await expect(page.locator('.is-loading')).not.toBeVisible({ timeout: 30000 });
+        const aiMessage = page.locator('.message.ai').last();
+        await expect(aiMessage).toContainText('Gaunt Sloth');
+    });
 });

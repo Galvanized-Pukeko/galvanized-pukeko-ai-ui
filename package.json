@@ -8,12 +8,15 @@
     "web-ag-ui": "AGUI_URL=http://localhost:3000/agents/default/run npm run dev -w packages/galvanized-pukeko-web-client",
     "sink": "npm run sink -w packages/galvanized-pukeko-web-client",
     "chat-cli": "npm run chat -w packages/gaunt-sloth-assistant",
+    "lint-gth": "npm run lint-n-fix -w packages/gaunt-sloth-assistant",
     "it-gth": "npm run it openai -w packages/gaunt-sloth-assistant",
     "it-gth-simple": "npm run it groq simple -w packages/gaunt-sloth-assistant",
     "test-gth": "npm run test -w packages/gaunt-sloth-assistant",
     "it-adk": "node it-adk.js",
     "it-adk-headed": "node it-adk.js --headed",
-    "it-gth-ag-ui": "node it-gth-ag-ui.js"
+    "it-gth-ag-ui": "node it-gth-ag-ui.js",
+    "start-adk": "node start-adk.js",
+    "start-gth-ag-ui": "node start-gth-ag-ui.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",

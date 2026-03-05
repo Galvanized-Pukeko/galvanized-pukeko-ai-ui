@@ -12,11 +12,11 @@ const READY_TIMEOUT_MS = 60_000;
 const POLL_INTERVAL_MS = 2_000;
 
 function startGthAgUi() {
-  const logPath = resolve(__dirname, 'it-gth-ag-ui.log');
+  const logPath = resolve(__dirname, 'start-gth-ag-ui.log');
   const bannerLines = [
     '  GAUNT SLOTH AG-UI — STARTING',
     '  Writing Server Logs to:',
-    `  it-gth-ag-ui.log`,
+    '  start-gth-ag-ui.log',
   ];
   const width = Math.max(...bannerLines.map(l => l.length)) + 2;
   const bar = '═'.repeat(width);
@@ -46,17 +46,6 @@ function startGthAgUi() {
   return proc;
 }
 
-function startWebClient() {
-  console.log('Starting Web Client...');
-  const proc = spawn('npm', ['run', 'web-ag-ui'], {
-    cwd: __dirname,
-    stdio: 'inherit',
-    detached: true,
-  });
-  proc.on('error', err => console.error(`[Web Client] ${err.message}`));
-  return proc;
-}
-
 async function waitForUrl(url, label) {
   const deadline = Date.now() + READY_TIMEOUT_MS;
   process.stdout.write(`Waiting for ${label} (${url})`);
@@ -77,10 +66,15 @@ function killGroup(proc) {
   try { process.kill(-proc.pid, 'SIGTERM'); } catch { /* already gone */ }
 }
 
-const playwrightArgs = process.argv.slice(2);
-
 const gthProc = startGthAgUi();
-const webProc = startWebClient();
+
+console.log('Starting Web Client...');
+const webProc = spawn('npm', ['run', 'web-ag-ui'], {
+  cwd: __dirname,
+  stdio: 'inherit',
+  detached: true,
+});
+webProc.on('error', err => console.error(`[Web Client] ${err.message}`));
 
 function cleanup() {
   console.log('\nStopping services...');
@@ -91,27 +85,17 @@ function cleanup() {
 process.on('SIGINT', () => { cleanup(); process.exit(130); });
 process.on('SIGTERM', () => { cleanup(); process.exit(143); });
 
-let exitCode = 1;
 try {
   await Promise.all([
     waitForUrl(GTH_API_HEALTH_URL, 'Gaunt Sloth AG-UI'),
     waitForUrl(WEB_URL, 'Web Client'),
   ]);
-
-  console.log('\nRunning integration tests...');
-  exitCode = await new Promise(resolve => {
-    const testProc = spawn(
-      'npx',
-      ['playwright', 'test', 'e2e/chat-gth.spec.ts', ...playwrightArgs],
-      { cwd: __dirname, stdio: 'inherit' }
-    );
-    testProc.on('close', resolve);
-    testProc.on('error', err => { console.error(`Playwright: ${err.message}`); resolve(1); });
-  });
+  console.log('\nAll services ready.');
+  console.log(`  Gaunt Sloth AG-UI: http://localhost:3000`);
+  console.log(`  Web Client       : ${WEB_URL}`);
+  console.log('\nPress Ctrl+C to stop.\n');
 } catch (err) {
   console.error(`\nAborted: ${err.message}`);
-} finally {
   cleanup();
+  process.exit(1);
 }
-
-process.exit(exitCode);

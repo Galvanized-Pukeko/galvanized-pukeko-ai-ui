@@ -12,16 +12,17 @@ const READY_TIMEOUT_MS = 120_000;
 const POLL_INTERVAL_MS = 2_000;
 
 function startAdkAgent() {
-  const logPath = resolve(__dirname, 'it-adk-java.log');
+  const logPath = resolve(__dirname, 'start-adk-java.log');
   const bannerLines = [
-    '  ADK AGENT — STARTING',
+    '  GALVANIZED PUKEKO ADK — STARTING',
     '  Writing ADK Server Logs to:',
-    `  it-adk-java.log`,
+    '  start-adk-java.log',
   ];
   const width = Math.max(...bannerLines.map(l => l.length)) + 2;
   const bar = '═'.repeat(width);
   const pad = l => `║${l}${' '.repeat(width - l.length)}║`;
   console.log([`╔${bar}╗`, ...bannerLines.map(pad), `╚${bar}╝`].join('\n'));
+
   const logStream = createWriteStream(logPath, { flags: 'w' });
   const proc = spawn(
     './mvnw',
@@ -32,13 +33,11 @@ function startAdkAgent() {
   let settled = false;
   const ready = new Promise((res, rej) => {
     function settle(fn, val) { if (!settled) { settled = true; fn(val); } }
-
     function onLine(line) {
       logStream.write(`${line}\n`);
       if (line.includes('Tomcat started on port')) settle(res, undefined);
       else if (line.includes('BUILD FAILURE')) settle(rej, new Error('ADK Agent: BUILD FAILURE'));
     }
-
     createInterface({ input: proc.stdout }).on('line', onLine);
     createInterface({ input: proc.stderr }).on('line', onLine);
     proc.on('error', err => settle(rej, new Error(`ADK Agent: ${err.message}`)));
@@ -68,8 +67,6 @@ function killGroup(proc) {
   try { process.kill(-proc.pid, 'SIGTERM'); } catch { /* already gone */ }
 }
 
-const playwrightArgs = process.argv.slice(2);
-
 const { proc: adkProc, ready: adkReady } = startAdkAgent();
 
 console.log('Starting Web Client...');
@@ -89,23 +86,17 @@ function cleanup() {
 process.on('SIGINT', () => { cleanup(); process.exit(130); });
 process.on('SIGTERM', () => { cleanup(); process.exit(143); });
 
-let exitCode = 1;
 try {
   await Promise.all([
     adkReady,
     waitForUrl(WEB_URL, 'Web Client'),
   ]);
-
-  console.log('\nRunning integration tests...');
-  exitCode = await new Promise(resolve => {
-    const testProc = spawn('npx', ['playwright', 'test', 'e2e/chat.spec.ts', ...playwrightArgs], { cwd: __dirname, stdio: 'inherit' });
-    testProc.on('close', resolve);
-    testProc.on('error', err => { console.error(`Playwright: ${err.message}`); resolve(1); });
-  });
+  console.log('\nAll services ready.');
+  console.log(`  ADK Agent : http://localhost:8080`);
+  console.log(`  Web Client: ${WEB_URL}`);
+  console.log('\nPress Ctrl+C to stop.\n');
 } catch (err) {
   console.error(`\nAborted: ${err.message}`);
-} finally {
   cleanup();
+  process.exit(1);
 }
-
-process.exit(exitCode);
