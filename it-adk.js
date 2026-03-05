@@ -68,6 +68,8 @@ function killGroup(proc) {
   try { process.kill(-proc.pid, 'SIGTERM'); } catch { /* already gone */ }
 }
 
+const playwrightArgs = process.argv.slice(2);
+
 const { proc: adkProc, ready: adkReady } = startAdkAgent();
 
 console.log('Starting Web Client...');
@@ -96,7 +98,7 @@ try {
 
   console.log('\nRunning integration tests...');
   exitCode = await new Promise(resolve => {
-    const testProc = spawn('npx', ['playwright', 'test'], { cwd: __dirname, stdio: 'inherit' });
+    const testProc = spawn('npx', ['playwright', 'test', ...playwrightArgs], { cwd: __dirname, stdio: 'inherit' });
     testProc.on('close', resolve);
     testProc.on('error', err => { console.error(`Playwright: ${err.message}`); resolve(1); });
   });

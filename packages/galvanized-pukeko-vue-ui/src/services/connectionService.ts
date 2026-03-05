@@ -41,8 +41,13 @@ class ConnectionService {
       return
     }
 
-    this.updateStatus('connecting')
     const config = configService.get()
+    if (!config.wsUrl) {
+      console.log('[ConnectionService] No wsUrl configured, skipping WebSocket connection')
+      return
+    }
+
+    this.updateStatus('connecting')
     this.ws = new WebSocket(config.wsUrl)
 
     this.ws.onopen = () => {

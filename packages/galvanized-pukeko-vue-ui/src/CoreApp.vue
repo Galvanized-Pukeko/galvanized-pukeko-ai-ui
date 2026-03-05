@@ -303,31 +303,28 @@ onMounted(() => {
     document.title = uiConfig.value.pageTitle
   }
 
-  connectionService.connect()
+  // Only connect WebSocket if wsUrl is configured (ADK mode)
+  if (uiConfig.value?.wsUrl) {
+    connectionService.connect()
 
-  unsubscribeStatus = connectionService.subscribeToStatus((status) => {
-    wsStatus.value = status
-  })
+    unsubscribeStatus = connectionService.subscribeToStatus((status) => {
+      wsStatus.value = status
+    })
 
-  unsubscribeMessage = connectionService.subscribeToMessage('form', handleRenderComponents)
-  unsubscribeChartMessage = connectionService.subscribeToMessage('chart', handleChartMessage)
-  unsubscribeTableMessage = connectionService.subscribeToMessage('table', handleTableMessage)
+    unsubscribeMessage = connectionService.subscribeToMessage('form', handleRenderComponents)
+    unsubscribeChartMessage = connectionService.subscribeToMessage('chart', handleChartMessage)
+    unsubscribeTableMessage = connectionService.subscribeToMessage('table', handleTableMessage)
+  }
 });
 
 onUnmounted(() => {
-  if (unsubscribeStatus) {
-    unsubscribeStatus()
+  if (unsubscribeStatus) unsubscribeStatus()
+  if (unsubscribeMessage) unsubscribeMessage()
+  if (unsubscribeChartMessage) unsubscribeChartMessage()
+  if (unsubscribeTableMessage) unsubscribeTableMessage()
+  if (uiConfig.value?.wsUrl) {
+    connectionService.disconnect()
   }
-  if (unsubscribeMessage) {
-    unsubscribeMessage()
-  }
-  if (unsubscribeChartMessage) {
-    unsubscribeChartMessage()
-  }
-  if (unsubscribeTableMessage) {
-    unsubscribeTableMessage()
-  }
-  connectionService.disconnect()
 });
 </script>
 

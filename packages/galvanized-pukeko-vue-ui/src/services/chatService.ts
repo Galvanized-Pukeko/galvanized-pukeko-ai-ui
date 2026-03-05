@@ -1,174 +1,164 @@
-interface ChatSession {
-    id: string
-    appName: string
-    userId: string
-    state: Record<string, unknown>
-    events: unknown[]
-    lastUpdateTime: number
+import { configService } from './configService'
+
+interface AgUiMessage {
+  id: string
+  role: 'user' | 'assistant' | 'system' | 'developer'
+  content: string
 }
 
-interface FunctionCall {
-    id: string
-    name: string
-    args: Record<string, unknown>
-}
-
-interface FunctionResponse {
-    id: string
-    name: string
-    response: {
-        text_output?: Array<{ text: string }>
-    }
-}
-
-interface ChatMessagePart {
-    text?: string
-    functionCall?: FunctionCall
-    functionResponse?: FunctionResponse
-}
-
-interface ChatMessage {
-    role: 'user' | 'model'
-    parts: ChatMessagePart[]
+interface AgUiEvent {
+  type: string
+  threadId?: string
+  runId?: string
+  messageId?: string
+  role?: string
+  delta?: string
+  message?: string
+  [key: string]: unknown
 }
 
 interface ChatResponse {
-    id: string
-    invocationId: string
-    author: string
-    content: ChatMessage
-    actions: {
-        stateDelta: Record<string, unknown>
-        artifactDelta: Record<string, unknown>
-        requestedAuthConfigs: Record<string, unknown>
-    }
-    timestamp: number
+  messageId: string
+  text: string
 }
-
-interface CompleteChatResponse {
-    chunks: ChatResponse[]
-    finalMessage: ChatResponse
-}
-
-import { configService } from './configService'
 
 class ChatService {
+  private threadId: string = crypto.randomUUID()
+  private messages: AgUiMessage[] = []
 
-    async createSession(userId: string = 'user'): Promise<ChatSession> {
-        console.log('[ChatService] Creating session for user:', userId)
-        const config = configService.get()
-        const url = `${config.baseUrl}/apps/${config.appName}/users/${userId}/sessions`
-        console.log('[ChatService] Request URL:', url)
+  /**
+   * Reset the conversation (new thread)
+   */
+  resetThread(): void {
+    this.threadId = crypto.randomUUID()
+    this.messages = []
+  }
 
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json, text/plain, */*'
-                }
-            })
+  getThreadId(): string {
+    return this.threadId
+  }
 
-            console.log('[ChatService] Response status:', response.status, response.statusText)
+  async sendMessage(text: string): Promise<ChatResponse> {
+    console.log('[ChatService] Sending message:', text)
 
-            if (!response.ok) {
-                throw new Error(`Failed to create session: ${response.statusText}`)
-            }
+    // Add user message to history
+    const userMessage: AgUiMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: text,
+    }
+    this.messages.push(userMessage)
 
-            const data = await response.json()
-            console.log('[ChatService] Session created:', data)
-            return data
-        } catch (error) {
-            console.error('[ChatService] Error creating session:', error)
-            throw error
-        }
+    const config = configService.get()
+    const runId = crypto.randomUUID()
+
+    const payload = {
+      threadId: this.threadId,
+      runId,
+      messages: this.messages,
+      tools: [],
+      context: [],
+      state: null,
+      forwardedProps: null,
     }
 
-    async sendMessage(sessionId: string, text: string, userId: string = 'user'): Promise<CompleteChatResponse> {
-        console.log('[ChatService] Sending message:', { sessionId, text, userId })
+    console.log('[ChatService] AG-UI request to:', config.agUiUrl)
 
-        const config = configService.get()
-        const payload = {
-            appName: config.appName,
-            userId,
-            sessionId,
-            newMessage: {
-                role: 'user',
-                parts: [{ text }]
-            },
-            streaming: false,
-            stateDelta: null
+    try {
+      const response = await fetch(config.agUiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('[ChatService] Error response:', errorText)
+        throw new Error(`Failed to send message: ${response.statusText}`)
+      }
+
+      // Parse SSE response
+      const responseText = await response.text()
+      console.log('[ChatService] Raw response length:', responseText.length)
+
+      const events = this.parseSSE(responseText)
+
+      // Accumulate text content from TEXT_MESSAGE_CONTENT events
+      let messageId = ''
+      let fullText = ''
+      let hasError = false
+      let errorMessage = ''
+
+      for (const event of events) {
+        switch (event.type) {
+          case 'TEXT_MESSAGE_START':
+            messageId = event.messageId || crypto.randomUUID()
+            break
+          case 'TEXT_MESSAGE_CONTENT':
+            if (event.delta) {
+              fullText += event.delta
+            }
+            break
+          case 'TEXT_MESSAGE_END':
+            break
+          case 'RUN_ERROR':
+            hasError = true
+            errorMessage = event.message || 'Unknown error'
+            break
         }
+      }
 
-        console.log('[ChatService] Request payload:', JSON.stringify(payload, null, 2))
-        const url = `${config.baseUrl}/run_sse`
-        console.log('[ChatService] Request URL:', url)
+      if (hasError) {
+        throw new Error(errorMessage)
+      }
 
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'text/event-stream',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            })
+      // Add assistant message to history
+      if (fullText) {
+        this.messages.push({
+          id: messageId || crypto.randomUUID(),
+          role: 'assistant',
+          content: fullText,
+        })
+      }
 
-            console.log('[ChatService] Response status:', response.status, response.statusText)
+      console.log('[ChatService] Response text length:', fullText.length)
 
-            if (!response.ok) {
-                const errorText = await response.text()
-                console.error('[ChatService] Error response:', errorText)
-                throw new Error(`Failed to send message: ${response.statusText}`)
-            }
-
-            // Response is in SSE format: "data:{json}\n\n"
-            const responseText = await response.text()
-            console.log('[ChatService] Raw response:', responseText)
-
-            // Parse SSE format - extract all JSON chunks from "data:" prefix
-            const lines = responseText.trim().split('\n')
-            const chunks: ChatResponse[] = []
-
-            for (const line of lines) {
-                if (line.startsWith('data:')) {
-                    const jsonStr = line.substring(5).trim() // Remove "data:" prefix
-                    const data = JSON.parse(jsonStr) as ChatResponse
-                    console.log('[ChatService] Parsed chunk:', data)
-                    chunks.push(data)
-                }
-            }
-
-            if (chunks.length === 0) {
-                throw new Error('No data found in SSE response')
-            }
-
-            // The last chunk with text content is the final message
-            let finalMessage = chunks[chunks.length - 1]
-
-            // Find the last chunk that has actual text (not just function calls/responses)
-            for (let i = chunks.length - 1; i >= 0; i--) {
-                const chunk = chunks[i]
-                if (chunk.content.parts && chunk.content.parts.some(p => p.text && p.text.trim().length > 0)) {
-                    finalMessage = chunk
-                    break
-                }
-            }
-
-            console.log('[ChatService] Final message:', finalMessage)
-            console.log('[ChatService] Total chunks:', chunks.length)
-
-            return {
-                chunks,
-                finalMessage
-            }
-        } catch (error) {
-            console.error('[ChatService] Error sending message:', error)
-            throw error
-        }
+      return {
+        messageId: messageId || crypto.randomUUID(),
+        text: fullText,
+      }
+    } catch (error) {
+      console.error('[ChatService] Error sending message:', error)
+      // Remove the user message we added since the request failed
+      this.messages.pop()
+      throw error
     }
+  }
+
+  private parseSSE(text: string): AgUiEvent[] {
+    const events: AgUiEvent[] = []
+    const lines = text.split('\n')
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (trimmed.startsWith('data:')) {
+        const jsonStr = trimmed.substring(5).trim()
+        if (jsonStr) {
+          try {
+            events.push(JSON.parse(jsonStr) as AgUiEvent)
+          } catch (e) {
+            console.warn('[ChatService] Failed to parse SSE event:', jsonStr)
+          }
+        }
+      }
+    }
+
+    return events
+  }
 }
 
 export const chatService = new ChatService()
-export type { ChatSession, ChatResponse, ChatMessage, CompleteChatResponse, ChatMessagePart }
-
+export type { AgUiMessage, AgUiEvent, ChatResponse }

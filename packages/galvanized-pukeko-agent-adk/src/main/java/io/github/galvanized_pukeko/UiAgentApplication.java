@@ -2,11 +2,19 @@ package io.github.galvanized_pukeko;
 
 import static io.github.galvanized_pukeko.UiAgent.PUKEKO_UI_AGENT_NAME;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.LlmAgent;
+import com.google.adk.artifacts.BaseArtifactService;
+import com.google.adk.memory.BaseMemoryService;
+import com.google.adk.runner.Runner;
+import com.google.adk.sessions.BaseSessionService;
 import com.google.adk.web.AdkWebServer;
 import com.google.adk.web.AgentLoader;
 import com.google.common.collect.ImmutableList;
+import com.agui.server.streamer.AgentStreamer;
+import com.agui.server.spring.AgUiService;
+import io.github.galvanized_pukeko.agui.AdkLocalAgent;
 import io.github.galvanized_pukeko.config.A2aAgentFactory;
 import io.github.galvanized_pukeko.config.A2aConfiguration;
 import io.github.galvanized_pukeko.config.AiConfiguration;
@@ -35,10 +43,16 @@ import org.slf4j.LoggerFactory;
         "com.google.adk.web",        // Scan ADK web components
         "io.github.galvanized_pukeko"          // Scan custom agent components
     },
-    excludeFilters = @ComponentScan.Filter(
-        type = FilterType.ASSIGNABLE_TYPE,
-        classes = AdkWebServer.class
-    )
+    excludeFilters = {
+        @ComponentScan.Filter(
+            type = FilterType.ASSIGNABLE_TYPE,
+            classes = AdkWebServer.class
+        ),
+        @ComponentScan.Filter(
+            type = FilterType.ASSIGNABLE_TYPE,
+            classes = com.agui.server.spring.AgUiAutoConfiguration.class
+        )
+    }
 )
 public class UiAgentApplication extends AdkWebServer {
 
@@ -62,6 +76,28 @@ public class UiAgentApplication extends AdkWebServer {
     );
 
     SpringApplication.run(UiAgentApplication.class, args);
+  }
+
+  @Bean
+  public AgentStreamer agentStreamer() {
+    return new AgentStreamer();
+  }
+
+  @Bean
+  public AgUiService agUiService(AgentStreamer agentStreamer, ObjectMapper objectMapper) {
+    return new AgUiService(agentStreamer, objectMapper);
+  }
+
+  @Bean
+  public AdkLocalAgent adkLocalAgent(
+      AgentLoader agentLoader,
+      BaseSessionService sessionService,
+      BaseArtifactService artifactService,
+      BaseMemoryService memoryService
+  ) throws Exception {
+    BaseAgent agent = agentLoader.loadAgent(PUKEKO_UI_AGENT_NAME);
+    Runner runner = new Runner(agent, PUKEKO_UI_AGENT_NAME, artifactService, sessionService, memoryService);
+    return new AdkLocalAgent(PUKEKO_UI_AGENT_NAME, runner, PUKEKO_UI_AGENT_NAME, sessionService);
   }
 
   /**

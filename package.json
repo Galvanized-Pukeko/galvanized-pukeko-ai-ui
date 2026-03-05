@@ -5,13 +5,20 @@
   "type": "module",
   "scripts": {
     "web": "npm run dev -w packages/galvanized-pukeko-web-client",
-    "sink": "npm run sink -w packages/galvanized-pukeko-web-client"
+    "web-ag-ui": "AGUI_URL=http://localhost:3000/agents/default/run npm run dev -w packages/galvanized-pukeko-web-client",
+    "sink": "npm run sink -w packages/galvanized-pukeko-web-client",
+    "chat-cli": "npm run chat -w packages/gaunt-sloth-assistant",
+    "it-gth": "npm run it openai -w packages/gaunt-sloth-assistant",
+    "it-gth-simple": "npm run it groq simple -w packages/gaunt-sloth-assistant",
+    "test-gth": "npm run test -w packages/gaunt-sloth-assistant",
+    "it-adk": "node it-adk.js",
+    "it-adk-headed": "node it-adk.js --headed",
+    "it-gth-ag-ui": "node it-gth-ag-ui.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@types/ws": "^8.18.1",
     "express": "^4.22.1",
-    "gaunt-sloth-assistant": "^1.1.9",
     "vue": "^3.5.13",
     "ws": "^8.19.0",
     "zod": "^3.25.76",
@@ -43,6 +50,7 @@
   },
   "workspaces": [
     "packages/galvanized-pukeko-vue-ui",
-    "packages/galvanized-pukeko-web-client"
+    "packages/galvanized-pukeko-web-client",
+    "packages/gaunt-sloth-assistant"
   ]
 }

@@ -5,9 +5,9 @@ interface UiConfigItem {
 }
 
 export interface UiConfig {
-  baseUrl: string
-  wsUrl: string
-  appName: string
+  agUiUrl: string
+  wsUrl?: string
+  appName?: string
   pageTitle?: string
   configUrl?: string
   logo?: UiConfigItem
@@ -19,6 +19,18 @@ class ConfigService {
   private config: UiConfig | null = null
 
   async load(): Promise<void> {
+    // Check for build-time embedded config (Gaunt Sloth mode)
+    // @ts-expect-error Vite define injects this at build time
+    const builtInAgUiUrl = typeof __AGUI_URL__ !== 'undefined' ? __AGUI_URL__ : undefined
+    if (builtInAgUiUrl && builtInAgUiUrl !== '') {
+      this.config = {
+        agUiUrl: builtInAgUiUrl,
+        appName: 'Gaunt Sloth',
+      }
+      console.log('[ConfigService] Using build-time AG-UI URL:', builtInAgUiUrl)
+      return
+    }
+
     try {
       const response = await fetch('/config.json')
       if (!response.ok) {
@@ -26,15 +38,22 @@ class ConfigService {
       }
       const config = await response.json()
       if (config.configUrl) {
-        const fallbackConfig = await fetch(config.configUrl);
-        if (!response.ok) {
-          throw new Error(response.statusText)
+        const fallbackResponse = await fetch(config.configUrl);
+        if (!fallbackResponse.ok) {
+          throw new Error(fallbackResponse.statusText)
         }
-        this.config = await fallbackConfig.json() as UiConfig;
+        this.config = await fallbackResponse.json() as UiConfig;
         console.log('[ConfigService] Fallback configuration loaded:', this.config)
       } else {
         this.config = config as UiConfig
         console.log('[ConfigService] Configuration loaded:', this.config)
+      }
+
+      // Backward compatibility: if config has baseUrl but no agUiUrl, derive it
+      // Uses the AG-UI standard path /agents/{agentId}/run
+      if (!this.config!.agUiUrl && (this.config as any).baseUrl) {
+        this.config!.agUiUrl = `${(this.config as any).baseUrl}/agents/default/run`
+        console.log('[ConfigService] Derived agUiUrl from baseUrl:', this.config!.agUiUrl)
       }
     } catch (error) {
       throw new Error(`Failed to load configuration:${(error as Error).message || error}`);

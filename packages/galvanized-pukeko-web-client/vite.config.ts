@@ -18,6 +18,11 @@ export default defineConfig({
       }
     }
   ],
+  define: {
+    // Inject AG-UI URL at build time for Gaunt Sloth mode
+    // Set AGUI_URL env var before building/serving (e.g., AGUI_URL=http://localhost:3000/ag-ui)
+    __AGUI_URL__: JSON.stringify(process.env.AGUI_URL || ''),
+  },
   build: {
     outDir: fileURLToPath(new URL('dist/client', import.meta.url)),
     emptyOutDir: true
