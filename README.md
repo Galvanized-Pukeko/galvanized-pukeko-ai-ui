@@ -1,8 +1,8 @@
 # Galvanized Pukeko
 
-[![Java 17+](https://img.shields.io/badge/Java-17%2B-blue.svg)](https://openjdk.org/)
-[![Node.js 18+](https://img.shields.io/badge/Node.js-18%2B-green.svg)](https://nodejs.org/)
+[![Node.js 24+](https://img.shields.io/badge/Node.js-24%2B-green.svg)](https://nodejs.org/)
 [![Vue.js 3](https://img.shields.io/badge/Vue.js-3-4FC08D.svg)](https://vuejs.org/)
+[![Java 17+](https://img.shields.io/badge/Java-17%2B-blue.svg)](https://openjdk.org/) (Only for ADK)
 [![Google ADK](https://img.shields.io/badge/Google-ADK-4285F4.svg)](https://github.com/google/adk-java)
 
 Galvanized Pukeko is a framework that enables LLM-powered agents to dynamically render forms, charts, and tables when interacting with users. It eliminates the need for static HTML pages while maintaining consistent formatting and branded interfaces.
@@ -28,7 +28,9 @@ This project is organized as a monorepo containing the following packages:
 | Package | Description | Documentation |
 |---------|-------------|---------------|
 | [`galvanized-pukeko-agent-adk`](packages/galvanized-pukeko-agent-adk/) | Spring Boot application extending Google ADK with UI rendering capabilities. Available on [Maven Central](https://central.sonatype.com/artifact/io.github.galvanized-pukeko/galvanized-pukeko-agent-adk). | [README](packages/galvanized-pukeko-agent-adk/README.md) |
-| [`galvanized-pukeko-web-client`](packages/galvanized-pukeko-web-client/) | Vue.js application providing chat interface and dynamic component renderer | [README](packages/galvanized-pukeko-web-client/README.md) |
+| [`galvanized-pukeko-vue-ui`](packages/galvanized-pukeko-vue-ui/) | Vue.js UI component library and chat interface source (compiled into web-client) | — |
+| [`galvanized-pukeko-web-client`](packages/galvanized-pukeko-web-client/) | Web client host: serves the Vue UI build, owns `config.json` and Playwright tests | [README](packages/galvanized-pukeko-web-client/README.md) |
+| [`gaunt-sloth-assistant`](packages/gaunt-sloth-assistant/) | TypeScript CLI tool for agent workflows; provides an AG-UI-compatible HTTP server as an alternative backend | — |
 
 ## System Architecture
 
@@ -74,40 +76,40 @@ graph LR
 ### Prerequisites
 
 - Java 17+ (recommended: Temurin 21)
-- Node.js 18+
-- Maven (included via wrapper)
+- Node.js 24+
+- Maven (included via Maven wrapper `./mvnw`)
 
 ### Quick Start
 
-#### Option 1: Standalone Agent (Recommended)
+#### Option 1: ADK Agent + Web Client (Development)
 
-The Agent ADK includes a pre-built web client. Start the agent with:
+Start both the ADK agent and the web client dev server together:
 
 ```bash
-cd packages/galvanized-pukeko-agent-adk
-./mvnw clean compile exec:java -Dexec.classpathScope=compile \
-  -Dexec.args="--server.port=8080 --adk.agents.source-dir=target"
+npm run start-adk
 ```
 
-Navigate to `http://localhost:8080` in your browser.
+This builds and starts:
+1. **Agent ADK** on port 8080 (logs to `start-adk-java.log`)
+2. **Web Client** dev server on port 5555
 
-#### Option 2: Development Mode
+Navigate to `http://localhost:5555` for development. Press `Ctrl+C` to stop both.
 
-For web client development with hot-reload:
+#### Option 2: Gaunt Sloth AG-UI backend
+
+To use the TypeScript [Gaunt Sloth](packages/gaunt-sloth-assistant/) backend instead of the Java ADK agent:
 
 ```bash
-./start-dev.sh
+npm run start-gth-ag-ui
 ```
 
 This starts:
-1. **Agent ADK** on port 8080
-2. **Web Client** dev server on port 5555
-
-Navigate to `http://localhost:5555` for development.
+1. **Gaunt Sloth AG-UI server** on port 3000
+2. **Web Client** dev server on port 5555 (pointing at the Gaunt Sloth backend)
 
 ### Manual Startup
 
-**Start the Agent ADK:**
+**Start the Agent ADK only:**
 
 ```bash
 cd packages/galvanized-pukeko-agent-adk
@@ -115,24 +117,21 @@ cd packages/galvanized-pukeko-agent-adk
   -Dexec.args="--server.port=8080 --adk.agents.source-dir=target"
 ```
 
-**Start the Web Client (development):**
+**Start the Web Client dev server only:**
 
 ```bash
-cd packages/galvanized-pukeko-web-client
-npm install
-npm run dev
+npm run web
 ```
 
 ### Deploying Web Client to Agent
 
-After making changes to the web client, deploy to the agent:
+After making changes to the web client, rebuild and deploy to the ADK agent:
 
 ```bash
-cd packages/galvanized-pukeko-web-client
-./deploy-to-adk.sh
+npm run sink
 ```
 
-This builds the web client and copies artifacts to the agent's resources directory.
+This builds the Vue UI (`galvanized-pukeko-vue-ui`) and copies the artifacts into the ADK agent's resources directory.
 
 ## Usage
 
@@ -147,19 +146,29 @@ This builds the web client and copies artifacts to the agent's resources directo
 
 We use [Playwright](https://playwright.dev/) for End-to-End (E2E) testing.
 
-### Running Tests
+### Running Integration Tests
 
-Ensure the application is running (see [Getting Started](#getting-started)), then:
+The integration test scripts start all required services automatically:
 
 ```bash
-npx playwright test
+# ADK agent integration tests
+npm run it-adk
+
+# ADK agent integration tests (headed browser)
+npm run it-adk-headed
+
+# Gaunt Sloth AG-UI integration tests
+npm run it-gth-ag-ui
 ```
 
 If Playwright reports the browser is not found, run `npx playwright install`.
 
-### Test Options
+### Manual Test Run (services already running)
 
 ```bash
+# Run all e2e tests
+npx playwright test
+
 # Interactive UI mode
 npx playwright test --ui
 
@@ -174,12 +183,16 @@ npx playwright test --debug
 
 ### Environment Variables
 
+**ADK Agent (Google Gemini):**
+
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `GOOGLE_API_KEY` or `GEMINI_API_KEY` | API key for Google AI / Gemini models | Required |
 | `GOOGLE_GENAI_USE_VERTEXAI` | Set to `"true"` to use Vertex AI instead of Google AI | `false` |
 
-> **Note on AI Providers:** Currently, the framework primarily supports Google Gemini models through Google AI or Vertex AI. We're working on adding support for other AI providers soon. In the meantime, Anthropic models available in the [Vertex AI Model Garden](https://cloud.google.com/vertex-ai/docs/start/explore-models) should work when using `GOOGLE_GENAI_USE_VERTEXAI="true"`.
+**Gaunt Sloth backend (multi-provider):**
+
+The Gaunt Sloth backend supports many AI providers (Anthropic, OpenAI, Groq, Google AI, Ollama, xAI, etc.). Configure via `.gsloth.config.json` in the working directory. See [examples/pukeko-gaunt-sloth-ag-ui/](examples/pukeko-gaunt-sloth-ag-ui/) for a sample configuration.
 
 ### Application Properties
 
