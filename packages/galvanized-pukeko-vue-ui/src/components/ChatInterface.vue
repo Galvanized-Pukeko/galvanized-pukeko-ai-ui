@@ -3,6 +3,7 @@ import {onMounted, ref} from 'vue'
 import PkButton from './PkButton.vue'
 import PkInput from './PkInput.vue'
 import {chatService} from '../services/chatService'
+import type {ChatCallbacks} from '../services/chatService'
 
 interface Message {
   id: number | string
@@ -14,6 +15,9 @@ const messages = ref<Message[]>([])
 const newMessage = ref('')
 const isLoading = ref(false)
 
+// Real-time streaming state
+const streamingMessage = ref<{ id: string; text: string } | null>(null)
+
 onMounted(() => {
   // No session creation needed with AG-UI — just show a greeting
   messages.value.push({
@@ -22,6 +26,38 @@ onMounted(() => {
     sender: 'ai'
   })
 })
+
+function createStreamCallbacks(): ChatCallbacks {
+  return {
+    onStreamStart(messageId: string) {
+      streamingMessage.value = { id: messageId, text: '' }
+    },
+    onStreamDelta(_messageId: string, fullText: string) {
+      if (streamingMessage.value) {
+        streamingMessage.value = { ...streamingMessage.value, text: fullText }
+      }
+    },
+    onStreamEnd(messageId: string, finalText: string) {
+      // Finalize streaming message into history
+      streamingMessage.value = null
+      if (finalText.trim()) {
+        messages.value.push({
+          id: messageId,
+          text: finalText,
+          sender: 'ai'
+        })
+      }
+    },
+    onError(error: string) {
+      streamingMessage.value = null
+      messages.value.push({
+        id: Date.now(),
+        text: `Error: ${error}`,
+        sender: 'ai'
+      })
+    }
+  }
+}
 
 const sendMessage = async () => {
   if (!newMessage.value.trim() || isLoading.value) return
@@ -37,21 +73,21 @@ const sendMessage = async () => {
   isLoading.value = true
 
   try {
-    const response = await chatService.sendMessage(text)
-    if (response.text.trim()) {
-      messages.value.push({
-        id: response.messageId,
-        text: response.text,
-        sender: 'ai'
-      })
-    }
+    await chatService.sendMessage(text, createStreamCallbacks())
   } catch (error) {
     console.error('Failed to send message:', error)
-    messages.value.push({
-      id: Date.now(),
-      text: 'Error sending message. Please try again.',
-      sender: 'ai'
-    })
+    // Only add error message if the stream callbacks didn't already handle it
+    if (!streamingMessage.value) {
+      const lastMsg = messages.value[messages.value.length - 1]
+      if (!lastMsg || !lastMsg.text.startsWith('Error:')) {
+        messages.value.push({
+          id: Date.now(),
+          text: 'Error sending message. Please try again.',
+          sender: 'ai'
+        })
+      }
+    }
+    streamingMessage.value = null
   } finally {
     isLoading.value = false
   }
@@ -72,21 +108,20 @@ const sendFormMessage = async (text: string) => {
   isLoading.value = true
 
   try {
-    const response = await chatService.sendMessage(text)
-    if (response.text.trim()) {
-      messages.value.push({
-        id: response.messageId,
-        text: response.text,
-        sender: 'ai'
-      })
-    }
+    await chatService.sendMessage(text, createStreamCallbacks())
   } catch (error) {
     console.error('Failed to send form message:', error)
-    messages.value.push({
-      id: Date.now(),
-      text: 'Error sending message. Please try again.',
-      sender: 'ai'
-    })
+    if (!streamingMessage.value) {
+      const lastMsg = messages.value[messages.value.length - 1]
+      if (!lastMsg || !lastMsg.text.startsWith('Error:')) {
+        messages.value.push({
+          id: Date.now(),
+          text: 'Error sending message. Please try again.',
+          sender: 'ai'
+        })
+      }
+    }
+    streamingMessage.value = null
   } finally {
     isLoading.value = false
   }
@@ -107,6 +142,12 @@ defineExpose({
       >
         <div class="message-content">
           {{ msg.text }}
+        </div>
+      </div>
+      <!-- Streaming message with typing indicator -->
+      <div v-if="streamingMessage" class="message ai streaming">
+        <div class="message-content">
+          {{ streamingMessage.text }}<span class="typing-indicator"></span>
         </div>
       </div>
     </div>
@@ -198,6 +239,27 @@ defineExpose({
   background-color: #f3f4f6;
   color: #1f2937;
   border-bottom-left-radius: 0.25rem;
+}
+
+.message.streaming .message-content {
+  background-color: #f3f4f6;
+  color: #1f2937;
+  border-bottom-left-radius: 0.25rem;
+}
+
+.typing-indicator {
+  display: inline-block;
+  width: 0.5em;
+  height: 1em;
+  background-color: #6b7280;
+  margin-left: 2px;
+  animation: blink 0.7s infinite;
+  vertical-align: text-bottom;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 .message.tool-call {

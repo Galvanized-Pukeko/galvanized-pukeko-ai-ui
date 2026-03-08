@@ -20,11 +20,12 @@ export default defineConfig({
       fileName: (format) => `vue-ui.${format}.js`,
     },
     rollupOptions: {
-      external: ['vue', 'chart.js'],
+      external: ['vue', 'chart.js', '@ag-ui/client'],
       output: {
         globals: {
           vue: 'Vue',
-          'chart.js': 'Chart'
+          'chart.js': 'Chart',
+          '@ag-ui/client': 'AgUiClient'
         },
       },
     },

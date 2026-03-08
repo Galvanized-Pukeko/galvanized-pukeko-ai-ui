@@ -1,164 +1,117 @@
 import { configService } from './configService'
+import { HttpAgent } from '@ag-ui/client'
+import type { AgentSubscriber } from '@ag-ui/client'
+import type { Message, UserMessage } from '@ag-ui/client'
 
-interface AgUiMessage {
-  id: string
-  role: 'user' | 'assistant' | 'system' | 'developer'
-  content: string
-}
-
-interface AgUiEvent {
-  type: string
-  threadId?: string
-  runId?: string
-  messageId?: string
-  role?: string
-  delta?: string
-  message?: string
-  [key: string]: unknown
-}
-
-interface ChatResponse {
+export interface StreamingSlot {
   messageId: string
   text: string
 }
 
+export interface ToolCallInfo {
+  toolCallId: string
+  toolCallName: string
+  toolCallBuffer: string
+}
+
+export interface ChatCallbacks {
+  onStreamStart: (messageId: string) => void
+  onStreamDelta: (messageId: string, fullText: string) => void
+  onStreamEnd: (messageId: string, finalText: string) => void
+  onError: (error: string) => void
+}
+
 class ChatService {
-  private threadId: string = crypto.randomUUID()
-  private messages: AgUiMessage[] = []
+  private agent: HttpAgent | null = null
+
+  private ensureAgent(): HttpAgent {
+    if (!this.agent) {
+      const config = configService.get()
+      this.agent = new HttpAgent({
+        url: config.agUiUrl,
+      })
+    }
+    return this.agent
+  }
 
   /**
    * Reset the conversation (new thread)
    */
   resetThread(): void {
-    this.threadId = crypto.randomUUID()
-    this.messages = []
+    const config = configService.get()
+    this.agent = new HttpAgent({
+      url: config.agUiUrl,
+    })
   }
 
   getThreadId(): string {
-    return this.threadId
+    return this.ensureAgent().threadId
   }
 
-  async sendMessage(text: string): Promise<ChatResponse> {
+  /**
+   * Send a message and stream the response in real-time via callbacks.
+   */
+  async sendMessage(text: string, callbacks: ChatCallbacks): Promise<void> {
+    const agent = this.ensureAgent()
+
     console.log('[ChatService] Sending message:', text)
 
-    // Add user message to history
-    const userMessage: AgUiMessage = {
+    // Add user message to the agent's managed message history
+    const userMessage: UserMessage = {
       id: crypto.randomUUID(),
       role: 'user',
       content: text,
     }
-    this.messages.push(userMessage)
+    agent.addMessage(userMessage)
 
-    const config = configService.get()
-    const runId = crypto.randomUUID()
+    console.log('[ChatService] AG-UI request to:', agent.url)
 
-    const payload = {
-      threadId: this.threadId,
-      runId,
-      messages: this.messages,
-      tools: [],
-      context: [],
-      state: null,
-      forwardedProps: null,
+    const subscriber: AgentSubscriber = {
+      onTextMessageStartEvent({ event }) {
+        console.log('[ChatService] Stream start, messageId:', event.messageId)
+        callbacks.onStreamStart(event.messageId)
+      },
+      onTextMessageContentEvent({ event, textMessageBuffer }) {
+        callbacks.onStreamDelta(event.messageId, textMessageBuffer)
+      },
+      onTextMessageEndEvent({ event, textMessageBuffer }) {
+        console.log('[ChatService] Stream end, length:', textMessageBuffer.length)
+        callbacks.onStreamEnd(event.messageId, textMessageBuffer)
+      },
+      onToolCallStartEvent({ event }) {
+        console.log('[ChatService] Tool call start:', event.toolCallId, event.toolCallName)
+      },
+      onToolCallArgsEvent({ toolCallBuffer, toolCallName }) {
+        console.log('[ChatService] Tool call args:', toolCallName, toolCallBuffer)
+      },
+      onToolCallEndEvent({ toolCallName, toolCallArgs }) {
+        console.log('[ChatService] Tool call end:', toolCallName, toolCallArgs)
+        // Phase 3: if toolCallName === 'show_a2ui_surface', dispatch to A2UI composable
+      },
+      onRunErrorEvent({ event }) {
+        console.error('[ChatService] Run error:', event.message)
+        callbacks.onError(event.message)
+      },
     }
 
-    console.log('[ChatService] AG-UI request to:', config.agUiUrl)
-
     try {
-      const response = await fetch(config.agUiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
-        },
-        body: JSON.stringify(payload),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('[ChatService] Error response:', errorText)
-        throw new Error(`Failed to send message: ${response.statusText}`)
-      }
-
-      // Parse SSE response
-      const responseText = await response.text()
-      console.log('[ChatService] Raw response length:', responseText.length)
-
-      const events = this.parseSSE(responseText)
-
-      // Accumulate text content from TEXT_MESSAGE_CONTENT events
-      let messageId = ''
-      let fullText = ''
-      let hasError = false
-      let errorMessage = ''
-
-      for (const event of events) {
-        switch (event.type) {
-          case 'TEXT_MESSAGE_START':
-            messageId = event.messageId || crypto.randomUUID()
-            break
-          case 'TEXT_MESSAGE_CONTENT':
-            if (event.delta) {
-              fullText += event.delta
-            }
-            break
-          case 'TEXT_MESSAGE_END':
-            break
-          case 'RUN_ERROR':
-            hasError = true
-            errorMessage = event.message || 'Unknown error'
-            break
-        }
-      }
-
-      if (hasError) {
-        throw new Error(errorMessage)
-      }
-
-      // Add assistant message to history
-      if (fullText) {
-        this.messages.push({
-          id: messageId || crypto.randomUUID(),
-          role: 'assistant',
-          content: fullText,
-        })
-      }
-
-      console.log('[ChatService] Response text length:', fullText.length)
-
-      return {
-        messageId: messageId || crypto.randomUUID(),
-        text: fullText,
-      }
+      await agent.runAgent({}, subscriber)
     } catch (error) {
       console.error('[ChatService] Error sending message:', error)
       // Remove the user message we added since the request failed
-      this.messages.pop()
+      agent.messages = agent.messages.filter((m: Message) => m.id !== userMessage.id)
       throw error
     }
   }
 
-  private parseSSE(text: string): AgUiEvent[] {
-    const events: AgUiEvent[] = []
-    const lines = text.split('\n')
-
-    for (const line of lines) {
-      const trimmed = line.trim()
-      if (trimmed.startsWith('data:')) {
-        const jsonStr = trimmed.substring(5).trim()
-        if (jsonStr) {
-          try {
-            events.push(JSON.parse(jsonStr) as AgUiEvent)
-          } catch (e) {
-            console.warn('[ChatService] Failed to parse SSE event:', jsonStr)
-          }
-        }
-      }
-    }
-
-    return events
+  /**
+   * Stub for Phase 3: submit a tool result back to the agent.
+   */
+  async submitToolResult(_toolCallId: string, _content: string): Promise<void> {
+    // Phase 3 implementation
+    console.log('[ChatService] submitToolResult stub called:', _toolCallId)
   }
 }
 
 export const chatService = new ChatService()
-export type { AgUiMessage, AgUiEvent, ChatResponse }
+export type { Message }
