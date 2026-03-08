@@ -14,10 +14,17 @@ export interface ToolCallInfo {
   toolCallBuffer: string
 }
 
+export interface ToolCallRecord {
+  toolCallId: string
+  toolCallName: string
+  args: string
+}
+
 export interface ChatCallbacks {
   onStreamStart: (messageId: string) => void
   onStreamDelta: (messageId: string, fullText: string) => void
   onStreamEnd: (messageId: string, finalText: string) => void
+  onToolCallComplete?: (record: ToolCallRecord) => void
   onError: (error: string) => void
 }
 
@@ -84,8 +91,15 @@ class ChatService {
       onToolCallArgsEvent({ toolCallBuffer, toolCallName }) {
         console.log('[ChatService] Tool call args:', toolCallName, toolCallBuffer)
       },
-      onToolCallEndEvent({ toolCallName, toolCallArgs }) {
+      onToolCallEndEvent({ event, toolCallName, toolCallArgs }) {
         console.log('[ChatService] Tool call end:', toolCallName, toolCallArgs)
+        if (callbacks.onToolCallComplete) {
+          callbacks.onToolCallComplete({
+            toolCallId: event.toolCallId,
+            toolCallName: toolCallName ?? '',
+            args: JSON.stringify(toolCallArgs ?? {}),
+          })
+        }
         // Phase 3: if toolCallName === 'show_a2ui_surface', dispatch to A2UI composable
       },
       onRunErrorEvent({ event }) {

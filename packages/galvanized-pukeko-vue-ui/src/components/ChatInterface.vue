@@ -2,16 +2,26 @@
 import {onMounted, ref} from 'vue'
 import PkButton from './PkButton.vue'
 import PkInput from './PkInput.vue'
+import ToolCallBadge from './ToolCallBadge.vue'
 import {chatService} from '../services/chatService'
-import type {ChatCallbacks} from '../services/chatService'
+import type {ChatCallbacks, ToolCallRecord} from '../services/chatService'
 
-interface Message {
+interface TextMessage {
+  kind: 'text'
   id: number | string
   text: string
   sender: 'user' | 'ai'
 }
 
-const messages = ref<Message[]>([])
+interface ToolCallItem {
+  kind: 'tool-call'
+  id: string
+  record: ToolCallRecord
+}
+
+type ChatItem = TextMessage | ToolCallItem
+
+const messages = ref<ChatItem[]>([])
 const newMessage = ref('')
 const isLoading = ref(false)
 
@@ -21,6 +31,7 @@ const streamingMessage = ref<{ id: string; text: string } | null>(null)
 onMounted(() => {
   // No session creation needed with AG-UI — just show a greeting
   messages.value.push({
+    kind: 'text',
     id: Date.now(),
     text: 'Hello! How can I help you today?',
     sender: 'ai'
@@ -42,15 +53,24 @@ function createStreamCallbacks(): ChatCallbacks {
       streamingMessage.value = null
       if (finalText.trim()) {
         messages.value.push({
+          kind: 'text',
           id: messageId,
           text: finalText,
           sender: 'ai'
         })
       }
     },
+    onToolCallComplete(record: ToolCallRecord) {
+      messages.value.push({
+        kind: 'tool-call',
+        id: record.toolCallId,
+        record,
+      })
+    },
     onError(error: string) {
       streamingMessage.value = null
       messages.value.push({
+        kind: 'text',
         id: Date.now(),
         text: `Error: ${error}`,
         sender: 'ai'
@@ -64,6 +84,7 @@ const sendMessage = async () => {
 
   const text = newMessage.value
   messages.value.push({
+    kind: 'text',
     id: Date.now(),
     text: text,
     sender: 'user'
@@ -79,8 +100,9 @@ const sendMessage = async () => {
     // Only add error message if the stream callbacks didn't already handle it
     if (!streamingMessage.value) {
       const lastMsg = messages.value[messages.value.length - 1]
-      if (!lastMsg || !lastMsg.text.startsWith('Error:')) {
+      if (!lastMsg || (lastMsg.kind === 'text' && !lastMsg.text.startsWith('Error:'))) {
         messages.value.push({
+          kind: 'text',
           id: Date.now(),
           text: 'Error sending message. Please try again.',
           sender: 'ai'
@@ -100,6 +122,7 @@ const sendFormMessage = async (text: string) => {
   if (isLoading.value) return
 
   messages.value.push({
+    kind: 'text',
     id: Date.now(),
     text: text,
     sender: 'user'
@@ -113,8 +136,9 @@ const sendFormMessage = async (text: string) => {
     console.error('Failed to send form message:', error)
     if (!streamingMessage.value) {
       const lastMsg = messages.value[messages.value.length - 1]
-      if (!lastMsg || !lastMsg.text.startsWith('Error:')) {
+      if (!lastMsg || (lastMsg.kind === 'text' && !lastMsg.text.startsWith('Error:'))) {
         messages.value.push({
+          kind: 'text',
           id: Date.now(),
           text: 'Error sending message. Please try again.',
           sender: 'ai'
@@ -135,15 +159,21 @@ defineExpose({
 <template>
   <div class="chat-interface" :class="{ 'is-loading': isLoading }">
     <div class="messages">
-      <div
-        v-for="msg in messages"
-        :key="msg.id"
-        :class="['message', msg.sender]"
-      >
-        <div class="message-content">
-          {{ msg.text }}
+      <template v-for="item in messages" :key="item.id">
+        <!-- Text message -->
+        <div
+          v-if="item.kind === 'text'"
+          :class="['message', item.sender]"
+        >
+          <div class="message-content">
+            {{ item.text }}
+          </div>
         </div>
-      </div>
+        <!-- Tool call badge -->
+        <div v-else-if="item.kind === 'tool-call'" class="message tool-call-row">
+          <ToolCallBadge :record="item.record" />
+        </div>
+      </template>
       <!-- Streaming message with typing indicator -->
       <div v-if="streamingMessage" class="message ai streaming">
         <div class="message-content">
@@ -260,6 +290,11 @@ defineExpose({
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+
+.message.tool-call-row {
+  max-width: 60%;
+  align-self: flex-start;
 }
 
 .message.tool-call {
