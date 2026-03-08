@@ -5,6 +5,7 @@ import PkInput from './PkInput.vue'
 import ToolCallBadge from './ToolCallBadge.vue'
 import {chatService} from '../services/chatService'
 import type {ChatCallbacks, ToolCallRecord} from '../services/chatService'
+import type { useA2UI } from '../composables/useA2UI'
 
 interface TextMessage {
   kind: 'text'
@@ -20,6 +21,10 @@ interface ToolCallItem {
 }
 
 type ChatItem = TextMessage | ToolCallItem
+
+const props = defineProps<{
+  a2ui?: ReturnType<typeof useA2UI>
+}>()
 
 const messages = ref<ChatItem[]>([])
 const newMessage = ref('')
@@ -39,7 +44,7 @@ onMounted(() => {
 })
 
 function createStreamCallbacks(): ChatCallbacks {
-  return {
+  const callbacks: ChatCallbacks = {
     onStreamStart(messageId: string) {
       streamingMessage.value = { id: messageId, text: '' }
     },
@@ -67,6 +72,29 @@ function createStreamCallbacks(): ChatCallbacks {
         record,
       })
     },
+    onToolCallStart(toolCallId: string, toolCallName: string) {
+      if (toolCallName === 'show_a2ui_surface' && props.a2ui) {
+        props.a2ui.pendingToolCallId.value = toolCallId
+      }
+    },
+    onToolCallEnd(toolCallId: string, toolCallName: string, toolCallBuffer: string) {
+      if (toolCallName === 'show_a2ui_surface' && props.a2ui) {
+        try {
+          // toolCallBuffer is the raw accumulated TOOL_CALL_ARGS delta string
+          // It should be parseable as JSON: { surfaceJsonl: "line1\nline2\n..." }
+          const parsed = JSON.parse(toolCallBuffer)
+          const jsonl: string = parsed.surfaceJsonl || toolCallBuffer
+          const agentMessages = jsonl
+            .split('\n')
+            .map((line: string) => line.trim())
+            .filter(Boolean)
+            .map((line: string) => JSON.parse(line))
+          props.a2ui.processBatch(agentMessages)
+        } catch (e) {
+          console.error('[ChatInterface] Failed to parse A2UI JSONL:', e, toolCallBuffer)
+        }
+      }
+    },
     onError(error: string) {
       streamingMessage.value = null
       messages.value.push({
@@ -77,6 +105,13 @@ function createStreamCallbacks(): ChatCallbacks {
       })
     }
   }
+
+  // Register callbacks with the a2ui composable so tool result responses are streamed
+  if (props.a2ui) {
+    props.a2ui.setCallbacks(callbacks)
+  }
+
+  return callbacks
 }
 
 const sendMessage = async () => {

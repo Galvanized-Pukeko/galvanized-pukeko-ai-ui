@@ -11,6 +11,8 @@ import PkBarChart from './components/PkBarChart.vue'
 import PkPieChart from './components/PkPieChart.vue'
 import PkTable from './components/PkTable.vue'
 import ChatInterface from './components/ChatInterface.vue'
+import A2UISurface from './components/a2ui/A2UISurface.vue'
+import { useA2UI } from './composables/useA2UI'
 import PkNavHeader from './components/PkNavHeader.vue'
 import PkLogo from './components/PkLogo.vue'
 import PkLogoLarge from './components/PkLogoLarge.vue'
@@ -57,6 +59,9 @@ const componentValues = ref<{
 
 // Ref to ChatInterface component to call sendFormMessage
 const chatInterfaceRef = ref<InstanceType<typeof ChatInterface> | null>(null)
+
+// A2UI composable for rendering agent-driven UI surfaces
+const a2ui = useA2UI()
 
 /**
  * This is going to be coming from config in future.
@@ -376,14 +381,25 @@ onUnmounted(() => {
         <div class="split-screen">
           <!-- Left Side: Chat Interface -->
           <div class="chat-panel">
-            <ChatInterface ref="chatInterfaceRef"/>
+            <ChatInterface ref="chatInterfaceRef" :a2ui="a2ui" />
           </div>
 
           <!-- Right Side: Form/Content -->
           <div class="content-panel">
             <div class="app-content">
+              <!-- A2UI Surfaces rendered from agent tool calls -->
+              <template v-if="a2ui.surfaces.value.size > 0">
+                <A2UISurface
+                  v-for="[id, surface] in a2ui.surfaces.value"
+                  :key="id"
+                  :surface="surface"
+                  :surfaceId="id"
+                  :a2ui="a2ui"
+                />
+              </template>
+
               <!-- Show only one section at a time: waiting message, form, chart, or table -->
-              <div v-if="!currentChart && !currentTable && serverComponents.length === 0"
+              <div v-if="!currentChart && !currentTable && serverComponents.length === 0 && a2ui.surfaces.value.size === 0"
                    id="galvanized-pukeko-ui-waiting-placeholder"
                    class="waiting-placeholder">
                 <PkLogoLarge />

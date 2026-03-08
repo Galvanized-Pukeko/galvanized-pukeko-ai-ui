@@ -25,6 +25,8 @@ export interface ChatCallbacks {
   onStreamDelta: (messageId: string, fullText: string) => void
   onStreamEnd: (messageId: string, finalText: string) => void
   onToolCallComplete?: (record: ToolCallRecord) => void
+  onToolCallStart?: (toolCallId: string, toolCallName: string) => void
+  onToolCallEnd?: (toolCallId: string, toolCallName: string, toolCallBuffer: string) => void
   onError: (error: string) => void
 }
 
@@ -73,6 +75,9 @@ class ChatService {
 
     console.log('[ChatService] AG-UI request to:', agent.url)
 
+    // Track the accumulated tool call args buffer per tool call id
+    const toolCallBuffers = new Map<string, string>()
+
     const subscriber: AgentSubscriber = {
       onTextMessageStartEvent({ event }) {
         console.log('[ChatService] Stream start, messageId:', event.messageId)
@@ -87,12 +92,19 @@ class ChatService {
       },
       onToolCallStartEvent({ event }) {
         console.log('[ChatService] Tool call start:', event.toolCallId, event.toolCallName)
+        toolCallBuffers.set(event.toolCallId, '')
+        if (callbacks.onToolCallStart) {
+          callbacks.onToolCallStart(event.toolCallId, event.toolCallName)
+        }
       },
-      onToolCallArgsEvent({ toolCallBuffer, toolCallName }) {
+      onToolCallArgsEvent({ event, toolCallBuffer, toolCallName }) {
         console.log('[ChatService] Tool call args:', toolCallName, toolCallBuffer)
+        toolCallBuffers.set(event.toolCallId, toolCallBuffer)
       },
       onToolCallEndEvent({ event, toolCallName, toolCallArgs }) {
         console.log('[ChatService] Tool call end:', toolCallName, toolCallArgs)
+        const buffer = toolCallBuffers.get(event.toolCallId) ?? ''
+        toolCallBuffers.delete(event.toolCallId)
         if (callbacks.onToolCallComplete) {
           callbacks.onToolCallComplete({
             toolCallId: event.toolCallId,
@@ -100,7 +112,9 @@ class ChatService {
             args: JSON.stringify(toolCallArgs ?? {}),
           })
         }
-        // Phase 3: if toolCallName === 'show_a2ui_surface', dispatch to A2UI composable
+        if (callbacks.onToolCallEnd) {
+          callbacks.onToolCallEnd(event.toolCallId, toolCallName ?? '', buffer)
+        }
       },
       onRunErrorEvent({ event }) {
         console.error('[ChatService] Run error:', event.message)
@@ -119,11 +133,64 @@ class ChatService {
   }
 
   /**
-   * Stub for Phase 3: submit a tool result back to the agent.
+   * Submit a tool result back to the agent and stream the follow-up response.
    */
-  async submitToolResult(_toolCallId: string, _content: string): Promise<void> {
-    // Phase 3 implementation
-    console.log('[ChatService] submitToolResult stub called:', _toolCallId)
+  async submitToolResult(
+    toolCallId: string,
+    content: string,
+    callbacks?: ChatCallbacks,
+  ): Promise<void> {
+    const agent = this.ensureAgent()
+
+    console.log('[ChatService] submitToolResult:', toolCallId, content)
+
+    // Add tool message to the agent's managed message history
+    agent.addMessage({
+      id: crypto.randomUUID(),
+      role: 'tool',
+      content: content,
+      toolCallId: toolCallId,
+    } as any)
+
+    if (!callbacks) return
+
+    // Track the accumulated tool call args buffer per tool call id
+    const toolCallBuffers = new Map<string, string>()
+
+    const subscriber: AgentSubscriber = {
+      onTextMessageStartEvent({ event }) {
+        callbacks.onStreamStart(event.messageId)
+      },
+      onTextMessageContentEvent({ event, textMessageBuffer }) {
+        callbacks.onStreamDelta(event.messageId, textMessageBuffer)
+      },
+      onTextMessageEndEvent({ event, textMessageBuffer }) {
+        callbacks.onStreamEnd(event.messageId, textMessageBuffer)
+      },
+      onToolCallStartEvent({ event }) {
+        toolCallBuffers.set(event.toolCallId, '')
+        callbacks.onToolCallStart?.(event.toolCallId, event.toolCallName)
+      },
+      onToolCallArgsEvent({ event, toolCallBuffer, toolCallName }) {
+        console.log('[ChatService] submitToolResult tool call args:', toolCallName, toolCallBuffer)
+        toolCallBuffers.set(event.toolCallId, toolCallBuffer)
+      },
+      onToolCallEndEvent({ event, toolCallName, toolCallArgs }) {
+        const buffer = toolCallBuffers.get(event.toolCallId) ?? ''
+        toolCallBuffers.delete(event.toolCallId)
+        callbacks.onToolCallComplete?.({
+          toolCallId: event.toolCallId,
+          toolCallName: toolCallName ?? '',
+          args: JSON.stringify(toolCallArgs ?? {}),
+        })
+        callbacks.onToolCallEnd?.(event.toolCallId, toolCallName ?? '', buffer)
+      },
+      onRunErrorEvent({ event }) {
+        callbacks.onError(event.message)
+      },
+    }
+
+    await agent.runAgent({}, subscriber)
   }
 }
 
