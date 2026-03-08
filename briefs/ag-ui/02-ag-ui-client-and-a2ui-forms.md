@@ -9,6 +9,7 @@
 3. Build a Vue A2UI renderer so agents can render interactive forms in the Pukeko browser UI.
 4. Add a `show_a2ui_surface` built-in tool to Gaunt Sloth that the LLM can use to display
    A2UI surfaces.
+5. Migrate the ADK Java agent from the custom WebSocket form protocol to A2UI.
 
 Both the ADK Java backend and the Gaunt Sloth AG-UI server must work correctly with the Vue
 UI. The integration test suite is the acceptance gate.
@@ -47,6 +48,8 @@ UI. The integration test suite is the acceptance gate.
 
 ### Phase 1 — Vue AG-UI Client (replace naive implementation)
 
+- [x] Phase 1 is complete.
+
 **Problem:** `chatService.ts` calls `await response.text()` (blocks until full stream) and
 manually parses SSE. Only TEXT_MESSAGE_* and RUN_ERROR events are handled. No real-time
 streaming.
@@ -79,6 +82,8 @@ streaming.
 ---
 
 ### Phase 2 — Tool Call Events from Gaunt Sloth Server
+
+- [x] Phase 2 is complete.
 
 **Problem:** `apiAgUiModule.ts` only emits text events. The LangGraph stream loop in
 `GthLangChainAgent.stream()` silently drops `AIMessage.tool_calls` and `ToolMessage` results.
@@ -213,12 +218,89 @@ end-to-end form rendering and action submission.
 
 ---
 
+### Phase 5 — ADK Agent A2UI Migration (replace WebSocket forms)
+
+**Goal:** Replace the custom WebSocket form protocol in the ADK Java agent with `show_a2ui_surface`,
+so the ADK agent renders interactive surfaces via the same A2UI path as Gaunt Sloth.
+The WebSocket status badge is removed from the Vue UI as it becomes irrelevant.
+
+**Problem:** `UiAgent.java` has three WebSocket-backed tools (`renderForm`, `renderChart`,
+`renderTable`) that broadcast via `FormWebSocketHandler`. The Vue UI connects to a WebSocket
+(`connectionService.ts`) and renders forms/charts/tables directly in `CoreApp.vue`. This
+whole path is replaced by A2UI.
+
+**Background:** `renderChart` and `renderTable` have no A2UI equivalent in the MVP catalog.
+They are removed in this phase. Chart and table rendering may be added later as A2UI stretch
+components.
+
+#### ADK Java changes
+
+`packages/galvanized-pukeko-agent-adk/src/main/java/io/github/galvanized_pukeko/UiAgent.java`
+- Remove `renderForm`, `renderChart`, `renderTable` tool registrations and their method implementations
+- Remove static `webSocketHandler` field and all references to it
+- Add `show_a2ui_surface` as a `FunctionTool` — takes a single `surfaceJsonl: String` parameter
+  and returns it unchanged; the AG-UI streamer emits it as `TOOL_CALL_ARGS`
+
+`packages/galvanized-pukeko-agent-adk/src/main/java/io/github/galvanized_pukeko/FormWebSocketHandler.java`
+- Delete this file
+
+`packages/galvanized-pukeko-agent-adk/src/main/java/io/github/galvanized_pukeko/FormWebSocketConfigurer.java`
+- Delete this file
+
+`packages/galvanized-pukeko-agent-adk/src/main/resources/application.properties` (if referenced)
+- Remove any WebSocket-specific configuration
+
+#### Vue UI changes
+
+`packages/galvanized-pukeko-vue-ui/src/CoreApp.vue`
+- Remove the `wsStatus` badge (`<span class="status-badge">WebSockets {{ wsStatus }}</span>`)
+  from the nav-controls slot
+- Remove all WebSocket-driven state: `serverComponents`, `formLabels`, `wsStatus`,
+  `currentChart`, `currentTable`, `componentValues`
+- Remove all WebSocket message handlers: `handleRenderComponents`, `handleChartMessage`,
+  `handleTableMessage`, `handleSubmit`, `handleCancel`, `handleClearChart`, `handleClearTable`
+- Remove `connectionService` import and all `onMounted`/`onUnmounted` WebSocket lifecycle
+- Remove the form, chart, and table rendering sections from the right panel
+- Add A2UI surface rendering in the right panel:
+  `<A2UISurface v-for="[id, surface] in a2ui.surfaces" :key="id" :surface="surface" />`
+- Wire `useA2UI` composable and pass it to `ChatInterface` (or provide it globally)
+
+`packages/galvanized-pukeko-vue-ui/src/services/connectionService.ts`
+- Delete this file (no longer needed)
+
+`packages/galvanized-pukeko-vue-ui/src/types/jsonrpc.ts` (if it only serves connectionService)
+- Delete if no other consumers
+
+#### Playwright E2E test changes
+
+`e2e/chat.spec.ts`
+- Remove `should render form when requested` test (old WebSocket form path gone)
+- Remove `should render chart when requested with data` test (chart tool removed)
+- Add `should render A2UI form when requested` test: ask agent to show a contact form,
+  assert an A2UI surface appears in the right panel with expected fields, fill a field,
+  click submit, verify agent receives and acknowledges the submission
+
+#### ADK agent prompt update
+
+`packages/galvanized-pukeko-agent-adk/src/main/resources/` (agent prompt file)
+- Update instructions to describe `show_a2ui_surface` instead of `renderForm`/`renderChart`/`renderTable`
+- Document the A2UI JSONL format (surfaceUpdate + dataModelUpdate + beginRendering)
+
+**Acceptance:**
+- `npm run it-adk` passes — ADK integration tests pass with A2UI form rendering
+- WebSocket status badge is absent from the UI
+- `connectionService.ts` is deleted
+- `FormWebSocketHandler.java` and `FormWebSocketConfigurer.java` are deleted
+- Agent can render an A2UI form; user can fill and submit it; agent continues
+
+---
+
 ## Criteria
 
 - `npm run it-adk` passes — Pukeko works correctly with the ADK Java backend
 - `npm run it-gth` passes — Pukeko works correctly with the Gaunt Sloth AG-UI server
 - Text streams in real time (no blocking until end of response)
 - Agent can render an A2UI form via `show_a2ui_surface`; user can interact and submit
-- ADK backend continues to work — if its existing WebSocket form path is superseded by A2UI,
-  the integration tests are the arbiter of what must be preserved
+- WebSocket status badge removed from the Vue UI nav header
+- `connectionService.ts` deleted; `FormWebSocketHandler.java` and `FormWebSocketConfigurer.java` deleted
 - No backwards compatibility obligations beyond what integration tests require
