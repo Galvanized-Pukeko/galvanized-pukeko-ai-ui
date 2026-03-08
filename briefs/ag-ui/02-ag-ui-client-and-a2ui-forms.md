@@ -122,6 +122,8 @@ streaming.
 
 ### Phase 3 — Vue A2UI Renderer
 
+- [x] Phase 3 is complete.
+
 **Goal:** Vue renders declarative A2UI surfaces delivered via `TOOL_CALL_ARGS` events.
 User actions (button clicks, form submits) are returned to the agent as tool results.
 
@@ -192,6 +194,8 @@ User clicks Button
 
 ### Phase 4 — `show_a2ui_surface` Tool in Gaunt Sloth
 
+- [x] Phase 4 is complete.
+
 **New: `packages/gaunt-sloth-assistant/src/tools/ShowA2UISurfaceTool.ts`**
 ```ts
 tool(
@@ -209,9 +213,10 @@ and the Vue client parses it to render the surface.
 **Modified: integration test workdir config**
 - Enable the tool in test config so integration tests can exercise it
 
-**Modified: `packages/gaunt-sloth-assistant/integration-tests/apiAgUiServer.it.ts`**
-- Add test: send message that triggers `show_a2ui_surface`; assert `TOOL_CALL_ARGS` delta
+**New: `packages/gaunt-sloth-assistant/integration-tests/apiAgUiServer.a2ui.it.ts`**
+- Test: send message that triggers `show_a2ui_surface`; assert `TOOL_CALL_ARGS` delta
   contains `surfaceUpdate` or `beginRendering`
+- Runs as part of the inception suite (all configs now declare `builtInTools: ["show_a2ui_surface"]`)
 
 **Acceptance:** `npm run it-gth` passes. Full Playwright E2E (Phase 3 + 4 together) confirms
 end-to-end form rendering and action submission.
