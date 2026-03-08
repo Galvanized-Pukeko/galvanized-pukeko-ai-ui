@@ -6,6 +6,7 @@
       "temperature": 0.7
     }
   },
+  "builtInTools": ["show_a2ui_surface"],
   "streamOutput": true,
   "commands": {
     "api": {
