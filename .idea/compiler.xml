@@ -5,4 +5,7 @@
       <module name="ktor-sample.main" target="24" />
     </bytecodeTargetLevel>
   </component>
+  <component name="TypeScriptCompiler">
+    <option name="useServicePoweredTypesWasEnabledByExperiment" value="true" />
+  </component>
 </project>
