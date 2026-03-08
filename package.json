@@ -9,7 +9,7 @@
     "sink": "npm run sink -w packages/galvanized-pukeko-web-client",
     "chat-cli": "npm run chat -w packages/gaunt-sloth-assistant",
     "lint-gth": "npm run lint-n-fix -w packages/gaunt-sloth-assistant",
-    "it-gth": "npm run it openai -w packages/gaunt-sloth-assistant",
+    "it-gth": "npm run it inception -w packages/gaunt-sloth-assistant; npm run it openai binary -w packages/gaunt-sloth-assistant",
     "it-gth-simple": "npm run it groq simple -w packages/gaunt-sloth-assistant",
     "test-gth": "npm run test -w packages/gaunt-sloth-assistant",
     "it-adk": "node it-adk.js",
