@@ -27,6 +27,7 @@ export interface ChatCallbacks {
   onToolCallComplete?: (record: ToolCallRecord) => void
   onToolCallStart?: (toolCallId: string, toolCallName: string) => void
   onToolCallEnd?: (toolCallId: string, toolCallName: string, toolCallBuffer: string) => void
+  onToolCallResult?: (toolCallId: string, toolCallName: string, content: string) => void
   onError: (error: string) => void
 }
 
@@ -77,6 +78,7 @@ class ChatService {
 
     // Track the accumulated tool call args buffer per tool call id
     const toolCallBuffers = new Map<string, string>()
+    const toolCallNames = new Map<string, string>()
 
     const subscriber: AgentSubscriber = {
       onTextMessageStartEvent({ event }) {
@@ -93,6 +95,7 @@ class ChatService {
       onToolCallStartEvent({ event }) {
         console.log('[ChatService] Tool call start:', event.toolCallId, event.toolCallName)
         toolCallBuffers.set(event.toolCallId, '')
+        toolCallNames.set(event.toolCallId, event.toolCallName)
         if (callbacks.onToolCallStart) {
           callbacks.onToolCallStart(event.toolCallId, event.toolCallName)
         }
@@ -116,6 +119,11 @@ class ChatService {
           callbacks.onToolCallEnd(event.toolCallId, toolCallName ?? '', buffer)
         }
       },
+      onToolCallResultEvent({ event }) {
+        console.log('[ChatService] Tool call result:', event.toolCallId)
+        const toolCallName = toolCallNames.get(event.toolCallId) ?? ''
+        callbacks.onToolCallResult?.(event.toolCallId, toolCallName, event.content ?? '')
+      },
       onRunErrorEvent({ event }) {
         console.error('[ChatService] Run error:', event.message)
         callbacks.onError(event.message)
@@ -133,29 +141,31 @@ class ChatService {
   }
 
   /**
-   * Submit a tool result back to the agent and stream the follow-up response.
+   * Submit a user action (e.g. form submission) as a user message and stream the follow-up response.
+   * User actions are NOT sent as tool messages — the show_a2ui_surface tool call is already resolved
+   * once the surfaceJsonl is returned. A second tool message for the same toolCallId would be invalid.
    */
   async submitToolResult(
-    toolCallId: string,
+    _toolCallId: string,
     content: string,
     callbacks?: ChatCallbacks,
   ): Promise<void> {
     const agent = this.ensureAgent()
 
-    console.log('[ChatService] submitToolResult:', toolCallId, content)
+    console.log('[ChatService] submitUserAction:', content)
 
-    // Add tool message to the agent's managed message history
+    // Add as a user message — the tool call is already resolved; this is new user input
     agent.addMessage({
       id: crypto.randomUUID(),
-      role: 'tool',
+      role: 'user',
       content: content,
-      toolCallId: toolCallId,
     } as any)
 
     if (!callbacks) return
 
     // Track the accumulated tool call args buffer per tool call id
     const toolCallBuffers = new Map<string, string>()
+    const toolCallNames = new Map<string, string>()
 
     const subscriber: AgentSubscriber = {
       onTextMessageStartEvent({ event }) {
@@ -169,6 +179,7 @@ class ChatService {
       },
       onToolCallStartEvent({ event }) {
         toolCallBuffers.set(event.toolCallId, '')
+        toolCallNames.set(event.toolCallId, event.toolCallName)
         callbacks.onToolCallStart?.(event.toolCallId, event.toolCallName)
       },
       onToolCallArgsEvent({ event, toolCallBuffer, toolCallName }) {
@@ -184,6 +195,11 @@ class ChatService {
           args: JSON.stringify(toolCallArgs ?? {}),
         })
         callbacks.onToolCallEnd?.(event.toolCallId, toolCallName ?? '', buffer)
+      },
+      onToolCallResultEvent({ event }) {
+        console.log('[ChatService] submitToolResult tool call result:', event.toolCallId)
+        const toolCallName = toolCallNames.get(event.toolCallId) ?? ''
+        callbacks.onToolCallResult?.(event.toolCallId, toolCallName, event.content ?? '')
       },
       onRunErrorEvent({ event }) {
         callbacks.onError(event.message)

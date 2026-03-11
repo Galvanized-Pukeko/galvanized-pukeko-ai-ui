@@ -381,6 +381,21 @@ export function useA2UI() {
       }
     }
 
+    // Fallback: collect all TextField values from the surface when no explicit context
+    if (Object.keys(resolvedContext).length === 0) {
+      const surface = processor.getSurfaces().get(surfaceId)
+      if (surface) {
+        for (const [compId, rawComp] of surface.components) {
+          if (rawComp?.component?.TextField !== undefined) {
+            const value = surface.dataModel.get(compId)
+            if (value != null && value !== '') {
+              resolvedContext[compId] = value
+            }
+          }
+        }
+      }
+    }
+
     const userAction: UserAction = {
       actionName: action.name,
       sourceComponentId,

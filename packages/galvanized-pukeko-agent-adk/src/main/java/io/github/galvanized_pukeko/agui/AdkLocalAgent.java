@@ -7,6 +7,7 @@ import com.agui.core.event.*;
 import com.agui.core.message.Role;
 import com.agui.core.state.State;
 import com.agui.server.LocalAgent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.adk.agents.RunConfig;
 import com.google.adk.events.Event;
 import com.google.adk.runner.Runner;
@@ -24,6 +25,7 @@ import java.util.UUID;
 public class AdkLocalAgent extends LocalAgent {
 
     private static final Logger log = LoggerFactory.getLogger(AdkLocalAgent.class);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private final Runner runner;
     private final String appName;
@@ -119,16 +121,18 @@ public class AdkLocalAgent extends LocalAgent {
                                 var toolStart = new ToolCallStartEvent();
                                 toolStart.setToolCallId(toolCallId);
                                 toolStart.setToolCallName(fc.name().orElse("unknown"));
-                                if (messageStarted) {
-                                    toolStart.setParentMessageId(messageId);
-                                }
+                                toolStart.setParentMessageId(messageId);
                                 emitEvent(toolStart, subscriber);
 
-                                // Emit tool args
+                                // Emit tool args as JSON-encoded arguments
                                 if (fc.args().isPresent()) {
                                     var toolArgs = new ToolCallArgsEvent();
                                     toolArgs.setToolCallId(toolCallId);
-                                    toolArgs.setDelta(fc.args().get().toString());
+                                    try {
+                                        toolArgs.setDelta(objectMapper.writeValueAsString(fc.args().get()));
+                                    } catch (Exception e) {
+                                        toolArgs.setDelta(fc.args().get().toString());
+                                    }
                                     emitEvent(toolArgs, subscriber);
                                 }
 

@@ -77,21 +77,33 @@ function createStreamCallbacks(): ChatCallbacks {
         props.a2ui.pendingToolCallId.value = toolCallId
       }
     },
-    onToolCallEnd(toolCallId: string, toolCallName: string, toolCallBuffer: string) {
+    onToolCallEnd(_toolCallId: string, _toolCallName: string, _toolCallBuffer: string) {
+      // A2UI processing is handled in onToolCallResult using the tool result content
+    },
+    onToolCallResult(toolCallId: string, toolCallName: string, content: string) {
       if (toolCallName === 'show_a2ui_surface' && props.a2ui) {
         try {
-          // toolCallBuffer is the raw accumulated TOOL_CALL_ARGS delta string
-          // It should be parseable as JSON: { surfaceJsonl: "line1\nline2\n..." }
-          const parsed = JSON.parse(toolCallBuffer)
-          const jsonl: string = parsed.surfaceJsonl || toolCallBuffer
-          const agentMessages = jsonl
-            .split('\n')
-            .map((line: string) => line.trim())
-            .filter(Boolean)
-            .map((line: string) => JSON.parse(line))
+          // Extract top-level JSON objects using brace-depth tracking.
+          // This handles JSONL that may be newline-, comma-, or space-separated.
+          const agentMessages: unknown[] = []
+          let depth = 0
+          let start = -1
+          for (let i = 0; i < content.length; i++) {
+            const c = content[i]
+            if (c === '{') {
+              if (depth === 0) start = i
+              depth++
+            } else if (c === '}') {
+              depth--
+              if (depth === 0 && start !== -1) {
+                agentMessages.push(JSON.parse(content.slice(start, i + 1)))
+                start = -1
+              }
+            }
+          }
           props.a2ui.processBatch(agentMessages)
         } catch (e) {
-          console.error('[ChatInterface] Failed to parse A2UI JSONL:', e, toolCallBuffer)
+          console.error('[ChatInterface] Failed to parse A2UI JSONL:', e, content)
         }
       }
     },

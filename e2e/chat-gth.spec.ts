@@ -26,10 +26,10 @@ test.describe('Chat Interface (Gaunt Sloth AG-UI)', () => {
     test('should send message via Enter key', async ({ page }) => {
         const input = page.locator('input[name="chat-input"]');
 
-        await input.fill('Hello via Enter. Your response must include word Enter.');
+        await input.fill('What does the Enter key do on a keyboard? Reply in one sentence.');
         await input.press('Enter');
 
-        await expect(page.locator('.message.user', { hasText: 'Hello via Enter' })).toBeVisible();
+        await expect(page.locator('.message.user', { hasText: 'What does the Enter key do' })).toBeVisible();
 
         await expect(page.locator('.is-loading')).not.toBeVisible({ timeout: 30000 });
 
@@ -46,5 +46,20 @@ test.describe('Chat Interface (Gaunt Sloth AG-UI)', () => {
         await expect(page.locator('.is-loading')).not.toBeVisible({ timeout: 30000 });
         const aiMessage = page.locator('.message.ai').last();
         await expect(aiMessage).toContainText('Gaunt Sloth');
+    });
+
+    test('should render an A2UI surface via show_a2ui_surface', async ({ page }) => {
+        const input = page.locator('input[name="chat-input"]');
+        await input.fill(
+            'Use the show_a2ui_surface tool now. Call it with this exact surfaceJsonl:\n' +
+            '{"surfaceUpdate":{"surfaceId":"s1","components":[{"id":"t1","component":{"Text":{"text":{"literalString":"Name"}}}},{"id":"r","component":{"Column":{"children":{"explicitList":["t1"]}}}}]}}\n' +
+            '{"beginRendering":{"surfaceId":"s1","root":"r"}}'
+        );
+        await input.press('Enter');
+
+        await expect(page.locator('.is-loading')).not.toBeVisible({ timeout: 60000 });
+
+        // A2UI surface should appear in the right panel
+        await expect(page.locator('.a2ui-surface')).toBeVisible({ timeout: 10000 });
     });
 });

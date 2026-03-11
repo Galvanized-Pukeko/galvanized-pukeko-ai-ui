@@ -36,9 +36,8 @@ const textValue = computed(() => {
 function onInput(event: Event) {
   const target = event.target as HTMLInputElement
   const textProp = props.node.properties.text
-  if (textProp?.path) {
-    ctx.processor.setData(props.node, textProp.path, target.value, props.surfaceId)
-  }
+  const path = textProp?.path ?? props.node.id
+  ctx.processor.setData(props.node, path, target.value, props.surfaceId)
 }
 
 const inputType = computed(() => {
