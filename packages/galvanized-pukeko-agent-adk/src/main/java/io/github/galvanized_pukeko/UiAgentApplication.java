@@ -107,7 +107,6 @@ public class UiAgentApplication extends AdkWebServer {
   @Bean
   @Primary
   public AgentLoader agentLoader(
-      FormWebSocketHandler webSocketHandler,
       AiConfiguration aiConfig,
       McpConfiguration mcpConfig,
       McpToolsetFactory mcpFactory,
@@ -116,17 +115,17 @@ public class UiAgentApplication extends AdkWebServer {
       PromptLoader promptLoader
   ) {
     log.info("creating agent loader");
-    return new UiAgentLoader(webSocketHandler, aiConfig, mcpConfig, mcpFactory, a2aConfig, a2aFactory, promptLoader);
+    return new UiAgentLoader(aiConfig, mcpConfig, mcpFactory, a2aConfig, a2aFactory, promptLoader);
   }
 
   private static class UiAgentLoader implements AgentLoader {
 
     private LlmAgent uiAgent;
 
-    public UiAgentLoader(FormWebSocketHandler webSocketHandler, AiConfiguration aiConfig,
+    public UiAgentLoader(AiConfiguration aiConfig,
         McpConfiguration mcpConfig, McpToolsetFactory mcpFactory, A2aConfiguration a2aConfig,
         A2aAgentFactory a2aFactory, PromptLoader promptLoader) {
-      this.uiAgent = UiAgent.createAgent(webSocketHandler, aiConfig, mcpConfig, mcpFactory,
+      this.uiAgent = UiAgent.createAgent(aiConfig, mcpConfig, mcpFactory,
           a2aConfig, a2aFactory, promptLoader);
     }
 

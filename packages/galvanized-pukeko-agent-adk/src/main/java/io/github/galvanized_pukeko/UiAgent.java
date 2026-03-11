@@ -20,13 +20,11 @@ public class UiAgent {
 
   private static final Logger log = LoggerFactory.getLogger(UiAgent.class);
   public static final String PUKEKO_UI_AGENT_NAME = "pukeko-ui-agent";
-  private static FormWebSocketHandler webSocketHandler;
 
   /**
    * Factory method to create the UI agent with MCP and A2A configurations.
    * This is called by UiAgentApplication's custom AgentLoader.
    *
-   * @param handler WebSocket handler for UI interactions
    * @param aiConfig AI configuration from application.properties
    * @param mcpConfig MCP configuration from application.properties
    * @param mcpFactory Factory for creating MCP toolsets
@@ -36,7 +34,6 @@ public class UiAgent {
    * @return Configured LlmAgent with tools and sub-agents
    */
   public static LlmAgent createAgent(
-      FormWebSocketHandler handler,
       AiConfiguration aiConfig,
       McpConfiguration mcpConfig,
       McpToolsetFactory mcpFactory,
@@ -55,18 +52,12 @@ public class UiAgent {
         aiConfig.getModel(), aiConfig.getPromptPath());
     log.info("Agent description: {}", description);
 
-    // Store handler statically for tools to access
-    // TODO: Refactor tools to not rely on static state if possible, but for now this bridges the gap
-    webSocketHandler = handler;
-
     // Load the agent prompt from configured path
     String instruction = promptLoader.loadPrompt(aiConfig.getPromptPath());
 
     // Build tools list
     List<Object> tools = new ArrayList<>();
-    tools.add(FunctionTool.create(UiAgent.class, "renderForm"));
-    tools.add(FunctionTool.create(UiAgent.class, "renderChart"));
-    tools.add(FunctionTool.create(UiAgent.class, "renderTable"));
+    tools.add(FunctionTool.create(UiAgent.class, "showA2uiSurface"));
 
     // Add MCP toolset if configured
     mcpFactory.create(mcpConfig).ifPresent(toolset -> {
@@ -100,111 +91,19 @@ public class UiAgent {
   }
 
   /**
-   * Render a form in the UI
+   * Display an A2UI surface to the user. The AG-UI streamer automatically emits the
+   * surfaceJsonl content as TOOL_CALL_ARGS events, which the client renders.
    */
-  @Schema(description = "Display a form to collect information from the user")
-  public static Map<String, String> renderForm(
+  @Schema(name = "show_a2ui_surface",
+      description = "Display an A2UI surface to the user. Pass A2UI JSONL as surfaceJsonl "
+      + "(newline-separated JSON objects: surfaceUpdate, optional dataModelUpdate, beginRendering).")
+  public static Map<String, String> showA2uiSurface(
       @Schema(
-          name = "components",
-          description = "List of form components. Each component should have 'type' (input/select/checkbox), 'label', and optional 'value'. " +
-              "For 'select' type, include 'options' as a simple array of strings where each string serves as BOTH the value AND the display label. " +
-              "Example select component: {\"type\": \"select\", \"label\": \"Country\", \"options\": [\"USA\", \"Canada\", \"UK\"]}"
-      ) List<Map<String, Object>> components,
-      @Schema(
-          name = "submitLabel",
-          description = "Label for the submit button (default: Submit)"
-      ) String submitLabel,
-      @Schema(
-          name = "cancelLabel",
-          description = "Label for the cancel button (default: Cancel)"
-      ) String cancelLabel
+          name = "surfaceJsonl",
+          description = "A2UI JSONL content: newline-separated JSON objects describing the surface"
+      ) String surfaceJsonl
   ) {
-    log.info("Rendering form with {} components", components.size());
-
-    Map<String, Object> formData = Map.of(
-        "components", components,
-        "submitLabel", submitLabel != null ? submitLabel : "Submit",
-        "cancelLabel", cancelLabel != null ? cancelLabel : "Cancel"
-    );
-
-    webSocketHandler.broadcastForm(formData);
-
-    return Map.of("status", "Form rendered successfully");
-  }
-
-  /**
-   * Render a chart in the UI
-   */
-  @Schema(description = "Display a chart to visualize data")
-  public static Map<String, String> renderChart(
-      @Schema(
-          name = "chartType",
-          description = "Type of chart to render (bar/pie)"
-      ) String chartType,
-      @Schema(
-          name = "title",
-          description = "Title of the chart"
-      ) String title,
-      @Schema(
-          name = "data",
-          description = "Chart data containing 'labels' (list of strings) and 'datasets' (list of objects with 'label' and 'data' (list of numbers))"
-      ) Map<String, Object> data
-  ) {
-    log.info("Rendering {} chart: {}", chartType, title);
-
-    Map<String, Object> chartData = Map.of(
-        "chartType", chartType,
-        "title", title,
-        "data", data
-    );
-
-    webSocketHandler.broadcastChart(chartData);
-
-    return Map.of("status", "Chart rendered successfully");
-  }
-
-  /**
-   * Render a table in the UI
-   */
-  @Schema(description = "Display a table to present structured data in rows and columns. " +
-      "Use this tool when you need to show tabular data, lists, or results from other tools. " +
-      "Example: To show user data, use header=['Name', 'Age', 'Role'] and " +
-      "data=[['John', '25', 'Engineer'], ['Jane', '30', 'Designer']] and footer=[]")
-  public static Map<String, String> renderTable(
-      @Schema(
-          name = "caption",
-          description = "Optional caption/title for the table (e.g., 'User Directory' or 'Sales Report Q4 2024')",
-          optional = true
-      ) String caption,
-      @Schema(
-          name = "header",
-          description = "Optional list of header column names. Should match the number of columns in each data row. " +
-              "Example: ['Name', 'Age', 'Department']",
-          optional = true
-      ) List<String> header,
-      @Schema(
-          name = "data",
-          description = "Table data as a 2D array (list of rows, where each row is a list of cell values). " +
-              "All values should be strings. Each row should have the same number of columns. " +
-              "Example: [['John', '25', 'Engineering'], ['Jane', '30', 'Design'], ['Bob', '28', 'Marketing']]"
-      ) List<List<String>> data,
-      @Schema(
-          name = "footer",
-          description = "List of footer cell values (e.g., totals or summary data). " +
-              "Example: ['Total', '83', '3 Employees']. Provide empty array if you don't need footer.",
-          optional = true
-      ) List<String> footer
-  ) {
-    log.info("Rendering table with {} rows", data != null ? data.size() : 0);
-
-    java.util.Map<String, Object> tableData = new java.util.HashMap<>();
-    if (caption != null) tableData.put("caption", caption);
-    if (header != null) tableData.put("header", header);
-    tableData.put("data", data);
-    if (footer != null) tableData.put("footer", footer);
-
-    webSocketHandler.broadcastTable(tableData);
-
-    return Map.of("status", "Table rendered successfully");
+    log.info("show_a2ui_surface called with {} chars of JSONL", surfaceJsonl != null ? surfaceJsonl.length() : 0);
+    return Map.of("status", "surface_rendered", "surfaceJsonl", surfaceJsonl != null ? surfaceJsonl : "");
   }
 }

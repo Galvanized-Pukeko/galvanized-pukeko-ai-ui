@@ -46,33 +46,14 @@ test.describe('Chat Interface', () => {
         await expect(page.getByText('Click Send or press Enter to send your message')).toBeVisible();
     });
 
-    test('should render form when requested', async ({ page }, testInfo) => {
+    test('should render A2UI form when requested', async ({ page }) => {
         const input = page.locator('input[name="chat-input"]');
-        await input.fill('Show me a contact form with name and email fields');
+        await input.fill('Show me a contact form with a name and an email field using the show_a2ui_surface tool');
         await input.press('Enter');
 
         await expect(page.locator('.is-loading')).not.toBeVisible({ timeout: 30000 });
 
-        // Wait for form to appear
-        await expect(page.locator('.dynamic-form')).toBeVisible({ timeout: 30000 });
-        await expect(page.getByRole('heading', { name: 'Server-Requested Form' })).toBeVisible();
-        await expect(page.locator('input[name="Name"]')).toBeVisible();
-        await expect(page.locator('input[name="Email"]')).toBeVisible();
-    });
-
-    test('should render chart when requested with data', async ({ page }) => {
-        const input = page.locator('input[name="chat-input"]');
-
-        // Request chart
-        await input.fill('Show me a bar chart of sales. Q1: 100, Q2: 150, Q3: 200, Q4: 300');
-        await input.press('Enter');
-
-        await expect(page.locator('.is-loading')).not.toBeVisible({ timeout: 30000 });
-
-        // Wait for chart to appear
-        await expect(page.locator('.chart-section')).toBeVisible({ timeout: 30000 });
-        await expect(page.getByRole('heading', { name: 'Server-Requested Chart' })).toBeVisible();
-        // Check for canvas which implies chart.js rendered
-        await expect(page.locator('canvas')).toBeVisible();
+        // Wait for A2UI surface to appear
+        await expect(page.locator('.a2ui-surface')).toBeVisible({ timeout: 30000 });
     });
 });

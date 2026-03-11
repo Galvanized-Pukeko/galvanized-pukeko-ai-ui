@@ -6,7 +6,6 @@ interface UiConfigItem {
 
 export interface UiConfig {
   agUiUrl: string
-  wsUrl?: string
   appName?: string
   pageTitle?: string
   configUrl?: string

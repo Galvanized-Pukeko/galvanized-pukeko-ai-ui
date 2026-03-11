@@ -3,7 +3,6 @@ import './assets/global.css'
 
 export { CoreApp }
 export * from './services/configService'
-export * from './services/connectionService'
 
 // Export all components
 import PkForm from './components/PkForm.vue'

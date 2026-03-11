@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 public class UiConfigProperties {
 
   private String baseUrl = "http://localhost:8080";
-  private String wsUrl = "ws://localhost:8080/ws";
   private String appName = "pukeko-ui-agent";
   private String pageTitle = "Galvanized Pukeko";
 
@@ -23,14 +22,6 @@ public class UiConfigProperties {
 
   public void setBaseUrl(String baseUrl) {
     this.baseUrl = baseUrl;
-  }
-
-  public String getWsUrl() {
-    return wsUrl;
-  }
-
-  public void setWsUrl(String wsUrl) {
-    this.wsUrl = wsUrl;
   }
 
   public String getAppName() {
@@ -77,7 +68,6 @@ public class UiConfigProperties {
   public String toString() {
     return "UiConfigProperties{" +
         "baseUrl='" + baseUrl + '\'' +
-        ", wsUrl='" + wsUrl + '\'' +
         ", appName='" + appName + '\'' +
         ", pageTitle='" + pageTitle + '\'' +
         ", logo=" + logo +
