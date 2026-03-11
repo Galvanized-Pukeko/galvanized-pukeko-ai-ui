@@ -225,6 +225,8 @@ end-to-end form rendering and action submission.
 
 ### Phase 5 — ADK Agent A2UI Migration (replace WebSocket forms)
 
+- [x] Phase 5 is complete.
+
 **Goal:** Replace the custom WebSocket form protocol in the ADK Java agent with `show_a2ui_surface`,
 so the ADK agent renders interactive surfaces via the same A2UI path as Gaunt Sloth.
 The WebSocket status badge is removed from the Vue UI as it becomes irrelevant.
