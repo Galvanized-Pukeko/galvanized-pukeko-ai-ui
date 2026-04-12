@@ -14,7 +14,7 @@
     "start-gth-ag-ui": "node start-gth-ag-ui.js"
   },
   "dependencies": {
-    "@gaunt-sloth/api": "^0.0.1",
+    "@gaunt-sloth/api": "^0.0.2",
     "@langchain/openai": "^1.4.4",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/ws": "^8.18.1",
