@@ -29,7 +29,7 @@ Start each service in separate terminals:
 
 **Terminal 1 — Gaunt Sloth AG-UI server:**
 ```bash
-npx gaunt-sloth api ag-ui -w ../../packages/gaunt-sloth-assistant
+npx gaunt-sloth-api ag-ui
 ```
 
 **Terminal 2 — Web client (with AG-UI URL):**
@@ -66,5 +66,5 @@ The example ships with an OpenAI configuration. Set `OPENAI_API_KEY` in your env
 
 ## Related
 
-- [Gaunt Sloth Assistant](../../packages/gaunt-sloth-assistant/README.md)
+- [Gaunt Sloth Assistant](https://github.com/Galvanized-Pukeko/gaunt-sloth-assistant)
 - [Galvanized Pukeko Web Client](../../packages/galvanized-pukeko-web-client/README.md)

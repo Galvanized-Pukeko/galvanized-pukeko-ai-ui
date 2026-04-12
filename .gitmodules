@@ -1,6 +1,3 @@
-[submodule "packages/gaunt-sloth-assistant"]
-	path = packages/gaunt-sloth-assistant
-	url = https://github.com/Galvanized-Pukeko/gaunt-sloth-assistant.git
 [submodule "docs"]
 	path = docs
 	url = https://github.com/Galvanized-Pukeko/galvanized-pukeko.github.io.git

@@ -48,10 +48,10 @@ async function waitForReady(url, label) {
 // Start Gaunt Sloth AG-UI server
 console.log(`Starting Gaunt Sloth AG-UI server on port ${AGUI_PORT}...`);
 const gthProc = spawn(
-  'node',
+  'npx',
   [
-    resolve(ROOT, 'packages/gaunt-sloth-assistant/cli.js'),
-    'api', 'ag-ui',
+    'gaunt-sloth-api',
+    'ag-ui',
     '--port', String(AGUI_PORT),
     '--config', resolve(__dirname, '.gsloth.config.json'),
   ],

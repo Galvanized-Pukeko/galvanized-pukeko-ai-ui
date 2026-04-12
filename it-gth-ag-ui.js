@@ -25,10 +25,10 @@ function startGthAgUi() {
 
   const logStream = createWriteStream(logPath, { flags: 'w' });
   const proc = spawn(
-    'node',
+    'npx',
     [
-      resolve(__dirname, 'packages/gaunt-sloth-assistant/cli.js'),
-      'api', 'ag-ui',
+      'gaunt-sloth-api',
+      'ag-ui',
       '--port', '3000',
       '--config', resolve(__dirname, 'examples/pukeko-gaunt-sloth-ag-ui/.gsloth.config.json'),
     ],

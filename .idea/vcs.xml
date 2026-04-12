@@ -2,12 +2,6 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/_readonly/A2UI" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/_readonly/adk-java" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/_readonly/ag-ui" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/_readonly/langchainjs" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/_readonly/langgraphjs" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/docs" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/packages/gaunt-sloth-assistant" vcs="Git" />
   </component>
 </project>
