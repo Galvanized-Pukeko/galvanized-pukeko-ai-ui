@@ -307,7 +307,7 @@ defineExpose({
 }
 
 .message.user .message-content {
-  background-color: #10b981;
+  background-color: #3b82f6;
   color: white;
   border-bottom-right-radius: 0.25rem;
 }
