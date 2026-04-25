@@ -6,6 +6,7 @@ import ToolCallBadge from './ToolCallBadge.vue'
 import {chatService} from '../services/chatService'
 import type {ChatCallbacks, ToolCallRecord} from '../services/chatService'
 import type { useA2UI } from '../composables/useA2UI'
+import type { Tool } from '@ag-ui/client'
 
 interface TextMessage {
   kind: 'text'
@@ -24,6 +25,8 @@ type ChatItem = TextMessage | ToolCallItem
 
 const props = defineProps<{
   a2ui?: ReturnType<typeof useA2UI>
+  clientTools?: Tool[]
+  clientToolHandlers?: Record<string, (args: unknown, ctx: { toolCallId: string }) => Promise<string> | string>
 }>()
 
 const messages = ref<ChatItem[]>([])
@@ -32,6 +35,7 @@ const isLoading = ref(false)
 
 // Real-time streaming state
 const streamingMessage = ref<{ id: string; text: string } | null>(null)
+const currentRunId = ref<string | undefined>(undefined)
 
 onMounted(() => {
   // No session creation needed with AG-UI — just show a greeting
@@ -45,6 +49,9 @@ onMounted(() => {
 
 function createStreamCallbacks(): ChatCallbacks {
   const callbacks: ChatCallbacks = {
+    onRunStart(runId: string) {
+      currentRunId.value = runId
+    },
     onStreamStart(messageId: string) {
       streamingMessage.value = { id: messageId, text: '' }
     },
@@ -77,8 +84,37 @@ function createStreamCallbacks(): ChatCallbacks {
         props.a2ui.pendingToolCallId.value = toolCallId
       }
     },
-    onToolCallEnd(_toolCallId: string, _toolCallName: string, _toolCallBuffer: string) {
+    onToolCallEnd(toolCallId: string, toolCallName: string, toolCallBuffer: string) {
       // A2UI processing is handled in onToolCallResult using the tool result content
+      if (props.clientToolHandlers && props.clientToolHandlers[toolCallName]) {
+        // Execute client tool handler
+        const handler = props.clientToolHandlers[toolCallName]
+        let args: unknown = {}
+        try {
+          args = toolCallBuffer ? JSON.parse(toolCallBuffer) : {}
+        } catch (e) {
+          console.warn('[ChatInterface] Failed to parse tool args', e)
+        }
+        
+        Promise.resolve(handler(args, { toolCallId }))
+          .then((result) => {
+            chatService.resumeWithCommand(
+              result,
+              { toolCallId, runId: currentRunId.value },
+              createStreamCallbacks(),
+              { tools: props.clientTools }
+            )
+          })
+          .catch((error) => {
+            console.error('[ChatInterface] Error in client tool handler', error)
+            chatService.resumeWithCommand(
+              JSON.stringify({ error: String(error) }),
+              { toolCallId, runId: currentRunId.value },
+              createStreamCallbacks(),
+              { tools: props.clientTools }
+            )
+          })
+      }
     },
     onToolCallResult(toolCallId: string, toolCallName: string, content: string) {
       if (toolCallName === 'show_a2ui_surface' && props.a2ui) {
@@ -141,7 +177,7 @@ const sendMessage = async () => {
   isLoading.value = true
 
   try {
-    await chatService.sendMessage(text, createStreamCallbacks())
+    await chatService.sendMessage(text, createStreamCallbacks(), { tools: props.clientTools })
   } catch (error) {
     console.error('Failed to send message:', error)
     // Only add error message if the stream callbacks didn't already handle it
@@ -178,7 +214,7 @@ const sendFormMessage = async (text: string) => {
   isLoading.value = true
 
   try {
-    await chatService.sendMessage(text, createStreamCallbacks())
+    await chatService.sendMessage(text, createStreamCallbacks(), { tools: props.clientTools })
   } catch (error) {
     console.error('Failed to send form message:', error)
     if (!streamingMessage.value) {

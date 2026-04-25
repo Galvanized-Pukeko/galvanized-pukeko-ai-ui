@@ -1,7 +1,7 @@
 import { configService } from './configService'
 import { HttpAgent } from '@ag-ui/client'
 import type { AgentSubscriber } from '@ag-ui/client'
-import type { Message, UserMessage } from '@ag-ui/client'
+import type { Message, UserMessage, Tool } from '@ag-ui/client'
 
 export interface StreamingSlot {
   messageId: string
@@ -21,6 +21,7 @@ export interface ToolCallRecord {
 }
 
 export interface ChatCallbacks {
+  onRunStart?: (runId: string) => void
   onStreamStart: (messageId: string) => void
   onStreamDelta: (messageId: string, fullText: string) => void
   onStreamEnd: (messageId: string, finalText: string) => void
@@ -61,7 +62,7 @@ class ChatService {
   /**
    * Send a message and stream the response in real-time via callbacks.
    */
-  async sendMessage(text: string, callbacks: ChatCallbacks): Promise<void> {
+  async sendMessage(text: string, callbacks: ChatCallbacks, opts?: { tools?: Tool[] }): Promise<void> {
     const agent = this.ensureAgent()
 
     console.log('[ChatService] Sending message:', text)
@@ -81,6 +82,9 @@ class ChatService {
     const toolCallNames = new Map<string, string>()
 
     const subscriber: AgentSubscriber = {
+      onRunStartedEvent({ event }) {
+        callbacks.onRunStart?.(event.runId)
+      },
       onTextMessageStartEvent({ event }) {
         console.log('[ChatService] Stream start, messageId:', event.messageId)
         callbacks.onStreamStart(event.messageId)
@@ -131,7 +135,7 @@ class ChatService {
     }
 
     try {
-      await agent.runAgent({}, subscriber)
+      await agent.runAgent({ tools: opts?.tools }, subscriber)
     } catch (error) {
       console.error('[ChatService] Error sending message:', error)
       // Remove the user message we added since the request failed
@@ -168,6 +172,9 @@ class ChatService {
     const toolCallNames = new Map<string, string>()
 
     const subscriber: AgentSubscriber = {
+      onRunStartedEvent({ event }) {
+        callbacks.onRunStart?.(event.runId)
+      },
       onTextMessageStartEvent({ event }) {
         callbacks.onStreamStart(event.messageId)
       },
@@ -207,6 +214,72 @@ class ChatService {
     }
 
     await agent.runAgent({}, subscriber)
+  }
+
+  /**
+   * Resume an interrupted run with a specific command payload.
+   */
+  async resumeWithCommand(
+    resumeValue: unknown,
+    interruptEvent: { toolCallId: string; runId?: string },
+    callbacks: ChatCallbacks,
+    opts?: { tools?: Tool[] }
+  ): Promise<void> {
+    const agent = this.ensureAgent()
+    console.log('[ChatService] Resuming with command')
+
+    const toolCallBuffers = new Map<string, string>()
+    const toolCallNames = new Map<string, string>()
+
+    const subscriber: AgentSubscriber = {
+      onRunStartedEvent({ event }) {
+        callbacks.onRunStart?.(event.runId)
+      },
+      onTextMessageStartEvent({ event }) {
+        callbacks.onStreamStart(event.messageId)
+      },
+      onTextMessageContentEvent({ event, textMessageBuffer }) {
+        callbacks.onStreamDelta(event.messageId, textMessageBuffer)
+      },
+      onTextMessageEndEvent({ event, textMessageBuffer }) {
+        callbacks.onStreamEnd(event.messageId, textMessageBuffer)
+      },
+      onToolCallStartEvent({ event }) {
+        toolCallBuffers.set(event.toolCallId, '')
+        toolCallNames.set(event.toolCallId, event.toolCallName)
+        callbacks.onToolCallStart?.(event.toolCallId, event.toolCallName)
+      },
+      onToolCallArgsEvent({ event, toolCallBuffer }) {
+        toolCallBuffers.set(event.toolCallId, toolCallBuffer)
+      },
+      onToolCallEndEvent({ event, toolCallName, toolCallArgs }) {
+        const buffer = toolCallBuffers.get(event.toolCallId) ?? ''
+        toolCallBuffers.delete(event.toolCallId)
+        callbacks.onToolCallComplete?.({
+          toolCallId: event.toolCallId,
+          toolCallName: toolCallName ?? '',
+          args: JSON.stringify(toolCallArgs ?? {}),
+        })
+        callbacks.onToolCallEnd?.(event.toolCallId, toolCallName ?? '', buffer)
+      },
+      onToolCallResultEvent({ event }) {
+        const toolCallName = toolCallNames.get(event.toolCallId) ?? ''
+        callbacks.onToolCallResult?.(event.toolCallId, toolCallName, event.content ?? '')
+      },
+      onRunErrorEvent({ event }) {
+        callbacks.onError(event.message)
+      },
+    }
+
+    await agent.runAgent(
+      {
+        tools: opts?.tools,
+        forwardedProps: {
+          command: { resume: resumeValue, interruptEvent },
+        },
+      },
+      subscriber
+    )
   }
 }
 
