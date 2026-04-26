@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { ToolCallRecord } from '../services/chatService'
+import { computed, ref } from 'vue'
+import type { MessagePart } from '../services/chatService'
+
+type ToolCallPart = Extract<MessagePart, { kind: 'tool-call' }>
 
 const props = defineProps<{
-  record: ToolCallRecord
+  part: ToolCallPart
 }>()
 
 const expanded = ref(false)
@@ -12,23 +14,48 @@ function toggle() {
   expanded.value = !expanded.value
 }
 
-function prettyArgs(args: string): string {
+const hasArgs = computed(() => {
+  const a = props.part.args
+  if (a == null) return false
+  if (typeof a === 'object') return Object.keys(a as object).length > 0
+  return true
+})
+
+const prettyArgs = computed(() => {
   try {
-    return JSON.stringify(JSON.parse(args), null, 2)
+    return JSON.stringify(props.part.args, null, 2)
   } catch {
-    return args
+    return props.part.argsRaw
   }
-}
+})
+
+const prettyResult = computed(() => {
+  const r = props.part.result
+  if (r == null) return ''
+  try {
+    return JSON.stringify(JSON.parse(r), null, 2)
+  } catch {
+    return r
+  }
+})
 </script>
 
 <template>
-  <div class="tool-call-badge">
+  <div class="tool-call-badge" :class="{ expanded }">
     <button class="tool-call-header" @click="toggle" :aria-expanded="expanded">
       <span class="tool-call-arrow" :class="{ expanded }">&#9658;</span>
-      <span class="tool-call-label">Used {{ props.record.toolCallName }} tool</span>
+      <span class="tool-call-label">Used {{ props.part.toolCallName }} tool</span>
+      <span v-if="props.part.status === 'pending'" class="tool-call-dot" aria-label="running"></span>
     </button>
     <div v-if="expanded" class="tool-call-body">
-      <pre class="tool-call-args">{{ prettyArgs(props.record.args) }}</pre>
+      <template v-if="hasArgs">
+        <div class="tool-call-section-label">Arguments</div>
+        <pre class="tool-call-pre">{{ prettyArgs }}</pre>
+      </template>
+      <template v-if="props.part.result != null">
+        <div class="tool-call-section-label">Result</div>
+        <pre class="tool-call-pre">{{ prettyResult }}</pre>
+      </template>
     </div>
   </div>
 </template>
@@ -37,12 +64,19 @@ function prettyArgs(args: string): string {
 .tool-call-badge {
   display: inline-flex;
   flex-direction: column;
+  vertical-align: middle;
   max-width: 100%;
   border-radius: 0.5rem;
   border: 1px solid #bfdbfe;
   background-color: #eff6ff;
   overflow: hidden;
   font-size: 0.85rem;
+  margin: 0.15rem 0.25rem;
+}
+
+.tool-call-badge.expanded {
+  display: block;
+  width: 100%;
 }
 
 .tool-call-header {
@@ -82,12 +116,40 @@ function prettyArgs(args: string): string {
   color: #1e40af;
 }
 
+.tool-call-dot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  margin-left: 0.15rem;
+  animation: tool-call-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes tool-call-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
 .tool-call-body {
   border-top: 1px solid #bfdbfe;
   padding: 0.5rem 0.75rem;
 }
 
-.tool-call-args {
+.tool-call-section-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #1e40af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+
+.tool-call-section-label:not(:first-child) {
+  margin-top: 0.6rem;
+}
+
+.tool-call-pre {
   margin: 0;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
   font-size: 0.75rem;
@@ -97,5 +159,9 @@ function prettyArgs(args: string): string {
   word-break: break-word;
   max-height: 300px;
   overflow-y: auto;
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
 }
 </style>
