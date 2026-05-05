@@ -9,6 +9,7 @@ lerna-debug.log*
 _scratchpad
 
 node_modules
+.npmrc
 .DS_Store
 dist
 dist-ssr

@@ -37,3 +37,30 @@ From root directory:
 ## Maven builds
 
 Global maven is not available on this machine use `./mvnw` for java projects (`packages/galvanized-pukeko-agent-adk`)
+
+## Local Development Registry (Verdaccio)
+
+`@galvanized-pukeko/vue-ui` and `@gaunt-sloth/*` are published to a local
+[Verdaccio](https://verdaccio.org) registry at `http://localhost:4873` for
+development against unpublished versions. A gitignored `.npmrc` at the repo
+root scopes those packages to localhost:
+
+```
+@gaunt-sloth:registry=http://localhost:4873
+@galvanized-pukeko:registry=http://localhost:4873
+```
+
+Iteration on `vue-ui`:
+
+```bash
+cd packages/galvanized-pukeko-vue-ui
+npm version patch --no-git-tag-version
+npm run build
+npm publish --registry http://localhost:4873
+```
+
+Then bump the consumer's `@galvanized-pukeko/vue-ui` pin and reinstall.
+
+Container/auth setup is documented in
+`gaunt-sloth-assistant/CONTRIBUTING.md` (section "Local Development Registry").
+The same Verdaccio instance and `~/.npmrc` token serve both scopes.

@@ -148,7 +148,8 @@ function createStreamCallbacks(): ChatCallbacks {
               }
             }
           }
-          props.a2ui.processBatch(agentMessages)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          props.a2ui.processBatch(agentMessages as any[])
         } catch (e) {
           console.error('[ChatInterface] Failed to parse A2UI JSONL:', e, content)
         }
@@ -264,6 +265,11 @@ defineExpose({
           <div class="message-content">
             <template v-for="(part, i) in item.parts" :key="i">
               <span v-if="part.kind === 'text'" class="text-part">{{ part.text }}</span>
+              <div
+                v-else-if="part.kind === 'thinking'"
+                class="thinking-part"
+                :class="{ streaming: !part.done }"
+              >{{ part.text }}</div>
               <ToolCallBadge v-else :part="part" />
             </template>
             <span v-if="!item.done" class="typing-indicator"></span>
@@ -363,6 +369,25 @@ defineExpose({
 
 .text-part {
   white-space: pre-wrap;
+}
+
+.thinking-part {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  white-space: pre-wrap;
+  font-style: italic;
+  border-left: 2px solid #e5e7eb;
+  padding: 0.25rem 0 0.25rem 0.6rem;
+  margin: 0.4rem 0;
+  line-height: 1.35;
+}
+
+.thinking-part.streaming::after {
+  content: "▍";
+  display: inline-block;
+  margin-left: 1px;
+  color: #9ca3af;
+  animation: blink 0.7s infinite;
 }
 
 .typing-indicator {

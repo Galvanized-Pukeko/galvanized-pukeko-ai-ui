@@ -1,6 +1,6 @@
 {
   "name": "@galvanized-pukeko/vue-ui",
-  "version": "0.0.4",
+  "version": "0.0.6",
   "type": "module",
   "main": "dist/vue-ui.umd.js",
   "module": "dist/vue-ui.es.js",
@@ -22,7 +22,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ag-ui/client": "^0.0.52",
+    "@ag-ui/client": "^0.0.53",
     "chart.js": "^4.5.1",
     "vue": "^3.5.12"
   },

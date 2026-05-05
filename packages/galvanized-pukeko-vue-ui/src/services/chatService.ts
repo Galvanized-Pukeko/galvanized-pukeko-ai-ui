@@ -5,6 +5,7 @@ import type { Message, UserMessage, Tool } from '@ag-ui/client'
 
 export type MessagePart =
   | { kind: 'text'; text: string }
+  | { kind: 'thinking'; text: string; done: boolean }
   | {
       kind: 'tool-call'
       toolCallId: string
@@ -36,6 +37,7 @@ function buildSubscriber(callbacks: ChatCallbacks): AgentSubscriber {
 
   let currentMsg: AssistantStreamingMessage = { id: '', parts: [], done: false }
   let currentTextPart: { kind: 'text'; text: string } | null = null
+  let currentThinkingPart: { kind: 'thinking'; text: string; done: boolean } | null = null
 
   function emit() {
     callbacks.onMessageUpdate({
@@ -57,13 +59,42 @@ function buildSubscriber(callbacks: ChatCallbacks): AgentSubscriber {
     onRunStartedEvent({ event }) {
       currentMsg = { id: '', parts: [], done: false }
       currentTextPart = null
+      currentThinkingPart = null
       callbacks.onRunStart?.(event.runId)
     },
     onTextMessageStartEvent({ event }) {
       if (!currentMsg.id) currentMsg.id = event.messageId
+      // Text always closes any open thinking block — model has stopped reasoning
+      // and started answering.
+      if (currentThinkingPart) {
+        currentThinkingPart.done = true
+        currentThinkingPart = null
+      }
       currentTextPart = { kind: 'text', text: '' }
       currentMsg.parts.push(currentTextPart)
       emit()
+    },
+    onReasoningMessageStartEvent({ event }) {
+      if (!currentMsg.id) currentMsg.id = event.messageId
+      currentTextPart = null
+      currentThinkingPart = { kind: 'thinking', text: '', done: false }
+      currentMsg.parts.push(currentThinkingPart)
+      emit()
+    },
+    onReasoningMessageContentEvent({ reasoningMessageBuffer }) {
+      if (!currentThinkingPart) {
+        currentThinkingPart = { kind: 'thinking', text: '', done: false }
+        currentMsg.parts.push(currentThinkingPart)
+      }
+      currentThinkingPart.text = reasoningMessageBuffer
+      emit()
+    },
+    onReasoningMessageEndEvent() {
+      if (currentThinkingPart) {
+        currentThinkingPart.done = true
+        currentThinkingPart = null
+        emit()
+      }
     },
     onTextMessageContentEvent({ textMessageBuffer }) {
       if (!currentTextPart) {
@@ -83,6 +114,10 @@ function buildSubscriber(callbacks: ChatCallbacks): AgentSubscriber {
       toolCallNames.set(event.toolCallId, event.toolCallName)
       if (!currentMsg.id) currentMsg.id = event.parentMessageId ?? event.toolCallId
       currentTextPart = null
+      if (currentThinkingPart) {
+        currentThinkingPart.done = true
+        currentThinkingPart = null
+      }
       currentMsg.parts.push({
         kind: 'tool-call',
         toolCallId: event.toolCallId,
@@ -133,8 +168,11 @@ function buildSubscriber(callbacks: ChatCallbacks): AgentSubscriber {
       for (const part of currentMsg.parts) {
         if (part.kind === 'tool-call' && part.status === 'pending') {
           part.status = 'complete'
+        } else if (part.kind === 'thinking' && !part.done) {
+          part.done = true
         }
       }
+      currentThinkingPart = null
       emit()
     },
     onRunErrorEvent({ event }) {
