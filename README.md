@@ -10,8 +10,6 @@ charts, tables and interactive [A2UI](https://github.com/google/A2UI) surfaces â
 the user does with them. The UI is a Vue 3 component library that talks to any
 [AG-UI](https://github.com/ag-ui-protocol/ag-ui) server.
 
-> Status: proof-of-concept â€” expect frequent changes and occasional breakage while we iterate.
-
 ![galvanized-pukeko-logo.png](assets/galvanized-pukeko-logo.png)
 
 A quick demo on YouTube: https://youtu.be/rfiUhsaDtrU
