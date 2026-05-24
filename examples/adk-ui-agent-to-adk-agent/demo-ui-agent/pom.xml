@@ -25,6 +25,15 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <!-- Align OpenTelemetry to the version required by ADK 0.7.0 (matches galvanized-pukeko-agent-adk);
+           dependencyManagement is not transitive, so it must be re-imported here. -->
+      <dependency>
+        <groupId>io.opentelemetry</groupId>
+        <artifactId>opentelemetry-bom</artifactId>
+        <version>1.59.0</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
