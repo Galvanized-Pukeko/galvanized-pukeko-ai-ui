@@ -2,6 +2,15 @@
   "name": "galvanized-pukeko-ai-ui",
   "version": "0.0.1",
   "private": true,
+  "description": "Give your LLM agent a real UI: a Vue 3 component library that renders forms, charts, tables and interactive A2UI surfaces over the AG-UI protocol, with reference AG-UI backends.",
+  "author": "Andrew Kondratev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui.git"
+  },
+  "homepage": "https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui#readme",
+  "bugs": "https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui/issues",
   "type": "module",
   "scripts": {
     "web": "npm run dev -w packages/galvanized-pukeko-web-client",

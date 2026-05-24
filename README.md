@@ -4,6 +4,7 @@
 [![npm @galvanized-pukeko/vue-ui](https://img.shields.io/npm/v/@galvanized-pukeko/vue-ui?label=%40galvanized-pukeko%2Fvue-ui)](https://www.npmjs.com/package/@galvanized-pukeko/vue-ui)
 [![AG-UI](https://img.shields.io/badge/protocol-AG--UI-635BFF.svg)](https://github.com/ag-ui-protocol/ag-ui)
 [![Java 17+ (ADK backend)](https://img.shields.io/badge/Java-17%2B%20(ADK%20backend)-blue.svg)](https://openjdk.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **Give your LLM agent a real UI.** Instead of replying with text only, the agent renders forms,
 charts, tables and interactive [A2UI](https://github.com/google/A2UI) surfaces — and reads back what
@@ -117,6 +118,7 @@ If Playwright reports the browser is missing, run `npx playwright install`.
 ## Contributing
 
 Contributions are welcome — please open issues and pull requests. Fork, branch, and open a PR.
+Past and present contributors are listed in [CONTRIBUTORS.md](CONTRIBUTORS.md).
 
 ## Related
 
@@ -126,3 +128,10 @@ Contributions are welcome — please open issues and pull requests. Fork, branch
 - [A2UI](https://github.com/google/A2UI)
 - [Gaunt Sloth assistant](https://github.com/Galvanized-Pukeko/gaunt-sloth-assistant)
 - [Google ADK (Agent Development Kit)](https://github.com/google/adk-java)
+
+## License
+
+Released under the [MIT License](LICENSE) © Andrew Kondratev.
+
+The `galvanized-pukeko-agent-adk` package is a separate, optional backend licensed under
+[Apache License 2.0](packages/galvanized-pukeko-agent-adk/LICENSE).

@@ -1,6 +1,7 @@
 # @galvanized-pukeko/vue-ui
 
 [![npm](https://img.shields.io/npm/v/@galvanized-pukeko/vue-ui)](https://www.npmjs.com/package/@galvanized-pukeko/vue-ui)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui/blob/main/LICENSE)
 
 Vue 3 component library for the [Galvanized Pukeko](https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui)
 framework. It lets an LLM agent render real UI — a chat interface plus forms, charts, tables and
@@ -33,3 +34,7 @@ createApp(CoreApp).mount('#app')
 - [Web client host](https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui/tree/main/packages/galvanized-pukeko-web-client)
 - [Examples](https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui/tree/main/examples)
 - [Pukeko robot controller](https://github.com/andruhon/pukeko-robot-controller) — client tools (camera, motion) driven by the agent
+
+## License
+
+[MIT](https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui/blob/main/LICENSE) © Andrew Kondratev

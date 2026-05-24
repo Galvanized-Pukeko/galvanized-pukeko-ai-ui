@@ -15,9 +15,10 @@
     "lint": "oxlint . --fix -D correctness --ignore-path .gitignore && eslint . --fix",
     "format": "prettier --write packages/web/src/"
   },
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "author": "Andrew Kondratev",
+  "license": "MIT",
+  "private": true,
+  "description": "Thin host app that mounts @galvanized-pukeko/vue-ui — the dev server and the build embedded by the ADK agent.",
   "dependencies": {
     "@galvanized-pukeko/vue-ui": "^0.0.8",
     "chart.js": "^4.5.1"
