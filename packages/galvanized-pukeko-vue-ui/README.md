@@ -2,17 +2,34 @@
 
 [![npm](https://img.shields.io/npm/v/@galvanized-pukeko/vue-ui)](https://www.npmjs.com/package/@galvanized-pukeko/vue-ui)
 
-Vue.js component library for the [Galvanized Pukeko](https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui) framework. Provides a chat interface, dynamic form components, charts, and tables that LLM-powered agents can render on-the-fly via AG-UI protocol.
+Vue 3 component library for the [Galvanized Pukeko](https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui)
+framework. It lets an LLM agent render real UI — a chat interface plus forms, charts, tables and
+interactive [A2UI](https://github.com/google/A2UI) surfaces — in your app, on the fly, by talking to
+an [AG-UI](https://github.com/ag-ui-protocol/ag-ui) server such as
+[Gaunt Sloth](https://github.com/Galvanized-Pukeko/gaunt-sloth-assistant) or the
+[ADK agent](https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui/tree/main/packages/galvanized-pukeko-agent-adk).
 
-## Components available for client tool use
+```bash
+npm install @galvanized-pukeko/vue-ui vue
+```
 
-- A2UI tools (A2UISurface.vue and accompanying vue components)
-- Form component
-- Charts
-- Tables
-- WebCam panel
+```ts
+import '@galvanized-pukeko/vue-ui/style.css'
+import { createApp } from 'vue'
+import { CoreApp, configService } from '@galvanized-pukeko/vue-ui'
+
+await configService.load()
+createApp(CoreApp).mount('#app')
+```
+
+## Documentation
+
+- [Getting started](https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui/blob/main/packages/galvanized-pukeko-vue-ui/docs/getting-started.md)
+- [Configuration](https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui/blob/main/packages/galvanized-pukeko-vue-ui/docs/configuration.md)
+- [Components & API reference](https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui/blob/main/packages/galvanized-pukeko-vue-ui/docs/components.md)
 
 ## Reference implementations
-- https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui/tree/main/packages/galvanized-pukeko-web-client
-- https://github.com/andruhon/pukeko-robot-controller
 
+- [Web client host](https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui/tree/main/packages/galvanized-pukeko-web-client)
+- [Examples](https://github.com/Galvanized-Pukeko/galvanized-pukeko-ai-ui/tree/main/examples)
+- [Pukeko robot controller](https://github.com/andruhon/pukeko-robot-controller) — client tools (camera, motion) driven by the agent
