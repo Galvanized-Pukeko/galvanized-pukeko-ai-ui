@@ -1,219 +1,130 @@
 # Galvanized Pukeko
 
-[![Node.js 24+](https://img.shields.io/badge/Node.js-24%2B-green.svg)](https://nodejs.org/)
 [![Vue.js 3](https://img.shields.io/badge/Vue.js-3-4FC08D.svg)](https://vuejs.org/)
-[![Java 17+](https://img.shields.io/badge/Java-17%2B-blue.svg)](https://openjdk.org/) (Only for ADK)
-[![Google ADK](https://img.shields.io/badge/Google-ADK-4285F4.svg)](https://github.com/google/adk-java)
+[![npm @galvanized-pukeko/vue-ui](https://img.shields.io/npm/v/@galvanized-pukeko/vue-ui?label=%40galvanized-pukeko%2Fvue-ui)](https://www.npmjs.com/package/@galvanized-pukeko/vue-ui)
+[![AG-UI](https://img.shields.io/badge/protocol-AG--UI-635BFF.svg)](https://github.com/ag-ui-protocol/ag-ui)
+[![Java 17+ (ADK backend)](https://img.shields.io/badge/Java-17%2B%20(ADK%20backend)-blue.svg)](https://openjdk.org/)
 
-Galvanized Pukeko is a framework that enables LLM-powered agents to dynamically render forms, charts, and tables when interacting with users. It eliminates the need for static HTML pages while maintaining consistent formatting and branded interfaces.
+**Give your LLM agent a real UI.** Instead of replying with text only, the agent renders forms,
+charts, tables and interactive [A2UI](https://github.com/google/A2UI) surfaces — and reads back what
+the user does with them. The UI is a Vue 3 component library that talks to any
+[AG-UI](https://github.com/ag-ui-protocol/ag-ui) server.
 
-> Status: This is a proof-of-concept; expect frequent changes and occasional breakage while we iterate.
+> Status: proof-of-concept — expect frequent changes and occasional breakage while we iterate.
 
 ![galvanized-pukeko-logo.png](assets/galvanized-pukeko-logo.png)
 
 A quick demo on YouTube: https://youtu.be/rfiUhsaDtrU
 
-## Features
+## Start here: the Vue UI
 
-- **Dynamic UI Rendering** - AI agents can render forms, charts, and tables on-the-fly
-- **Real-time Communication** - WebSocket integration for instant form updates
-- **Chat Interface** - Built-in conversational UI powered by SSE streaming
-- **Extensible Architecture** - Support for MCP (Model Context Protocol) and A2A (Agent-to-Agent) integrations
-- **Embedded Deployment** - Web client can be served directly from the agent server
+The heart of the project is **[`@galvanized-pukeko/vue-ui`](https://www.npmjs.com/package/@galvanized-pukeko/vue-ui)** —
+a Vue 3 library that renders the chat interface plus the components an agent asks for.
 
-## Monorepo Structure
+```bash
+npm install @galvanized-pukeko/vue-ui vue
+```
 
-This project is organized as a monorepo containing the following packages:
+```ts
+import '@galvanized-pukeko/vue-ui/style.css'
+import { createApp } from 'vue'
+import { CoreApp, configService } from '@galvanized-pukeko/vue-ui'
 
-| Package | Description | Documentation |
-|---------|-------------|---------------|
-| [`galvanized-pukeko-agent-adk`](packages/galvanized-pukeko-agent-adk/) | Spring Boot application extending Google ADK with UI rendering capabilities. Available on [Maven Central](https://central.sonatype.com/artifact/io.github.galvanized-pukeko/galvanized-pukeko-agent-adk). | [README](packages/galvanized-pukeko-agent-adk/README.md) |
-| [`galvanized-pukeko-vue-ui`](packages/galvanized-pukeko-vue-ui/) | Vue.js UI component library and chat interface source (compiled into web-client) | — |
-| [`galvanized-pukeko-web-client`](packages/galvanized-pukeko-web-client/) | Web client host: serves the Vue UI build, owns `config.json` and Playwright tests | [README](packages/galvanized-pukeko-web-client/README.md) |
-| [`gaunt-sloth-assistant`](packages/gaunt-sloth-assistant/) | TypeScript CLI tool for agent workflows; provides an AG-UI-compatible HTTP server as an alternative backend | — |
+await configService.load()
+createApp(CoreApp).mount('#app')
+```
 
-## System Architecture
+Point it at any AG-UI server and the agent can render UI right in the conversation. See the docs:
 
-The system consists of a Web UI (Vue.js) and a UI Server ADK (Spring Boot) hosting the AI Agent.
+- [Getting started](packages/galvanized-pukeko-vue-ui/docs/getting-started.md)
+- [Configuration](packages/galvanized-pukeko-vue-ui/docs/configuration.md)
+- [Components & API reference](packages/galvanized-pukeko-vue-ui/docs/components.md)
+
+> **In the wild:** the [Pukeko robot controller](https://github.com/andruhon/pukeko-robot-controller)
+> drives a physical robot through the Vue UI — the agent calls browser-side *client tools*
+> (camera, motion) and reads the results back.
+
+## How it works
 
 ```mermaid
 graph LR
     subgraph Browser
-        UI["Web UI (Vue.js)<br/>Port: 5555"]
+        UI["Vue UI<br/>@galvanized-pukeko/vue-ui"]
     end
 
-    subgraph Server["UI Server ADK (Spring Boot)<br/>Port: 8080"]
-        UIAgent["UI Agent<br/>(io.github.galvanized_pukeko.UiAgent)"]
-    end
-
-    subgraph Agents["External AI Agents<br/>(Business Logic)"]
+    subgraph Server["AG-UI server (your choice of backend)"]
         direction TB
-        Agent1["Agent 1"]
-        Agent2["Agent 2"]
+        GTH["Gaunt Sloth<br/>(TypeScript CLI)"]
+        ADK["ADK agent<br/>(Java / Spring Boot)"]
     end
 
-    UI -->|AG-UI| UIAgent
-    UI <-->|WebSocket /ws| UIAgent
-    UIAgent <-.->|A2A| Agent1
-    UIAgent <-.->|MCP| Agent2
+    UI -->|"AG-UI · HTTP/SSE"| Server
+    Server -->|"tool calls → render forms, charts, tables, A2UI"| UI
 ```
 
-### Components Overview
+The Vue UI is backend-agnostic — any AG-UI server works. This repo ships two: the npm-based
+**Gaunt Sloth** CLI and a Java/Spring **ADK agent**.
 
-1. **[Web Client](packages/galvanized-pukeko-web-client/)** (`packages/galvanized-pukeko-web-client`):
-   - Vue.js application providing chat interface and dynamic form renderer
-   - Runs standalone on **port 5555** for development, or served from the ADK agent
-   - Communicates via AG-UI for chat and WebSockets for UI rendering
+## Packages
 
-2. **[Agent ADK](packages/galvanized-pukeko-agent-adk/)** (`packages/galvanized-pukeko-agent-adk`):
-   - Spring Boot application running on **port 8080**
-   - Extends Google ADK to host `UiAgent` with dynamic UI rendering tools
-   - Serves the built web client and exposes API endpoints
-   - Supports MCP and A2A integrations for external tools and agents
+| Package | Description |
+|---------|-------------|
+| **[`galvanized-pukeko-vue-ui`](packages/galvanized-pukeko-vue-ui/)** | **The Vue 3 UI library** — chat interface, forms, charts, tables, A2UI surfaces. Published on [npm](https://www.npmjs.com/package/@galvanized-pukeko/vue-ui). [Docs](packages/galvanized-pukeko-vue-ui/docs). |
+| [`galvanized-pukeko-web-client`](packages/galvanized-pukeko-web-client/) | Thin host app that mounts the Vue UI — the dev server, and the build embedded by the ADK agent. Not published. |
+| [`galvanized-pukeko-agent-adk`](packages/galvanized-pukeko-agent-adk/) | One backend option: a Spring Boot / Google ADK agent with UI-rendering tools, MCP and A2A. On [Maven Central](https://central.sonatype.com/artifact/io.github.galvanized-pukeko/galvanized-pukeko-agent-adk). See its [README](packages/galvanized-pukeko-agent-adk/README.md). |
 
-## Getting Started
+[Gaunt Sloth](https://github.com/Galvanized-Pukeko/gaunt-sloth-assistant) — a separate TypeScript CLI —
+is the other supported AG-UI backend.
 
-### Prerequisites
+## Run a demo
 
-- Java 17+ (recommended: Temurin 21)
-- Node.js 24+
-- Maven (included via Maven wrapper `./mvnw`)
+Prerequisites: Node.js 24+. (The ADK backend additionally needs Java 17+; Maven is bundled via `./mvnw`.)
 
-### Quick Start
-
-#### Option 1: ADK Agent + Web Client (Development)
-
-Start both the ADK agent and the web client dev server together:
+**Option 1 — Gaunt Sloth backend (npm only):**
 
 ```bash
-npm run start-adk
+npm install
+npm run start-gth-ag-ui   # AG-UI server on :3000 + web client on :5555
 ```
 
-This builds and starts:
-1. **Agent ADK** on port 8080 (logs to `start-adk-java.log`)
-2. **Web Client** dev server on port 5555
-
-Navigate to `http://localhost:5555` for development. Press `Ctrl+C` to stop both.
-
-#### Option 2: Gaunt Sloth AG-UI backend
-
-To use the TypeScript [Gaunt Sloth](packages/gaunt-sloth-assistant/) backend instead of the Java ADK agent:
+**Option 2 — ADK agent (Java):**
 
 ```bash
-npm run start-gth-ag-ui
+npm install
+npm run start-adk         # ADK agent on :8080 + web client on :5555
 ```
 
-This starts:
-1. **Gaunt Sloth AG-UI server** on port 3000
-2. **Web Client** dev server on port 5555 (pointing at the Gaunt Sloth backend)
+See the [ADK README](packages/galvanized-pukeko-agent-adk/README.md) for ADK setup, models, MCP/A2A
+and Cloud Run deployment.
 
-### Manual Startup
+Then open `http://localhost:5555` and try:
 
-**Start the Agent ADK only:**
+- `"Show me a contact form"` — renders a form
+- `"Show me a chart of month lengths"` — renders a chart
+- `"Show me a table of suppliers"` — renders a table
 
-```bash
-cd packages/galvanized-pukeko-agent-adk
-./mvnw clean compile exec:java -Dexec.classpathScope=compile \
-  -Dexec.args="--server.port=8080 --adk.agents.source-dir=target"
-```
-
-**Start the Web Client dev server only:**
-
-```bash
-npm run web
-```
-
-### Deploying Web Client to Agent
-
-After making changes to the web client, rebuild and deploy to the ADK agent:
-
-```bash
-npm run sink
-```
-
-This builds the Vue UI (`galvanized-pukeko-vue-ui`) and copies the artifacts into the ADK agent's resources directory.
-
-## Usage
-
-1. Open `http://localhost:8080` (or `http://localhost:5555` in development mode)
-2. Type "Hello" in the chat to verify connectivity
-3. Try these commands to see dynamic UI rendering:
-   - `"Show me a contact form"` - Renders a dynamic form
-   - `"Show me a chart of month lengths"` - Displays a chart
-   - `"Show me a table of suppliers"` - Renders a data table
+More end-to-end setups live in [examples/](examples/).
 
 ## Testing
 
-We use [Playwright](https://playwright.dev/) for End-to-End (E2E) testing.
-
-### Running Integration Tests
-
-The integration test scripts start all required services automatically:
+End-to-end tests use [Playwright](https://playwright.dev/); the runners start the services for you:
 
 ```bash
-# ADK agent integration tests
-npm run it-adk
-
-# ADK agent integration tests (headed browser)
-npm run it-adk-headed
-
-# Gaunt Sloth AG-UI integration tests
-npm run it-gth-ag-ui
+npm run it-gth-ag-ui   # Gaunt Sloth backend
+npm run it-adk         # ADK backend (add it-adk-headed for a visible browser)
 ```
 
-If Playwright reports the browser is not found, run `npx playwright install`.
-
-### Manual Test Run (services already running)
-
-```bash
-# Run all e2e tests
-npx playwright test
-
-# Interactive UI mode
-npx playwright test --ui
-
-# Headed mode (visible browser, sequential execution)
-npx playwright test --headed --workers=1
-
-# Debug mode
-npx playwright test --debug
-```
-
-## Configuration
-
-### Environment Variables
-
-**ADK Agent (Google Gemini):**
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `GOOGLE_API_KEY` or `GEMINI_API_KEY` | API key for Google AI / Gemini models | Required |
-| `GOOGLE_GENAI_USE_VERTEXAI` | Set to `"true"` to use Vertex AI instead of Google AI | `false` |
-
-**Gaunt Sloth backend (multi-provider):**
-
-The Gaunt Sloth backend supports many AI providers (Anthropic, OpenAI, Groq, Google AI, Ollama, xAI, etc.). Configure via `.gsloth.config.json` in the working directory. See [examples/pukeko-gaunt-sloth-ag-ui/](examples/pukeko-gaunt-sloth-ag-ui/) for a sample configuration.
-
-### Application Properties
-
-See [Agent ADK README](packages/galvanized-pukeko-agent-adk/README.md#configuration) for detailed configuration options including:
-- UI customization (logo, header, footer)
-- CORS settings
-- MCP server integration
-- A2A agent configuration
+If Playwright reports the browser is missing, run `npx playwright install`.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit issues and pull requests.
+Contributions are welcome — please open issues and pull requests. Fork, branch, and open a PR.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## Related
 
-## Related Resources
-
+- [`@galvanized-pukeko/vue-ui` on npm](https://www.npmjs.com/package/@galvanized-pukeko/vue-ui)
+- [Pukeko robot controller](https://github.com/andruhon/pukeko-robot-controller) — reference implementation using client tools
+- [AG-UI protocol](https://github.com/ag-ui-protocol/ag-ui)
+- [A2UI](https://github.com/google/A2UI)
+- [Gaunt Sloth assistant](https://github.com/Galvanized-Pukeko/gaunt-sloth-assistant)
 - [Google ADK (Agent Development Kit)](https://github.com/google/adk-java)
-- [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
-- [Vue.js Documentation](https://vuejs.org/)

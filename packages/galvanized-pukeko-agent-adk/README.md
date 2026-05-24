@@ -109,6 +109,19 @@ The server will start on port 8080 and serve:
 - WebSocket endpoint at `/ws`
 - Configuration endpoint at `/api/ui-config`
 
+### From the monorepo
+
+If you have checked out the [monorepo](../../README.md), you can start the agent together with the
+web-client dev server, or run the end-to-end tests, from the repo root:
+
+```bash
+npm run start-adk      # ADK agent on :8080 + web client dev server on :5555
+npm run it-adk         # ADK end-to-end tests (add it-adk-headed for a visible browser)
+```
+
+After changing the Vue UI, rebuild and re-embed the client with `./deploy-to-adk.sh` (see
+[Web Client Integration](#web-client-integration)).
+
 ## Configuration
 
 Configuration is managed through `src/main/resources/application.properties`.
