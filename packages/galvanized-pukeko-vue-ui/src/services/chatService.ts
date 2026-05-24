@@ -1,7 +1,20 @@
+import { ref, type Ref } from 'vue'
 import { configService } from './configService'
 import { HttpAgent } from '@ag-ui/client'
 import type { AgentSubscriber } from '@ag-ui/client'
 import type { Message, UserMessage, Tool } from '@ag-ui/client'
+
+// Run-state machine. Surfaces the silent gap between TOOL_CALL_RESULT and the
+// next REASONING_MESSAGE_START so the UI can show a progress indicator.
+export type RunState = 'idle' | 'streaming' | 'running-tool' | 'waiting'
+
+export const runState: Ref<RunState> = ref('idle')
+export const statusText: Ref<string> = ref('')
+
+function setRunState(state: RunState, text: string): void {
+  runState.value = state
+  statusText.value = text
+}
 
 export type MessagePart =
   | { kind: 'text'; text: string }
@@ -60,6 +73,7 @@ function buildSubscriber(callbacks: ChatCallbacks): AgentSubscriber {
       currentMsg = { id: '', parts: [], done: false }
       currentTextPart = null
       currentThinkingPart = null
+      setRunState('waiting', 'Waiting for model…')
       callbacks.onRunStart?.(event.runId)
     },
     onTextMessageStartEvent({ event }) {
@@ -72,6 +86,7 @@ function buildSubscriber(callbacks: ChatCallbacks): AgentSubscriber {
       }
       currentTextPart = { kind: 'text', text: '' }
       currentMsg.parts.push(currentTextPart)
+      setRunState('streaming', 'Responding…')
       emit()
     },
     onReasoningMessageStartEvent({ event }) {
@@ -79,6 +94,7 @@ function buildSubscriber(callbacks: ChatCallbacks): AgentSubscriber {
       currentTextPart = null
       currentThinkingPart = { kind: 'thinking', text: '', done: false }
       currentMsg.parts.push(currentThinkingPart)
+      setRunState('streaming', 'Thinking…')
       emit()
     },
     onReasoningMessageContentEvent({ reasoningMessageBuffer }) {
@@ -112,6 +128,7 @@ function buildSubscriber(callbacks: ChatCallbacks): AgentSubscriber {
       console.log('[ChatService] Tool call start:', event.toolCallId, event.toolCallName)
       toolCallBuffers.set(event.toolCallId, '')
       toolCallNames.set(event.toolCallId, event.toolCallName)
+      setRunState('running-tool', `Running ${event.toolCallName}…`)
       if (!currentMsg.id) currentMsg.id = event.parentMessageId ?? event.toolCallId
       currentTextPart = null
       if (currentThinkingPart) {
@@ -160,6 +177,9 @@ function buildSubscriber(callbacks: ChatCallbacks): AgentSubscriber {
         part.status = 'complete'
         emit()
       }
+      // Tool result is in; the model is about to (silently) chew on the new
+      // image / text before its next token. Surface that gap.
+      setRunState('waiting', 'Waiting for model…')
       callbacks.onToolCallResult?.(event.toolCallId, toolCallName, event.content ?? '')
     },
     onRunFinishedEvent() {
@@ -173,10 +193,12 @@ function buildSubscriber(callbacks: ChatCallbacks): AgentSubscriber {
         }
       }
       currentThinkingPart = null
+      setRunState('idle', '')
       emit()
     },
     onRunErrorEvent({ event }) {
       console.error('[ChatService] Run error:', event.message)
+      setRunState('idle', '')
       callbacks.onError(event.message)
     },
   }

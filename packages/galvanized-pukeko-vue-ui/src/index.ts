@@ -20,6 +20,8 @@ import PkNavHeader from './components/PkNavHeader.vue'
 import PkLogo from './components/PkLogo.vue'
 import PkLogoLarge from './components/PkLogoLarge.vue'
 import PkNavItem from './components/PkNavItem.vue'
+import PkProgressBar from './components/PkProgressBar.vue'
+import PkWebcamPanel from './components/PkWebcamPanel.vue'
 
 export {
   PkForm,
@@ -36,5 +38,10 @@ export {
   PkNavHeader,
   PkLogo,
   PkLogoLarge,
-  PkNavItem
+  PkNavItem,
+  PkProgressBar,
+  PkWebcamPanel,
 }
+
+export { runState, statusText, chatService } from './services/chatService'
+export type { RunState } from './services/chatService'

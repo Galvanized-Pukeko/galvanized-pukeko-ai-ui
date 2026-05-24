@@ -2,8 +2,9 @@
 import {nextTick, onMounted, ref, watch} from 'vue'
 import PkButton from './PkButton.vue'
 import PkInput from './PkInput.vue'
+import PkProgressBar from './PkProgressBar.vue'
 import ToolCallBadge from './ToolCallBadge.vue'
-import {chatService} from '../services/chatService'
+import {chatService, runState, statusText} from '../services/chatService'
 import type {AssistantStreamingMessage, ChatCallbacks, MessagePart} from '../services/chatService'
 import type { useA2UI } from '../composables/useA2UI'
 import type { Tool } from '@ag-ui/client'
@@ -242,13 +243,26 @@ const sendFormMessage = async (text: string) => {
   }
 }
 
+function clearHistory() {
+  chatService.resetThread()
+  messages.value = []
+  // Restore the friendly greeting after a reset so the UI doesn't look empty.
+  messages.value.push({
+    kind: 'assistant',
+    id: `greeting-${Date.now()}`,
+    parts: [{ kind: 'text', text: 'Hello! How can I help you today?' }],
+    done: true,
+  })
+}
+
 defineExpose({
-  sendFormMessage
+  sendFormMessage,
+  clearHistory,
 })
 </script>
 
 <template>
-  <div class="chat-interface" :class="{ 'is-loading': isLoading }">
+  <div class="chat-interface">
     <div class="messages" ref="messagesEl" @scroll="onScroll">
       <template v-for="item in messages" :key="item.id">
         <div
@@ -277,6 +291,7 @@ defineExpose({
         </div>
       </template>
     </div>
+    <PkProgressBar :run-state="runState" :status-text="statusText" />
     <div class="input-area">
       <PkInput
         v-model="newMessage"
@@ -295,33 +310,9 @@ defineExpose({
   display: flex;
   flex-direction: column;
   height: 100%;
-  border-right: 1px solid #e5e7eb;
-  background: #fff;
+  border-right: var(--line-separator-subtle);
+  background: var(--bg-input-idle);
   position: relative;
-}
-
-.chat-interface.is-loading::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 2rem;
-  height: 2rem;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #3498db;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  z-index: 10;
-}
-
-@keyframes spin {
-  0% {
-    transform: translate(-50%, -50%) rotate(0deg);
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(360deg);
-  }
 }
 
 .messages {
