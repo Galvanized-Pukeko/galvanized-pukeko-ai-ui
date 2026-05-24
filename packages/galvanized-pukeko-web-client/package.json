@@ -19,7 +19,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@galvanized-pukeko/vue-ui": "^0.0.1",
+    "@galvanized-pukeko/vue-ui": "^0.0.8",
     "chart.js": "^4.5.1"
   }
 }
