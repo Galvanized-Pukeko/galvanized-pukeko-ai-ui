@@ -10,6 +10,7 @@ _scratchpad
 
 node_modules
 .npmrc
+.npmrc.bk
 .DS_Store
 dist
 dist-ssr
