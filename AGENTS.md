@@ -64,3 +64,19 @@ Then bump the consumer's `@galvanized-pukeko/vue-ui` pin and reinstall.
 Container/auth setup is documented in
 `gaunt-sloth-assistant/CONTRIBUTING.md` (section "Local Development Registry").
 The same Verdaccio instance and `~/.npmrc` token serve both scopes.
+
+### Start Verdaccio
+
+First-time start (preserves the container across restarts):
+
+```bash
+docker run -d --name verdaccio -p 4873:4873 -v verdaccio-storage:/verdaccio/storage verdaccio/verdaccio
+```
+
+If a `verdaccio` container already exists (you'll see
+`Conflict. The container name "/verdaccio" is already in use`),
+just start it:
+
+```bash
+docker start verdaccio
+```
