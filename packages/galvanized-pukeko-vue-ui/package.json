@@ -24,16 +24,16 @@
   "dependencies": {
     "@ag-ui/client": "^0.0.53",
     "chart.js": "^4.5.1",
-    "vue": "^3.5.12"
+    "vue": "^3.5.13"
   },
   "peerDependencies": {
     "vue": "^3.5.12"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^6.0.5",
-    "typescript": "~5.6.2",
-    "unplugin-dts": "^1.0.0-beta.6",
-    "vite": "^7.0.0",
-    "vue-tsc": "^2.2.12"
+    "@vitejs/plugin-vue": "^6.0.7",
+    "@vue/language-core": "~3.1.5",
+    "typescript": "^5.9.3",
+    "unplugin-dts": "^1.0.1",
+    "vite": "^7.3.3"
   }
 }
