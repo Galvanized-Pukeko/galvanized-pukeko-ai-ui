@@ -1,6 +1,6 @@
 {
   "name": "@galvanized-pukeko/web-client",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
