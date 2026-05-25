@@ -166,7 +166,17 @@ function buildSubscriber(callbacks: ChatCallbacks): AgentSubscriber {
         // Stay 'pending' until the result arrives.
         emit()
       }
-      callbacks.onToolCallEnd?.(event.toolCallId, toolCallName ?? '', buffer)
+      // `toolCallArgs` is the fully-accumulated, parsed args. The streamed
+      // `buffer` lags one delta behind — AG-UI fires onToolCallArgsEvent with
+      // the buffer *before* appending the current delta, so for tool calls sent
+      // as a single args delta (e.g. Ollama) the buffer is empty and the args
+      // only ever materialise here. Forward the parsed args; fall back to the
+      // raw buffer only when parsing produced nothing.
+      const argsString =
+        toolCallArgs && Object.keys(toolCallArgs).length > 0
+          ? JSON.stringify(toolCallArgs)
+          : buffer
+      callbacks.onToolCallEnd?.(event.toolCallId, toolCallName ?? '', argsString)
     },
     onToolCallResultEvent({ event }) {
       console.log('[ChatService] Tool call result:', event.toolCallId)
@@ -206,6 +216,31 @@ function buildSubscriber(callbacks: ChatCallbacks): AgentSubscriber {
 
 class ChatService {
   private agent: HttpAgent | null = null
+  // Latched by stop(); blocks the tool-fulfilment loop from resuming the agent.
+  // Cleared when a new message is sent or the thread is reset.
+  private stopped = false
+
+  get isStopped(): boolean {
+    return this.stopped
+  }
+
+  /**
+   * Operator interrupt ("emergency stop"). Aborts any in-flight model stream
+   * and latches `stopped` so the client-tool resume loop won't restart the
+   * agent. The robot's own motion can't be interrupted mid-cycle, but no
+   * further turns will run. Re-armed by sendMessage()/resetThread().
+   */
+  stop(): void {
+    this.stopped = true
+    if (this.agent) {
+      try {
+        this.agent.abortRun()
+      } catch {
+        // abortRun() on an idle agent is a no-op; ignore.
+      }
+    }
+    setRunState('idle', 'Stopped by operator')
+  }
 
   private ensureAgent(): HttpAgent {
     if (!this.agent) {
@@ -218,6 +253,7 @@ class ChatService {
   }
 
   resetThread(): void {
+    this.stopped = false
     const config = configService.get()
     this.agent = new HttpAgent({
       url: config.agUiUrl,
@@ -229,6 +265,8 @@ class ChatService {
   }
 
   async sendMessage(text: string, callbacks: ChatCallbacks, opts?: { tools?: Tool[] }): Promise<void> {
+    // A fresh user message re-arms the agent after an operator stop.
+    this.stopped = false
     const agent = this.ensureAgent()
 
     console.log('[ChatService] Sending message:', text)
@@ -261,6 +299,7 @@ class ChatService {
     content: string,
     callbacks?: ChatCallbacks,
   ): Promise<void> {
+    if (this.stopped) return
     const agent = this.ensureAgent()
 
     console.log('[ChatService] submitUserAction:', content)
@@ -282,18 +321,28 @@ class ChatService {
     callbacks: ChatCallbacks,
     opts?: { tools?: Tool[] }
   ): Promise<void> {
+    // Operator stopped the agent while the client tool was being fulfilled —
+    // don't feed the result back / start another turn.
+    if (this.stopped) return
     const agent = this.ensureAgent()
     console.log('[ChatService] Resuming with command')
 
-    await agent.runAgent(
-      {
-        tools: opts?.tools,
-        forwardedProps: {
-          command: { resume: resumeValue, interruptEvent },
+    try {
+      await agent.runAgent(
+        {
+          tools: opts?.tools,
+          forwardedProps: {
+            command: { resume: resumeValue, interruptEvent },
+          },
         },
-      },
-      buildSubscriber(callbacks)
-    )
+        buildSubscriber(callbacks)
+      )
+    } catch (error) {
+      // This promise is fire-and-forget at the call site, so swallow the
+      // expected abort from stop(); re-surface anything else.
+      if (this.stopped) return
+      throw error
+    }
   }
 }
 

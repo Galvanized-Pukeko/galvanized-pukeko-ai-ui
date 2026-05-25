@@ -13,8 +13,6 @@ the user does with them. The UI is a Vue 3 component library that talks to any
 
 ![galvanized-pukeko-logo.png](assets/galvanized-pukeko-logo.png)
 
-A quick demo on YouTube: https://youtu.be/rfiUhsaDtrU
-
 ## Start here: the Vue UI
 
 The heart of the project is **[`@galvanized-pukeko/vue-ui`](https://www.npmjs.com/package/@galvanized-pukeko/vue-ui)** —
@@ -117,8 +115,7 @@ If Playwright reports the browser is missing, run `npx playwright install`.
 
 ## Contributing
 
-Contributions are welcome — please open issues and pull requests. Fork, branch, and open a PR.
-Past and present contributors are listed in [CONTRIBUTORS.md](CONTRIBUTORS.md).
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Related
 

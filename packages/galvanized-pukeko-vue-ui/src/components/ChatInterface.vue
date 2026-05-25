@@ -101,6 +101,9 @@ function createStreamCallbacks(): ChatCallbacks {
       }
     },
     onToolCallEnd(toolCallId: string, toolCallName: string, toolCallBuffer: string) {
+      // Operator engaged the stop: don't run the client handler (no robot
+      // motion) and don't resume the agent loop.
+      if (chatService.isStopped) return
       if (props.clientToolHandlers && props.clientToolHandlers[toolCallName]) {
         const handler = props.clientToolHandlers[toolCallName]
         let args: unknown = {}
@@ -190,6 +193,8 @@ const sendMessage = async () => {
   try {
     await chatService.sendMessage(text, createStreamCallbacks(), { tools: props.clientTools })
   } catch (error) {
+    // A deliberate operator stop aborts the stream; that's not an error.
+    if (chatService.isStopped) return
     console.error('Failed to send message:', error)
     const last = messages.value[messages.value.length - 1]
     const lastIsError =
@@ -224,6 +229,7 @@ const sendFormMessage = async (text: string) => {
   try {
     await chatService.sendMessage(text, createStreamCallbacks(), { tools: props.clientTools })
   } catch (error) {
+    if (chatService.isStopped) return
     console.error('Failed to send form message:', error)
     const last = messages.value[messages.value.length - 1]
     const lastIsError =
@@ -243,6 +249,11 @@ const sendFormMessage = async (text: string) => {
   }
 }
 
+function stop() {
+  chatService.stop()
+  isLoading.value = false
+}
+
 function clearHistory() {
   chatService.resetThread()
   messages.value = []
@@ -258,6 +269,7 @@ function clearHistory() {
 defineExpose({
   sendFormMessage,
   clearHistory,
+  stop,
 })
 </script>
 
