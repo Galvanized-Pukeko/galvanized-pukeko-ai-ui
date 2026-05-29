@@ -44,6 +44,16 @@ export interface ChatCallbacks {
   onError: (error: string) => void
 }
 
+export type ClientToolHandler = (
+  args: unknown,
+  ctx: { toolCallId: string; signal: AbortSignal },
+) => Promise<unknown> | unknown
+
+export interface SendMessageOptions {
+  tools?: Tool[]
+  clientToolHandlers?: Record<string, ClientToolHandler>
+}
+
 function buildSubscriber(callbacks: ChatCallbacks): AgentSubscriber {
   const toolCallBuffers = new Map<string, string>()
   const toolCallNames = new Map<string, string>()
@@ -214,11 +224,44 @@ function buildSubscriber(callbacks: ChatCallbacks): AgentSubscriber {
   }
 }
 
+// Walk the agent's message log and return tool calls (in order) that have no
+// matching tool-result message and whose name the caller registered a handler
+// for. The server-side LangGraph interrupt pauses at the first client tool, so
+// in practice this returns 0 or 1 entries per run.
+function findUnfulfilledClientToolCalls(
+  messages: Message[],
+  handlers: Record<string, ClientToolHandler> | undefined,
+): Array<{ id: string; name: string; argsRaw: string }> {
+  if (!handlers) return []
+  const haveResultFor = new Set<string>()
+  for (const m of messages) {
+    if (m.role === 'tool') {
+      const id = (m as { toolCallId?: string }).toolCallId
+      if (id) haveResultFor.add(id)
+    }
+  }
+  const unfulfilled: Array<{ id: string; name: string; argsRaw: string }> = []
+  for (const m of messages) {
+    if (m.role !== 'assistant') continue
+    const toolCalls = (m as { toolCalls?: Array<{ id: string; function: { name: string; arguments: string } }> }).toolCalls
+    if (!toolCalls) continue
+    for (const tc of toolCalls) {
+      if (haveResultFor.has(tc.id)) continue
+      if (!handlers[tc.function.name]) continue
+      unfulfilled.push({ id: tc.id, name: tc.function.name, argsRaw: tc.function.arguments })
+    }
+  }
+  return unfulfilled
+}
+
 class ChatService {
   private agent: HttpAgent | null = null
   // Latched by stop(); blocks the tool-fulfilment loop from resuming the agent.
   // Cleared when a new message is sent or the thread is reset.
   private stopped = false
+  // Plumbed into client tool handlers so an operator stop can cancel an
+  // in-flight motion HTTP call to the robot, not just the next resume run.
+  private runAbort: AbortController | null = null
 
   get isStopped(): boolean {
     return this.stopped
@@ -232,6 +275,8 @@ class ChatService {
    */
   stop(): void {
     this.stopped = true
+    // Cancel an in-flight client tool handler (e.g. a fetch to the robot).
+    this.runAbort?.abort()
     if (this.agent) {
       try {
         this.agent.abortRun()
@@ -264,7 +309,7 @@ class ChatService {
     return this.ensureAgent().threadId
   }
 
-  async sendMessage(text: string, callbacks: ChatCallbacks, opts?: { tools?: Tool[] }): Promise<void> {
+  async sendMessage(text: string, callbacks: ChatCallbacks, opts?: SendMessageOptions): Promise<void> {
     // A fresh user message re-arms the agent after an operator stop.
     this.stopped = false
     const agent = this.ensureAgent()
@@ -281,7 +326,7 @@ class ChatService {
     console.log('[ChatService] AG-UI request to:', agent.url)
 
     try {
-      await agent.runAgent({ tools: opts?.tools }, buildSubscriber(callbacks))
+      await this.runLoop(agent, callbacks, opts ?? {})
     } catch (error) {
       console.error('[ChatService] Error sending message:', error)
       agent.messages = agent.messages.filter((m: Message) => m.id !== userMessage.id)
@@ -312,36 +357,82 @@ class ChatService {
 
     if (!callbacks) return
 
-    await agent.runAgent({}, buildSubscriber(callbacks))
+    await this.runLoop(agent, callbacks, {})
   }
 
-  async resumeWithCommand(
-    resumeValue: unknown,
-    interruptEvent: { toolCallId: string; runId?: string },
+  /**
+   * Drives one user turn end-to-end: send the prompt, await runAgent (which
+   * resolves on RUN_FINISHED — the server pauses at the first client-tool
+   * interrupt), then walk the message log for any unfulfilled client tool
+   * call, run its handler, and resume. Repeat until no client tool calls are
+   * outstanding.
+   *
+   * Mirrors CopilotKit's `run-handler.ts:runAgent` + `processAgentResult`
+   * loop. The key invariant is that the prior run is fully torn down before a
+   * new POST is issued — so concurrent SSE streams over the same thread_id
+   * can't race on the langgraph checkpoint.
+   */
+  private async runLoop(
+    agent: HttpAgent,
     callbacks: ChatCallbacks,
-    opts?: { tools?: Tool[] }
+    opts: SendMessageOptions,
   ): Promise<void> {
-    // Operator stopped the agent while the client tool was being fulfilled —
-    // don't feed the result back / start another turn.
-    if (this.stopped) return
-    const agent = this.ensureAgent()
-    console.log('[ChatService] Resuming with command')
-
+    this.runAbort = new AbortController()
+    let forwardedProps: Record<string, unknown> | undefined
     try {
-      await agent.runAgent(
-        {
-          tools: opts?.tools,
-          forwardedProps: {
-            command: { resume: resumeValue, interruptEvent },
+      // Bounded so a buggy handler/server can't spin us forever.
+      for (let i = 0; i < 64; i++) {
+        if (this.stopped) return
+
+        // Tear down any previous run's RxJS pipeline before starting a new
+        // POST. detachActiveRun() is a no-op if nothing is in flight.
+        await agent.detachActiveRun()
+
+        await agent.runAgent(
+          {
+            tools: opts.tools,
+            ...(forwardedProps ? { forwardedProps } : {}),
           },
-        },
-        buildSubscriber(callbacks)
-      )
-    } catch (error) {
-      // This promise is fire-and-forget at the call site, so swallow the
-      // expected abort from stop(); re-surface anything else.
-      if (this.stopped) return
-      throw error
+          buildSubscriber(callbacks),
+        )
+
+        if (this.stopped) return
+
+        const unfulfilled = findUnfulfilledClientToolCalls(agent.messages, opts.clientToolHandlers)
+        if (unfulfilled.length === 0) return
+
+        // The server interrupts at the first client tool, so process one per
+        // iteration. A second tool call (if the model emitted any) shows up
+        // unfulfilled on the next pass after this one is resumed.
+        const next = unfulfilled[0]
+        const handler = opts.clientToolHandlers![next.name]
+        let args: unknown = {}
+        try {
+          args = next.argsRaw ? JSON.parse(next.argsRaw) : {}
+        } catch (e) {
+          console.warn('[ChatService] Failed to parse tool args', e)
+        }
+
+        let resumeValue: unknown
+        try {
+          resumeValue = await handler(args, {
+            toolCallId: next.id,
+            signal: this.runAbort.signal,
+          })
+        } catch (error) {
+          console.error('[ChatService] Client tool handler error', error)
+          resumeValue = JSON.stringify({ error: String(error) })
+        }
+
+        if (this.stopped) return
+
+        forwardedProps = {
+          command: { resume: resumeValue, interruptEvent: { toolCallId: next.id } },
+        }
+      }
+      console.warn('[ChatService] runLoop exceeded iteration cap; bailing out.')
+    } finally {
+      this.runAbort = null
     }
   }
 }

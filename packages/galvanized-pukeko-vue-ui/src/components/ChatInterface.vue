@@ -5,7 +5,12 @@ import PkInput from './PkInput.vue'
 import PkProgressBar from './PkProgressBar.vue'
 import ToolCallBadge from './ToolCallBadge.vue'
 import {chatService, runState, statusText} from '../services/chatService'
-import type {AssistantStreamingMessage, ChatCallbacks, MessagePart} from '../services/chatService'
+import type {
+  AssistantStreamingMessage,
+  ChatCallbacks,
+  ClientToolHandler,
+  MessagePart,
+} from '../services/chatService'
 import type { useA2UI } from '../composables/useA2UI'
 import type { Tool } from '@ag-ui/client'
 
@@ -27,13 +32,12 @@ type ChatMessage = UserChatMessage | AssistantChatMessage
 const props = defineProps<{
   a2ui?: ReturnType<typeof useA2UI>
   clientTools?: Tool[]
-  clientToolHandlers?: Record<string, (args: unknown, ctx: { toolCallId: string }) => Promise<string> | string>
+  clientToolHandlers?: Record<string, ClientToolHandler>
 }>()
 
 const messages = ref<ChatMessage[]>([])
 const newMessage = ref('')
 const isLoading = ref(false)
-const currentRunId = ref<string | undefined>(undefined)
 
 const messagesEl = ref<HTMLElement | null>(null)
 const userHasScrolledUp = ref(false)
@@ -89,9 +93,6 @@ function upsertAssistantMessage(msg: AssistantStreamingMessage) {
 
 function createStreamCallbacks(): ChatCallbacks {
   const callbacks: ChatCallbacks = {
-    onRunStart(runId: string) {
-      currentRunId.value = runId
-    },
     onMessageUpdate(msg) {
       upsertAssistantMessage(msg)
     },
@@ -100,38 +101,10 @@ function createStreamCallbacks(): ChatCallbacks {
         props.a2ui.pendingToolCallId.value = toolCallId
       }
     },
-    onToolCallEnd(toolCallId: string, toolCallName: string, toolCallBuffer: string) {
-      // Operator engaged the stop: don't run the client handler (no robot
-      // motion) and don't resume the agent loop.
-      if (chatService.isStopped) return
-      if (props.clientToolHandlers && props.clientToolHandlers[toolCallName]) {
-        const handler = props.clientToolHandlers[toolCallName]
-        let args: unknown = {}
-        try {
-          args = toolCallBuffer ? JSON.parse(toolCallBuffer) : {}
-        } catch (e) {
-          console.warn('[ChatInterface] Failed to parse tool args', e)
-        }
-
-        Promise.resolve(handler(args, { toolCallId }))
-          .then((result) => {
-            chatService.resumeWithCommand(
-              result,
-              { toolCallId, runId: currentRunId.value },
-              createStreamCallbacks(),
-              { tools: props.clientTools }
-            )
-          })
-          .catch((error) => {
-            console.error('[ChatInterface] Error in client tool handler', error)
-            chatService.resumeWithCommand(
-              JSON.stringify({ error: String(error) }),
-              { toolCallId, runId: currentRunId.value },
-              createStreamCallbacks(),
-              { tools: props.clientTools }
-            )
-          })
-      }
+    onToolCallEnd(_toolCallId: string, _toolCallName: string, _toolCallBuffer: string) {
+      // Client-tool fulfilment is owned by chatService.runLoop now (it walks
+      // the message log after RUN_FINISHED). Firing the handler here would
+      // race the still-open SSE stream against the resume POST.
     },
     onToolCallResult(toolCallId: string, toolCallName: string, content: string) {
       if (toolCallName === 'show_a2ui_surface' && props.a2ui) {
@@ -191,7 +164,10 @@ const sendMessage = async () => {
   userHasScrolledUp.value = false
 
   try {
-    await chatService.sendMessage(text, createStreamCallbacks(), { tools: props.clientTools })
+    await chatService.sendMessage(text, createStreamCallbacks(), {
+      tools: props.clientTools,
+      clientToolHandlers: props.clientToolHandlers,
+    })
   } catch (error) {
     // A deliberate operator stop aborts the stream; that's not an error.
     if (chatService.isStopped) return
@@ -227,7 +203,10 @@ const sendFormMessage = async (text: string) => {
   userHasScrolledUp.value = false
 
   try {
-    await chatService.sendMessage(text, createStreamCallbacks(), { tools: props.clientTools })
+    await chatService.sendMessage(text, createStreamCallbacks(), {
+      tools: props.clientTools,
+      clientToolHandlers: props.clientToolHandlers,
+    })
   } catch (error) {
     if (chatService.isStopped) return
     console.error('Failed to send form message:', error)
