@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {nextTick, onMounted, ref, watch} from 'vue'
+import {computed, nextTick, onMounted, ref, watch} from 'vue'
 import PkButton from './PkButton.vue'
 import PkInput from './PkInput.vue'
 import PkProgressBar from './PkProgressBar.vue'
@@ -149,19 +149,37 @@ function createStreamCallbacks(): ChatCallbacks {
   return callbacks
 }
 
+// While a run is in flight the composer becomes a queue channel: the message is
+// queued and the agent picks it up at its next decision point, rather than the
+// input being blocked.
+const isQueueing = computed(() => isLoading.value)
+const inputPlaceholder = computed(() =>
+  isQueueing.value ? 'Queue a message… (applied at next step)' : 'Type a message...',
+)
+const sendButtonLabel = computed(() => (isQueueing.value ? 'Queue' : 'Send'))
+
 const sendMessage = async () => {
-  if (!newMessage.value.trim() || isLoading.value) return
+  if (!newMessage.value.trim()) return
 
   const text = newMessage.value
+  newMessage.value = ''
   messages.value.push({
     kind: 'user',
     id: Date.now(),
     text: text,
   })
-
-  newMessage.value = ''
-  isLoading.value = true
   userHasScrolledUp.value = false
+
+  // Mid-run: queue the message; the active run loop delivers it at the next step.
+  if (isLoading.value) {
+    void chatService.queueMessage(text, createStreamCallbacks(), {
+      tools: props.clientTools,
+      clientToolHandlers: props.clientToolHandlers,
+    })
+    return
+  }
+
+  isLoading.value = true
 
   try {
     await chatService.sendMessage(text, createStreamCallbacks(), {
@@ -286,13 +304,19 @@ defineExpose({
     <div class="input-area">
       <PkInput
         v-model="newMessage"
-        placeholder="Type a message..."
+        :placeholder="inputPlaceholder"
         @keyup.enter="sendMessage"
         name="chat-input"
       />
-      <PkButton @click="sendMessage">Send</PkButton>
+      <PkButton @click="sendMessage">{{ sendButtonLabel }}</PkButton>
     </div>
-    <div class="helper-text">Click Send or press Enter to send your message</div>
+    <div class="helper-text">
+      {{
+        isQueueing
+          ? 'The agent is working — your message is queued for the next step.'
+          : 'Click Send or press Enter to send your message'
+      }}
+    </div>
   </div>
 </template>
 

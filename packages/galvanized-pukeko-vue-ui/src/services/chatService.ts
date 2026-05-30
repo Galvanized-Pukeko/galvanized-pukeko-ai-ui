@@ -260,22 +260,51 @@ class ChatService {
   // Cleared when a new message is sent or the thread is reset.
   private stopped = false
   // Plumbed into client tool handlers so an operator stop can cancel an
-  // in-flight motion HTTP call to the robot, not just the next resume run.
+  // in-flight client tool call (e.g. a fetch), not just the next resume run.
   private runAbort: AbortController | null = null
+  // Follow-up messages queued mid-task, drained into the next resume so the
+  // agent sees them at its next decision point without aborting the in-flight
+  // task.
+  private messageQueue: string[] = []
 
   get isStopped(): boolean {
     return this.stopped
   }
 
+  /** True while a run loop is in flight (a task that can accept queued input). */
+  get isRunning(): boolean {
+    return this.runAbort !== null
+  }
+
+  /**
+   * Queue a follow-up message mid-task. If a run is in flight the text rides
+   * along with the next resume (delivered to the agent on its next decision
+   * turn — no abort, no dangling tool call). If the agent is idle it falls back
+   * to a normal {@link sendMessage}.
+   */
+  async queueMessage(
+    text: string,
+    callbacks: ChatCallbacks,
+    opts?: SendMessageOptions,
+  ): Promise<void> {
+    if (!this.isRunning || this.stopped) {
+      return this.sendMessage(text, callbacks, opts)
+    }
+    console.log('[ChatService] Queuing follow-up message:', text)
+    this.messageQueue.push(text)
+  }
+
   /**
    * Operator interrupt ("emergency stop"). Aborts any in-flight model stream
    * and latches `stopped` so the client-tool resume loop won't restart the
-   * agent. The robot's own motion can't be interrupted mid-cycle, but no
+   * agent. An in-flight client tool can't be interrupted mid-call, but no
    * further turns will run. Re-armed by sendMessage()/resetThread().
    */
   stop(): void {
     this.stopped = true
-    // Cancel an in-flight client tool handler (e.g. a fetch to the robot).
+    // Drop any queued messages — they belonged to the task being stopped.
+    this.messageQueue = []
+    // Cancel an in-flight client tool handler (e.g. a fetch).
     this.runAbort?.abort()
     if (this.agent) {
       try {
@@ -299,6 +328,7 @@ class ChatService {
 
   resetThread(): void {
     this.stopped = false
+    this.messageQueue = []
     const config = configService.get()
     this.agent = new HttpAgent({
       url: config.agUiUrl,
@@ -399,7 +429,19 @@ class ChatService {
         if (this.stopped) return
 
         const unfulfilled = findUnfulfilledClientToolCalls(agent.messages, opts.clientToolHandlers)
-        if (unfulfilled.length === 0) return
+        if (unfulfilled.length === 0) {
+          // No more client tools to fulfil. If a message was queued after the
+          // agent's last decision (so it never rode a resume), deliver it now
+          // as a fresh, non-resume turn so the agent still acts on it.
+          if (this.messageQueue.length > 0 && !this.stopped) {
+            for (const text of this.messageQueue.splice(0)) {
+              agent.addMessage({ id: crypto.randomUUID(), role: 'user', content: text })
+            }
+            forwardedProps = undefined
+            continue
+          }
+          return
+        }
 
         // The server interrupts at the first client tool, so process one per
         // iteration. A second tool call (if the model emitted any) shows up
@@ -426,8 +468,15 @@ class ChatService {
 
         if (this.stopped) return
 
+        // Drain any queued messages onto this resume so the agent sees them
+        // alongside the tool result, before it decides the next action.
+        const queuedMessages = this.messageQueue.splice(0)
         forwardedProps = {
-          command: { resume: resumeValue, interruptEvent: { toolCallId: next.id } },
+          command: {
+            resume: resumeValue,
+            interruptEvent: { toolCallId: next.id },
+            ...(queuedMessages.length > 0 ? { queuedMessages } : {}),
+          },
         }
       }
       console.warn('[ChatService] runLoop exceeded iteration cap; bailing out.')
