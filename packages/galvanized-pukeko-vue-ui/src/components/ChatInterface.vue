@@ -2,6 +2,7 @@
 import {computed, nextTick, onMounted, ref, watch} from 'vue'
 import PkButton from './PkButton.vue'
 import PkInput from './PkInput.vue'
+import PkNewConversationButton from './PkNewConversationButton.vue'
 import PkProgressBar from './PkProgressBar.vue'
 import ToolCallBadge from './ToolCallBadge.vue'
 import {chatService, runState, statusText} from '../services/chatService'
@@ -27,7 +28,15 @@ interface AssistantChatMessage {
   done: boolean
 }
 
-type ChatMessage = UserChatMessage | AssistantChatMessage
+// A system-level notice (e.g. "stopped by you") — deliberately distinct from an
+// error so the operator can tell a deliberate interrupt apart from a failure.
+interface NoticeChatMessage {
+  kind: 'notice'
+  id: number | string
+  text: string
+}
+
+type ChatMessage = UserChatMessage | AssistantChatMessage | NoticeChatMessage
 
 const props = defineProps<{
   a2ui?: ReturnType<typeof useA2UI>
@@ -133,6 +142,10 @@ function createStreamCallbacks(): ChatCallbacks {
       }
     },
     onError(error: string) {
+      // A deliberate stop aborts the in-flight fetch, which surfaces here as a
+      // "BodyStreamBuffer was aborted" (or similar) error. That's not a failure
+      // — the stop notice already covers it — so don't render an error bubble.
+      if (chatService.isStopped) return
       messages.value.push({
         kind: 'assistant',
         id: `error-${Date.now()}`,
@@ -249,6 +262,23 @@ const sendFormMessage = async (text: string) => {
 function stop() {
   chatService.stop()
   isLoading.value = false
+  // Acknowledge the interrupt in-chat. Rendered as a muted notice, not the red
+  // error bubble — a deliberate stop isn't a failure, and the conversation can
+  // continue from here.
+  messages.value.push({
+    kind: 'notice',
+    id: `notice-${Date.now()}`,
+    text: 'Stopped by you. You can continue the conversation below.',
+  })
+}
+
+// Start a fresh conversation. A plain clear leaves the server still generating
+// (and the model streaming prose into the now-empty thread), so halt the
+// in-flight run with the operator stop first, then reset.
+function newConversation() {
+  chatService.stop()
+  isLoading.value = false
+  clearHistory()
 }
 
 function clearHistory() {
@@ -266,17 +296,27 @@ function clearHistory() {
 defineExpose({
   sendFormMessage,
   clearHistory,
+  newConversation,
   stop,
 })
 </script>
 
 <template>
   <div class="chat-interface">
+    <div class="chat-toolbar">
+      <PkNewConversationButton @click="newConversation" />
+    </div>
     <div class="messages" ref="messagesEl" @scroll="onScroll">
       <template v-for="item in messages" :key="item.id">
         <div
           v-if="item.kind === 'user'"
           class="message user"
+        >
+          <div class="message-content">{{ item.text }}</div>
+        </div>
+        <div
+          v-else-if="item.kind === 'notice'"
+          class="message notice"
         >
           <div class="message-content">{{ item.text }}</div>
         </div>
@@ -309,6 +349,16 @@ defineExpose({
         name="chat-input"
       />
       <PkButton @click="sendMessage">{{ sendButtonLabel }}</PkButton>
+      <PkButton
+        v-if="isLoading"
+        class="stop-button"
+        title="Stop"
+        @click="stop"
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+          <rect x="1" y="1" width="10" height="10" rx="1" fill="currentColor" />
+        </svg>
+      </PkButton>
     </div>
     <div class="helper-text">
       {{
@@ -328,6 +378,14 @@ defineExpose({
   border-right: var(--line-separator-subtle);
   background: var(--bg-input-idle);
   position: relative;
+}
+
+.chat-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.5rem 1rem;
+  border-bottom: var(--line-separator-subtle);
+  background: #fff;
 }
 
 .messages {
@@ -350,6 +408,21 @@ defineExpose({
 
 .message.ai {
   align-self: flex-start;
+}
+
+.message.notice {
+  align-self: center;
+  max-width: 90%;
+}
+
+.message.notice .message-content {
+  background-color: #f3f4f6;
+  color: #6b7280;
+  font-size: 0.8rem;
+  font-style: italic;
+  text-align: center;
+  border-radius: 0.75rem;
+  padding: 0.4rem 0.9rem;
 }
 
 .message-content {
@@ -417,6 +490,27 @@ defineExpose({
   display: flex;
   gap: 0.5rem;
   background: #fff;
+}
+
+/* Small square interrupt button: just the rect glyph, shown only while running.
+   The class lands on PkButton's root <button>, so target it directly (a
+   descendant `:deep(button)` would match nothing). `.input-area` prefix lifts
+   specificity above PkButton's own `.pk-button` rule. */
+.input-area .stop-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(calc(var(--nice-spacing-unit) + var(--padding-twothird)) + 2px);
+  padding: 0;
+  background: linear-gradient(#d32f2f, #b71c1c);
+  color: #fff;
+  border: 1px solid #b71c1c;
+  border-radius: var(--border-radius-small-box);
+}
+
+.input-area .stop-button:hover {
+  background: linear-gradient(#e53935, #c62828);
+  padding: 0;
 }
 
 .helper-text {

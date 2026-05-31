@@ -16,6 +16,7 @@ import PkBarChart from './components/PkBarChart.vue'
 import PkPieChart from './components/PkPieChart.vue'
 import PkTable from './components/PkTable.vue'
 import ChatInterface from './components/ChatInterface.vue'
+import PkNewConversationButton from './components/PkNewConversationButton.vue'
 import PkNavHeader from './components/PkNavHeader.vue'
 import PkLogo from './components/PkLogo.vue'
 import PkLogoLarge from './components/PkLogoLarge.vue'
@@ -35,6 +36,7 @@ export {
   PkPieChart,
   PkTable,
   ChatInterface,
+  PkNewConversationButton,
   PkNavHeader,
   PkLogo,
   PkLogoLarge,

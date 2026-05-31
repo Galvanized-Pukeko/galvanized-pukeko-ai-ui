@@ -231,8 +231,20 @@ function buildSubscriber(callbacks: ChatCallbacks): AgentSubscriber {
 function findUnfulfilledClientToolCalls(
   messages: Message[],
   handlers: Record<string, ClientToolHandler> | undefined,
+  afterMessageId?: string,
 ): Array<{ id: string; name: string; argsRaw: string }> {
   if (!handlers) return []
+  // When a turn is started by a fresh user message (afterMessageId), only
+  // fulfil tool calls the model emits AFTER it. A tool call left dangling
+  // *before* it belongs to an earlier run the operator stopped/abandoned and
+  // must NOT be silently replayed — otherwise continuing the conversation
+  // re-issues e.g. a robot motion that was deliberately interrupted, and the
+  // resume kicks the agent back into its old loop. See the stop() handler.
+  let startIndex = 0
+  if (afterMessageId) {
+    const idx = messages.findIndex((m) => m.id === afterMessageId)
+    if (idx >= 0) startIndex = idx + 1
+  }
   const haveResultFor = new Set<string>()
   for (const m of messages) {
     if (m.role === 'tool') {
@@ -241,7 +253,8 @@ function findUnfulfilledClientToolCalls(
     }
   }
   const unfulfilled: Array<{ id: string; name: string; argsRaw: string }> = []
-  for (const m of messages) {
+  for (let i = startIndex; i < messages.length; i++) {
+    const m = messages[i]
     if (m.role !== 'assistant') continue
     const toolCalls = (m as { toolCalls?: Array<{ id: string; function: { name: string; arguments: string } }> }).toolCalls
     if (!toolCalls) continue
@@ -327,7 +340,11 @@ class ChatService {
   }
 
   resetThread(): void {
-    this.stopped = false
+    // Deliberately do NOT clear `stopped` here. "New conversation" calls stop()
+    // and then resetThread() back-to-back; the stop() aborts the in-flight
+    // fetch, whose rejection arrives a tick later and is suppressed only while
+    // `stopped` is latched (see ChatInterface onError / sendMessage catch). The
+    // next sendMessage() re-arms the agent, so leaving it latched is safe.
     this.messageQueue = []
     const config = configService.get()
     this.agent = new HttpAgent({
@@ -356,7 +373,7 @@ class ChatService {
     console.log('[ChatService] AG-UI request to:', agent.url)
 
     try {
-      await this.runLoop(agent, callbacks, opts ?? {})
+      await this.runLoop(agent, callbacks, opts ?? {}, userMessage.id)
     } catch (error) {
       console.error('[ChatService] Error sending message:', error)
       agent.messages = agent.messages.filter((m: Message) => m.id !== userMessage.id)
@@ -379,15 +396,16 @@ class ChatService {
 
     console.log('[ChatService] submitUserAction:', content)
 
-    agent.addMessage({
+    const userMessage: UserMessage = {
       id: crypto.randomUUID(),
       role: 'user',
       content: content,
-    } as UserMessage)
+    }
+    agent.addMessage(userMessage)
 
     if (!callbacks) return
 
-    await this.runLoop(agent, callbacks, {})
+    await this.runLoop(agent, callbacks, {}, userMessage.id)
   }
 
   /**
@@ -406,6 +424,7 @@ class ChatService {
     agent: HttpAgent,
     callbacks: ChatCallbacks,
     opts: SendMessageOptions,
+    boundaryMessageId?: string,
   ): Promise<void> {
     this.runAbort = new AbortController()
     let forwardedProps: Record<string, unknown> | undefined
@@ -428,7 +447,11 @@ class ChatService {
 
         if (this.stopped) return
 
-        const unfulfilled = findUnfulfilledClientToolCalls(agent.messages, opts.clientToolHandlers)
+        const unfulfilled = findUnfulfilledClientToolCalls(
+          agent.messages,
+          opts.clientToolHandlers,
+          boundaryMessageId,
+        )
         if (unfulfilled.length === 0) {
           // No more client tools to fulfil. If a message was queued after the
           // agent's last decision (so it never rode a resume), deliver it now
