@@ -13,6 +13,8 @@ the user does with them. The UI is a Vue 3 component library that talks to any
 
 ![galvanized-pukeko-logo.png](assets/galvanized-pukeko-logo.png)
 
+![galvanized-pukeko-logo.png](assets/pukeko-schema-animated.gif)
+
 ## Start here: the Vue UI
 
 The heart of the project is **[`@galvanized-pukeko/vue-ui`](https://www.npmjs.com/package/@galvanized-pukeko/vue-ui)** —
