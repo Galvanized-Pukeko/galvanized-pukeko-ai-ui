@@ -17,9 +17,11 @@ node start.js
 ```
 
 This will:
-1. Start Gaunt Sloth in AG-UI server mode on port 3000
-2. Start the Galvanized Pukeko web client on port 5555 (pointed at Gaunt Sloth)
+1. Start Gaunt Sloth in AG-UI server mode, on port 3000 by default
+2. Start the Galvanized Pukeko web client, on port 5555 by default (pointed at Gaunt Sloth)
 3. Open your browser to http://localhost:5555
+
+Both ports come from the repository-root `.env` when there is one; see [Ports](#ports) below.
 
 Press `Ctrl+C` to stop all services.
 
@@ -50,9 +52,16 @@ The example uses the Gaunt Sloth config from this directory (`.gsloth.config.jso
 
 The example ships with an OpenAI configuration. Set `OPENAI_API_KEY` in your environment or update `.gsloth.config.json` for a different provider.
 
-`gaunt-sloth-api` parses only its first argument (the API type). The `--port` and `--config` flags
-the launchers pass are accepted and ignored, so the port is whatever `commands.api.port` says and
-the config is discovered from the working directory.
+### Ports
+
+`start.js` reads the repository-root `.env` and takes the AG-UI port from `GTH_AGUI_PORT` and the
+web client's port from `WEB_PORT`, falling back to 3000 and 5555 when the file or the variable is
+absent. It passes the resolved port to `gaunt-sloth-api` as `--port`, which wins over the
+`commands.api.port` in `.gsloth.config.json`; `--config` names the configuration file outright, so a
+missing one ends the run instead of falling back to whatever the working directory happens to hold.
+
+Setting the variables is how you move the example off the default ports — editing
+`commands.api.port` alone will not, because the flag outranks it.
 
 ## How It Works
 

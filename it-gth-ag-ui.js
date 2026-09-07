@@ -44,13 +44,13 @@ function startGthAgUi() {
     GTH_API_BIN,
     [
       'ag-ui',
-      // `gaunt-sloth-api` parses only argv[0] (the API type): at
-      // @gaunt-sloth/agent 2.0.0-beta.5 both flags below are accepted and dropped
-      // (measured — `ag-ui --port 3123` binds 3000, and an unreadable `--config`
-      // path is ignored). What actually takes effect is `commands.api.port` and
-      // the working directory the config is discovered from, both set below. The
-      // flags stay so the day argv parsing lands they are already correct; until
-      // then a non-default GTH_AGUI_PORT does NOT reach this server.
+      // Both flags take effect. The port precedence is `--port`, then
+      // `commands.api.port` from the config, then 3000 — so the flag is what
+      // makes an allocated GTH_AGUI_PORT reach the server, over the 3000 the
+      // config states. `--config` names the file outright and refuses the run
+      // when it is missing rather than quietly falling back to discovery. `cwd`
+      // below still matters: it is the project root the guidelines and other
+      // project-relative artifacts are found from.
       '--port', GTH_AGUI_PORT,
       '--config', resolve(__dirname, 'examples/pukeko-gaunt-sloth-ag-ui/.gsloth.config.json'),
     ],

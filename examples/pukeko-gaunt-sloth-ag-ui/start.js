@@ -13,8 +13,15 @@ const ROOT = resolve(__dirname, '..', '..');
 // with nothing to tear down. Never a bare name: see scripts/local-bin.mjs.
 const GTH_API_BIN = resolveLocalBinOrExit('@gaunt-sloth/agent', 'gaunt-sloth-api', ROOT);
 
-const AGUI_PORT = 3000;
-const WEB_PORT = 5555;
+// OPS-8: load the repository-root `.env`, which the port allocator writes per
+// worktree — this example directory has none of its own, so the file lives at
+// ROOT alongside the dependencies. GTH_AGUI_PORT is the gaunt-sloth AG-UI port
+// (AGUI_PORT is the koog harness's); WEB_PORT is vite's, whose own config reads
+// the same file from the same place. The fallbacks are the trunk defaults, so a
+// checkout with no `.env` behaves exactly as it did. Inline env vars still win.
+try { process.loadEnvFile(resolve(ROOT, '.env')); } catch { /* no .env: defaults */ }
+const AGUI_PORT = Number(process.env.GTH_AGUI_PORT) || 3000;
+const WEB_PORT = Number(process.env.WEB_PORT) || 5555;
 const AGUI_URL = `http://localhost:${AGUI_PORT}/agents/default/run`;
 const READY_TIMEOUT_MS = 60_000;
 const POLL_INTERVAL_MS = 2_000;
@@ -58,13 +65,13 @@ const gthProc = spawnLocalBin(
   GTH_API_BIN,
   [
     'ag-ui',
-    // `gaunt-sloth-api` parses only argv[0] (the API type): at
-    // @gaunt-sloth/agent 2.0.0-beta.5 both flags below are accepted and dropped
-    // (measured — `ag-ui --port 3123` binds 3000, and an unreadable `--config`
-    // path is ignored). What actually takes effect is `commands.api.port` and
-    // the working directory the config is discovered from, both set below. The
-    // flags stay so the day argv parsing lands they are already correct; until
-    // then a non-default GTH_AGUI_PORT does NOT reach this server.
+    // Both flags take effect. The port precedence is `--port`, then
+    // `commands.api.port` from the config, then 3000 — so the flag is what makes
+    // an allocated GTH_AGUI_PORT reach the server, over the 3000 the config
+    // states. `--config` names the file outright and refuses the run when it is
+    // missing rather than quietly falling back to discovery. `cwd` below still
+    // matters: it is the project root the guidelines and other project-relative
+    // artifacts are found from.
     '--port', String(AGUI_PORT),
     '--config', resolve(__dirname, '.gsloth.config.json'),
   ],
