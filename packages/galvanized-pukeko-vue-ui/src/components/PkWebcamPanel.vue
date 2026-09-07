@@ -163,7 +163,26 @@ async function composeBeforeAfter(
   const totalW = PAD + wB + GAP + wA + PAD
   const totalH = LABEL_H + targetH + PAD
 
-  const canvas = canvasRef.value
+  // Re-read and re-check AFTER the await. This function is a
+  // check-then-await-then-use: the guard at the top ran BEFORE the two frames
+  // decoded, and a parent can unmount the panel while they are in flight — a
+  // route change or a `v-if` flip is enough — which nulls the template ref. The
+  // annotation is load-bearing: TypeScript's narrowing from the top guard
+  // survives the `await` unsoundly, so without it this guard is dead code to the
+  // compiler and reads as redundant to the next human. No gate can see this
+  // path; only the cell that holds both decodes open across an unmount can.
+  //
+  // A DISTINCT message from the top guard, deliberately. Both are the same
+  // predicate, but not the same thing to tell the agent reading the result:
+  // there the call was made against a panel that was already gone, here both
+  // frames decoded fine and the panel lost its surface mid-compose, so a retry
+  // against a live panel is the sensible next step. The same test the other
+  // messages were settled on: does the consumer have inputs it could act on
+  // differently.
+  const canvas: HTMLCanvasElement | null = canvasRef.value
+  if (!canvas) {
+    throw new Error('The compositing canvas was unmounted while the frames were decoding.')
+  }
   canvas.width = totalW
   canvas.height = totalH
 
