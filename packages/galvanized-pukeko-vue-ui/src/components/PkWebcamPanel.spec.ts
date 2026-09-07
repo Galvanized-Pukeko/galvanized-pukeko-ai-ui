@@ -498,12 +498,30 @@ describe('PkWebcamPanel — every compose failure names its cause (RC-54)', () =
     const noContext = await mountForCompose()
     const unmounted = await mountForCompose()
 
-    patch(HTMLCanvasElement.prototype, 'getContext', { value: () => null, writable: true })
+    // Save and restore THIS patch through a local descriptor rather than popping
+    // the shared `restores` stack. A pop assumes the null-context patch is on top
+    // of it, which silently couples this cell to the push order of
+    // `mountForCompose`: add a `patch` to `stubDrawingDom`, or reorder the mounts
+    // above, and the pop restores the WRONG descriptor while the cell goes on
+    // passing — an expensive place for that, since this is the cell whose whole
+    // job is proving the four causes stay distinct.
+    const workingGetContext = Object.getOwnPropertyDescriptor(
+      HTMLCanvasElement.prototype,
+      'getContext',
+    )
+    // Installed by `stubDrawingDom`; asserted rather than assumed, because
+    // restoring `undefined` would leave every later canvas without a context and
+    // quietly turn the remaining collections into context failures.
+    expect(workingGetContext).toBeDefined()
+    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+      configurable: true,
+      writable: true,
+      value: () => null,
+    })
     const contextMessage = await rejectionMessage(
       exposed(noContext.wrapper).composeBeforeAfter(BEFORE_URL, AFTER_URL),
     )
-    // Undo the null-context patch so the remaining panels are not affected by it.
-    restores.pop()!()
+    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', workingGetContext!)
 
     unmounted.wrapper.unmount()
 
