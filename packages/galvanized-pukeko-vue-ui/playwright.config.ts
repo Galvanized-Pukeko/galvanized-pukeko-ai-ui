@@ -68,26 +68,17 @@ export default defineConfig({
     command: `pnpm exec vite --config e2e/vite.harness.config.ts --port ${PORT} --strictPort`,
     port: PORT,
 
-    // OPS-113: never reuse a server this run did not start — not even locally.
-    //
-    // This used to be `!process.env.CI`, which meant "reuse, outside CI". Paired
-    // with the hardcoded port, that is what made the defect severe rather than
-    // merely annoying: a second worktree could not bind 4319 (`strictPort`), did
-    // not have to, and silently attached to the FIRST worktree's server. It then
-    // exercised that worktree's source and reported a pass — a wrong answer
-    // wearing a right answer's clothes, which no amount of reading the output
-    // would catch.
+    // Never reuse a server this run did not start — not even locally. A run that
+    // attaches to another worktree's server exercises THAT worktree's source and
+    // reports a pass, and nothing in the output distinguishes it from a real one.
     //
     // Per-worktree ports make that collision rarer, NOT impossible, so reuse
     // cannot be re-justified on the grounds that the ports now differ: 4319 is
     // both the fallback above AND the allocation an offset-0 worktree receives,
     // so a checkout with no `.env` and an offset-0 worktree still land on the
-    // same port. With reuse off, that case fails loudly on the `strictPort`
-    // bind instead of passing against the wrong tree.
-    //
-    // What it costs is one dev-server start per run, which the harness pays in
-    // well under the timeout below. That is the right trade for a suite whose
-    // entire purpose is to be the thing jsdom cannot be: an honest render.
+    // same port. With reuse off, that case fails loudly on the `strictPort` bind
+    // instead of passing against the wrong tree. The cost is one dev-server start
+    // per run, well inside the timeout below.
     reuseExistingServer: false,
 
     timeout: 30_000,
