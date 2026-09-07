@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, expectTypeOf, vi, afterEach } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { proxyRefs } from 'vue'
 import PkWebcamPanel from './PkWebcamPanel.vue'
@@ -59,7 +59,10 @@ const EXPECTED_TOTAL_H = LABEL_H + TARGET_H + PAD // 516
 /** The exposed surface of the component under test (`defineExpose`). */
 interface WebcamPanelExposed {
   captureFrame: () => string | null
-  composeBeforeAfter: (before: string, after: string) => Promise<string | null>
+  // No `| null`: `composeBeforeAfter` has no failure VALUE, only failure
+  // rejections (RC-54). `captureFrame` above keeps its own `string | null`
+  // contract — it was not part of that ruling.
+  composeBeforeAfter: (before: string, after: string) => Promise<string>
   startCamera: () => Promise<void>
   stopCamera: () => void
   isActive: boolean
@@ -318,6 +321,361 @@ describe('PkWebcamPanel — the compositing canvas is independent of the camera 
       expect(wrapper.find('canvas').exists()).toBe(true)
       expect(exposed(wrapper).captureFrame()).toBeNull()
     })
+  })
+})
+
+/**
+ * RC-54: every `composeBeforeAfter` failure rejects, naming its cause.
+ *
+ * The function had three shapes of failure and declared only one: a missing
+ * canvas and a missing 2D context returned `null`; an undecodable frame
+ * rejected; and a panel unmounted while the two frames were decoding threw a
+ * raw `TypeError` from a re-read of the ref after the await, which TypeScript
+ * could not see because narrowing survives an `await` unsoundly. All three ran
+ * against a `Promise<string | null>` signature that mentioned none of them.
+ * These cells pin the uniform protocol: no failure VALUE, an `Error` per path,
+ * and a message that says which path it was.
+ *
+ * ## Why the message, and not merely that it threw
+ * The consumer is an agent reading a tool result, which turns the rejection into
+ * an error string and abandons the remaining steps. Under the old protocol a
+ * `null` from a decode failure was indistinguishable from a `null` from an
+ * absent canvas; under this one an `Error` from one path can stand in for an
+ * `Error` from another just as silently. So every cell below asserts the
+ * MESSAGE. A cell asserting only `rejects.toThrow()` would pass with every
+ * cause reporting the same thing — an assertion that cannot fail in the way
+ * that matters.
+ *
+ * ## What jsdom can and cannot establish here
+ * jsdom decodes nothing, so the stubbed `onerror` above proves only what it was
+ * told to fire. The gap was closed out of band on the previous lane with a real
+ * Chromium probe over byte-identical `data:` URLs: `error` fires, `load` does
+ * not, the `src` assignment throws nothing synchronously, and a genuine 1x1 PNG
+ * fires `load` in the same probe — so the result discriminates rather than
+ * everything simply failing. Production's `loadImage` has exactly that one
+ * failure channel, so `onerror` is the only real input that reaches this path.
+ * `BEFORE_URL`/`AFTER_URL` are themselves not decodable images (`QkVGT1JF` is
+ * ASCII `BEFORE`); the size table is what makes them "load", and it must stay a
+ * table — making the fixtures really decodable would redden RC-45's cells.
+ */
+describe('PkWebcamPanel — every compose failure names its cause (RC-54)', () => {
+  /**
+   * A data URL whose base64 payload is not an image. Byte-identical to the URL
+   * the Chromium probe observed `error` on, so the string asserted in jsdom is
+   * the string a real browser was measured to fail.
+   */
+  const MALFORMED_URL = 'data:image/jpeg;base64,bm90LWFuLWltYWdl'
+
+  const MISSING_CANVAS = 'The compositing canvas is not mounted.'
+  const UNMOUNTED_MID_DECODE =
+    'The compositing canvas was unmounted while the frames were decoding.'
+  const MISSING_CONTEXT = 'The compositing canvas has no 2D drawing context.'
+  const BEFORE_UNDECODABLE = 'The Before frame could not be decoded from its data URL.'
+  const AFTER_UNDECODABLE = 'The After frame could not be decoded from its data URL.'
+
+  /**
+   * Settle a promise into a tagged outcome WITHOUT try/catch.
+   *
+   * A `try { await p; throw new Error('expected a rejection') } catch (e) { return e }`
+   * helper manufactures its own failure signal: when the promise RESOLVES it
+   * returns the sentinel it threw itself, and a cell asserting "an Error came
+   * back" then passes on an error production never raised. Splitting the two
+   * settlements apart makes resolution and rejection separately observable.
+   */
+  function settle<T>(
+    promise: Promise<T>,
+  ): Promise<{ ok: true; value: T } | { ok: false; error: unknown }> {
+    return promise.then(
+      (value) => ({ ok: true as const, value }),
+      (error: unknown) => ({ ok: false as const, error }),
+    )
+  }
+
+  /** The message of a genuine `Error` rejection, or a failed cell naming what came back instead. */
+  async function rejectionMessage(promise: Promise<unknown>): Promise<string> {
+    const outcome = await settle(promise)
+    if (outcome.ok) {
+      expect.unreachable(
+        `composeBeforeAfter resolved ${JSON.stringify(outcome.value)} instead of rejecting`,
+      )
+    }
+    // An `Error` specifically: a bare string or a DOMException would deny the
+    // consumer the `.message` the whole protocol is built on.
+    expect(outcome.error).toBeInstanceOf(Error)
+    return (outcome.error as Error).message
+  }
+
+  /**
+   * A mounted panel with the drawing DOM stubbed and no camera — the state in
+   * which compositing is expected to work, so every failure below is caused by
+   * the one thing that cell removes.
+   */
+  async function mountForCompose() {
+    const ctx = stubDrawingDom()
+    stubGetUserMedia(() => new Promise<MediaStream>(() => {}))
+    const wrapper = mount(PkWebcamPanel)
+    await flushPromises()
+    return { wrapper, ctx, panel: exposed(wrapper) }
+  }
+
+  /**
+   * The declared return type admits no failure value — checked by the COMPILER.
+   *
+   * `expectTypeOf` is erased at runtime, so this cell passes under `vitest run`
+   * whatever the signature says. Its gate is `vue-tsc -p tsconfig.json --noEmit`,
+   * i.e. this package's `type-check` script, which its `build` script runs first
+   * — so it rides `pnpm -r run build` and `pnpm -r run type-check` alike. It is
+   * written as a cell rather than as a bare module-level statement so that a
+   * reader scanning the suite sees the contract enumerated beside the message
+   * cells; the comment is what says where it is enforced.
+   *
+   * WHY IT IS ANCHORED ON `InstanceType<typeof PkWebcamPanel>` AND NOT ON
+   * `WebcamPanelExposed`. That interface is hand-written and reached through an
+   * `as unknown as` cast, so it is not mechanically linked to production: an
+   * assertion on it would go on passing with production reverted, which is an
+   * assertion that cannot fail. `InstanceType` reads the type vue-tsc generates
+   * from the component's own `defineExpose` — the same type a parent holding a
+   * template ref gets — so reverting production's signature to
+   * `Promise<string | null>` is what makes this red, and reverting it is how it
+   * was proven to bite rather than merely to compile.
+   */
+  it('declares no failure VALUE — the resolved type is `string`, not `string | null`', () => {
+    type ComposeReturn = ReturnType<InstanceType<typeof PkWebcamPanel>['composeBeforeAfter']>
+    expectTypeOf<Awaited<ComposeReturn>>().toEqualTypeOf<string>()
+    // The acceptance's own wording, asserted directly. A failing `.not` presents
+    // as `TS2554: Expected 1 arguments, but got 0` rather than as a readable
+    // mismatch — that is how expect-type signals a negation that does not hold,
+    // and the line above it is the one that names the actual type.
+    expectTypeOf<Awaited<ComposeReturn>>().not.toEqualTypeOf<string | null>()
+
+    // And the spec's own hand-written declaration says the same thing as
+    // production, so the cast above it cannot drift into a wider contract than
+    // the component actually offers.
+    expectTypeOf<Awaited<ReturnType<WebcamPanelExposed['composeBeforeAfter']>>>().toEqualTypeOf<
+      Awaited<ComposeReturn>
+    >()
+  })
+
+  /**
+   * Start a compose on a fresh panel and HOLD both frame decodes open.
+   *
+   * `composeBeforeAfter` is a check-then-await-then-use: its canvas guard runs
+   * before the two decodes and the canvas is re-read after them, so the only way
+   * to reach the second guard is to make the panel disappear BETWEEN the two.
+   * In a browser the decodes are fast and that window is narrow; here it is held
+   * open explicitly, which demonstrates the mechanism rather than its frequency.
+   *
+   * The `src` patch goes on top of `stubDrawingDom`'s and comes off through a
+   * saved descriptor, never a pop of the shared `restores` stack — nothing here
+   * may depend on push order. It is off again before this returns, so a caller
+   * can go on mounting panels whose decodes settle normally.
+   */
+  async function composeWithDecodesHeld() {
+    const { wrapper, ctx, panel } = await mountForCompose()
+
+    const decoding: HTMLImageElement[] = []
+    const firingSrc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src')
+    // Installed by `stubDrawingDom`; asserted rather than assumed, since
+    // restoring `undefined` would leave every later decode hanging forever.
+    expect(firingSrc).toBeDefined()
+    Object.defineProperty(HTMLImageElement.prototype, 'src', {
+      configurable: true,
+      get: () => '',
+      set(this: HTMLImageElement) {
+        decoding.push(this)
+      },
+    })
+
+    let settledEarly = false
+    const composing = panel.composeBeforeAfter(BEFORE_URL, AFTER_URL)
+    // Attached now, so the rejection this cell is arranging is never unhandled
+    // while it waits.
+    void composing.then(
+      () => {
+        settledEarly = true
+      },
+      () => {
+        settledEarly = true
+      },
+    )
+    await flushPromises()
+    Object.defineProperty(HTMLImageElement.prototype, 'src', firingSrc!)
+
+    // The mechanism, measured rather than assumed. Two images were constructed,
+    // so the ENTRY guard passed and execution reached the `Promise.all`; and
+    // neither decode has settled, so the await is genuinely still pending. If
+    // this patch ever silently stopped taking, `stubDrawingDom`'s microtask
+    // would settle both decodes first and the unmount would land BEFORE the
+    // call — the cell would then be exercising the entry guard while its name
+    // said otherwise, and would go red for a reason that reads like a
+    // production regression.
+    expect(decoding).toHaveLength(2)
+    expect(settledEarly).toBe(false)
+
+    /**
+     * Let both frames decode SUCCESSFULLY — this path is not a decode failure.
+     * Their widths read 0, because the size table lives in `stubDrawingDom`'s
+     * own map and the patch above bypasses it. That is harmless and deliberately
+     * not worked around: the geometry those widths feed is pure arithmetic, and
+     * the canvas re-read throws before anything is drawn.
+     */
+    const release = () => {
+      for (const img of decoding) img.onload?.call(img, new Event('load'))
+    }
+    return { wrapper, ctx, panel, composing, release }
+  }
+
+  it('still resolves the composite when everything is present — the loud paths are not always-on', async () => {
+    const { wrapper, ctx, panel } = await mountForCompose()
+
+    await expect(panel.composeBeforeAfter(BEFORE_URL, AFTER_URL)).resolves.toBe(
+      COMPOSITE_DATA_URL,
+    )
+    expectCompositeDrawnOn(wrapper.find('canvas').element, ctx)
+  })
+
+  it('rejects, naming the missing canvas, once the panel is unmounted', async () => {
+    const { wrapper, ctx, panel } = await mountForCompose()
+
+    // Precondition, established on this very panel: with the canvas present the
+    // composite is produced. So the only thing the unmount changes is the canvas
+    // — the 2D context is still available, and cannot be the cause below.
+    await expect(panel.composeBeforeAfter(BEFORE_URL, AFTER_URL)).resolves.toBe(
+      COMPOSITE_DATA_URL,
+    )
+    expect(ctx.drawImage).toHaveBeenCalledTimes(2)
+
+    // Unmounting nulls the template ref, which is the reachable way to observe a
+    // panel with no compositing canvas: RC-45 deliberately keeps it mounted in
+    // every camera state. `panel` was captured while mounted, exactly as a
+    // parent holding a template ref would have it.
+    wrapper.unmount()
+
+    expect(await rejectionMessage(panel.composeBeforeAfter(BEFORE_URL, AFTER_URL))).toBe(
+      MISSING_CANVAS,
+    )
+    // Nothing further was drawn: it refused before touching the context.
+    expect(ctx.drawImage).toHaveBeenCalledTimes(2)
+  })
+
+  it('rejects, naming the unmount, when the panel disappears WHILE the frames decode', async () => {
+    const { wrapper, ctx, composing, release } = await composeWithDecodesHeld()
+
+    // The canvas WAS mounted when the call was made — the helper asserts the
+    // entry guard passed — and it goes away now, mid-flight. This is the window
+    // the top guard cannot see, and the compiler cannot either: narrowing
+    // survives an `await` unsoundly, so `type-check` is green with or without
+    // the second guard.
+    wrapper.unmount()
+    release()
+
+    expect(await rejectionMessage(composing)).toBe(UNMOUNTED_MID_DECODE)
+    // Both frames decoded and nothing was drawn: it refused at the canvas, not
+    // at a decode, and never reached the context.
+    expect(ctx.drawImage).not.toHaveBeenCalled()
+  })
+
+  it('rejects, naming the missing 2D context, when the canvas cannot provide one', async () => {
+    const { wrapper, ctx } = await mountForCompose()
+    // Re-patch on top of the working stub; `afterEach` unwinds both in order.
+    patch(HTMLCanvasElement.prototype, 'getContext', { value: () => null, writable: true })
+    const panel = exposed(wrapper)
+
+    // The canvas itself IS mounted, so the missing-canvas guard cannot be what
+    // fires — without this the two causes would be indistinguishable here.
+    expect(wrapper.find('canvas').exists()).toBe(true)
+
+    expect(await rejectionMessage(panel.composeBeforeAfter(BEFORE_URL, AFTER_URL))).toBe(
+      MISSING_CONTEXT,
+    )
+    expect(ctx.drawImage).not.toHaveBeenCalled()
+  })
+
+  describe('an undecodable frame says WHICH frame', () => {
+    it('names the Before frame when only the before frame fails to decode', async () => {
+      const { ctx, panel } = await mountForCompose()
+
+      // The stub errors on anything absent from the size table; the after frame
+      // is in it, so exactly one of the two decodes.
+      expect(IMAGE_SIZES.has(MALFORMED_URL)).toBe(false)
+      expect(IMAGE_SIZES.has(AFTER_URL)).toBe(true)
+
+      expect(await rejectionMessage(panel.composeBeforeAfter(MALFORMED_URL, AFTER_URL))).toBe(
+        BEFORE_UNDECODABLE,
+      )
+      expect(ctx.drawImage).not.toHaveBeenCalled()
+    })
+
+    it('names the After frame when only the after frame fails to decode', async () => {
+      const { ctx, panel } = await mountForCompose()
+
+      expect(IMAGE_SIZES.has(BEFORE_URL)).toBe(true)
+
+      expect(await rejectionMessage(panel.composeBeforeAfter(BEFORE_URL, MALFORMED_URL))).toBe(
+        AFTER_UNDECODABLE,
+      )
+      expect(ctx.drawImage).not.toHaveBeenCalled()
+    })
+  })
+
+  it('tells every cause apart — no message stands in for another', async () => {
+    // The acceptance criterion asserted as a PROPERTY rather than as a list of
+    // literals: the cells above pin what each message says, this one pins that
+    // knowing the message is enough to know the cause.
+    // FIRST, because it swaps the image `src` descriptor for the duration of its
+    // own compose and puts it back before returning. Collected here so the fifth
+    // failure path is inside this property too: a path that rejects with a
+    // named `Error` but is not in this set is one a future edit could collide
+    // with another without anything noticing.
+    const midDecode = await composeWithDecodesHeld()
+    midDecode.wrapper.unmount()
+    midDecode.release()
+    const midDecodeMessage = await rejectionMessage(midDecode.composing)
+
+    const undecodableBefore = await mountForCompose()
+    const undecodableAfter = await mountForCompose()
+    const noContext = await mountForCompose()
+    const unmounted = await mountForCompose()
+
+    // Save and restore THIS patch through a local descriptor rather than popping
+    // the shared `restores` stack. A pop assumes the null-context patch is on top
+    // of it, which silently couples this cell to the push order of
+    // `mountForCompose`: add a `patch` to `stubDrawingDom`, or reorder the mounts
+    // above, and the pop restores the WRONG descriptor while the cell goes on
+    // passing — an expensive place for that, since this is the cell whose whole
+    // job is proving the causes stay distinct.
+    const workingGetContext = Object.getOwnPropertyDescriptor(
+      HTMLCanvasElement.prototype,
+      'getContext',
+    )
+    // Installed by `stubDrawingDom`; asserted rather than assumed, because
+    // restoring `undefined` would leave every later canvas without a context and
+    // quietly turn the remaining collections into context failures.
+    expect(workingGetContext).toBeDefined()
+    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+      configurable: true,
+      writable: true,
+      value: () => null,
+    })
+    const contextMessage = await rejectionMessage(
+      exposed(noContext.wrapper).composeBeforeAfter(BEFORE_URL, AFTER_URL),
+    )
+    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', workingGetContext!)
+
+    unmounted.wrapper.unmount()
+
+    const messages = [
+      await rejectionMessage(unmounted.panel.composeBeforeAfter(BEFORE_URL, AFTER_URL)),
+      midDecodeMessage,
+      contextMessage,
+      await rejectionMessage(
+        undecodableBefore.panel.composeBeforeAfter(MALFORMED_URL, AFTER_URL),
+      ),
+      await rejectionMessage(undecodableAfter.panel.composeBeforeAfter(BEFORE_URL, MALFORMED_URL)),
+    ]
+
+    expect(messages.every((message) => message.length > 0)).toBe(true)
+    expect(new Set(messages).size).toBe(messages.length)
   })
 })
 
