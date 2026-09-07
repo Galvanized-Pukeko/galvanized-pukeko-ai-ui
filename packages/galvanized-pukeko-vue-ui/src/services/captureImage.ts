@@ -28,6 +28,7 @@
  * redundant as soon as the client declares `capture_image` in the run input.
  */
 import type { Tool } from '@ag-ui/client'
+import type { WebcamStatus } from './webcamStatus'
 
 /** The frozen client-tool name (RC-14: renderers + middleware key on it). */
 export const CAPTURE_IMAGE_TOOL_NAME = 'capture_image'
@@ -57,6 +58,17 @@ export interface ImageCaptureSource {
   isReady(): boolean
   /** A `data:image/...;base64,` URL of the current frame, or null on failure. */
   captureFrame(): string | null | Promise<string | null>
+  /**
+   * Optional (RC-55): why the camera does or does not have frames, so a failed
+   * capture can name its cause instead of asking the model a question it cannot
+   * answer. A method rather than a property so it is read at capture time — the
+   * status changes underneath a long-lived source.
+   *
+   * A source that cannot know its camera's state simply omits this, and
+   * {@link captureImageResult} falls back to the frozen message. That is why the
+   * hook is opt-in: adding it changed no existing source's output.
+   */
+  cameraStatus?(): WebcamStatus | null | undefined
 }
 
 /**
@@ -73,10 +85,51 @@ export function frameToEnvelope(frame: string | null): ImageEnvelope | null {
 }
 
 /**
+ * The capture-failed message used when the cause is not knowable — the frozen
+ * RC-14 string, unchanged. Every source that does not implement
+ * {@link ImageCaptureSource.cameraStatus} still produces exactly this.
+ */
+export const CAPTURE_IMAGE_FAILED_ERROR = 'Failed to capture frame. Is the camera active?'
+
+/**
+ * Capture-failed messages for the causes we can actually name (RC-55).
+ *
+ * `Failed to capture frame.` is kept as a stable leading sentence — result
+ * renderers and log scrapes key on it — and only the trailing question is
+ * replaced, because asking a model "Is the camera active?" after it has already
+ * waited out a readiness deadline tells it nothing it can act on.
+ *
+ * `live` and `error` are deliberately absent. Neither names a cause: `live`
+ * means the camera is open and the capture failed for some other reason, and
+ * `error` means the rejection was unrecognised. Both keep the frozen message,
+ * which is exactly the "we do not know" the question already expresses.
+ */
+const CAPTURE_FAILURE_BY_STATUS: Partial<Record<WebcamStatus, string>> = {
+  idle: 'Failed to capture frame. The camera is not running.',
+  starting: 'Failed to capture frame. The camera has not finished starting.',
+  denied: 'Failed to capture frame. Camera permission was denied.',
+  'no-device': 'Failed to capture frame. No camera device was found.',
+  busy: 'Failed to capture frame. The camera is in use by another application.',
+}
+
+/**
+ * The capture-failed message for a camera status: one that names the cause where
+ * we have one, and {@link CAPTURE_IMAGE_FAILED_ERROR} otherwise — including for
+ * a null/undefined status, i.e. a source that cannot report one.
+ */
+export function captureFailureMessage(status: WebcamStatus | null | undefined): string {
+  return (status && CAPTURE_FAILURE_BY_STATUS[status]) || CAPTURE_IMAGE_FAILED_ERROR
+}
+
+/**
  * The generic `capture_image` handler body: capture one frame from `source`
  * and return the JSON string handed back to the model — the success envelope
- * or an `{ error }` envelope. The error strings are part of the frozen
- * contract (the robot's UI and tests assert them verbatim).
+ * or an `{ error }` envelope. The envelope SHAPE is part of the frozen RC-14
+ * contract (the robot's UI and tests key on it).
+ *
+ * The capture-failed message names its cause when — and only when — the source
+ * implements {@link ImageCaptureSource.cameraStatus} and that status identifies
+ * one (RC-55). Otherwise it is the frozen string, byte for byte.
  */
 export async function captureImageResult(source: ImageCaptureSource): Promise<string> {
   if (!source.isReady()) {
@@ -84,7 +137,7 @@ export async function captureImageResult(source: ImageCaptureSource): Promise<st
   }
   const envelope = frameToEnvelope(await source.captureFrame())
   if (envelope) return JSON.stringify(envelope)
-  return JSON.stringify({ error: 'Failed to capture frame. Is the camera active?' })
+  return JSON.stringify({ error: captureFailureMessage(source.cameraStatus?.()) })
 }
 
 export interface CaptureImageToolOptions {
@@ -130,16 +183,37 @@ export function createCaptureImageClientTool(
 }
 
 /**
- * Adapt a mounted {@link PkWebcamPanel} (read lazily through a getter so the
- * panel need not exist yet at wiring time) into an {@link ImageCaptureSource}.
+ * The part of a mounted `PkWebcamPanel`'s exposed surface this adapter reads.
+ *
+ * `cameraStatus` is optional so a panel too old to expose it — or any hand-rolled
+ * stand-in — still satisfies the shape. Structurally identical to the inline type
+ * this replaced, plus that one optional member.
+ */
+export interface WebcamPanelLike {
+  captureFrame(): string | null
+  /** RC-55: present on any `PkWebcamPanel` new enough to expose it. */
+  cameraStatus?: WebcamStatus
+}
+
+/**
+ * Adapt a mounted {@link WebcamPanelLike} panel (read lazily through a getter so
+ * the panel need not exist yet at wiring time) into an {@link ImageCaptureSource}.
  * This is the shape hosts that already render a live webcam view use.
+ *
+ * `isReady` stays "is a panel mounted" and is deliberately NOT narrowed to "is
+ * the camera usable": a denied camera reporting not-ready would swap this
+ * source's envelope from the capture-failed message to `Webcam not initialized`
+ * for every existing consumer. The camera's state reaches the model through the
+ * capture-failed message instead (RC-55).
  */
 export function webcamPanelCaptureSource(
-  getPanel: () => { captureFrame(): string | null } | null | undefined,
+  getPanel: () => WebcamPanelLike | null | undefined,
 ): ImageCaptureSource {
   return {
     isReady: () => getPanel() != null,
     captureFrame: () => getPanel()?.captureFrame() ?? null,
+    // Read per capture: the panel's status changes under a long-lived source.
+    cameraStatus: () => getPanel()?.cameraStatus ?? null,
   }
 }
 

@@ -1,5 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import {
+  webcamStatusFromError,
+  webcamErrorFrom,
+  type WebcamStatus,
+  type WebcamError,
+} from '../services/webcamStatus'
 
 const videoRef = ref<HTMLVideoElement | null>(null)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -7,19 +13,47 @@ const stream = ref<MediaStream | null>(null)
 const error = ref<string | null>(null)
 const isActive = ref(false)
 
+/**
+ * Why this panel does or does not have frames (RC-55) — see `WebcamStatus` for
+ * what each value means and, for each, whether waiting will help.
+ *
+ * `cameraStatus` tracks the `getUserMedia` CALL; `isActive` tracks whether the
+ * stream reached the video element and a frame can be drawn. They agree on the
+ * ordinary path. They can differ for one tick on Retry, where the video element
+ * is remounted while the call is already in flight, and `live` is the honest
+ * report there: the camera really did open, and a consumer told `starting`
+ * would wait for a transition that has already happened.
+ */
+const cameraStatus = ref<WebcamStatus>('idle')
+const cameraError = ref<WebcamError | null>(null)
+
 async function startCamera() {
   try {
     error.value = null
+    cameraError.value = null
+    cameraStatus.value = 'starting'
     stream.value = await navigator.mediaDevices.getUserMedia({
       video: { width: { ideal: 640 }, height: { ideal: 480 } },
       audio: false,
     })
+    // The camera is open as of THIS line. Reporting `live` here rather than
+    // inside the `videoRef` guard below is deliberate: on the Retry path the
+    // video element is still being remounted, and a status left at `starting`
+    // would never advance, telling a consumer to keep waiting forever — the
+    // exact stall this signal exists to remove.
+    cameraStatus.value = 'live'
     if (videoRef.value) {
       videoRef.value.srcObject = stream.value
       isActive.value = true
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to access camera'
+    // Read structurally rather than through `instanceof Error`, because a
+    // DOMException is not an Error subclass under jsdom. `error` above keeps its
+    // own existing computation: it is the banner's text, and this is a separate,
+    // additive signal. In a real browser the two agree.
+    cameraError.value = webcamErrorFrom(err)
+    cameraStatus.value = webcamStatusFromError(err)
     isActive.value = false
   }
 }
@@ -33,6 +67,14 @@ function stopCamera() {
     videoRef.value.srcObject = null
   }
   isActive.value = false
+  // Stopping a camera that never opened does not erase why it never opened, so
+  // a failure keeps naming its cause. The guard is written on `error` itself to
+  // hold the invariant literally: the status reports a failure exactly while the
+  // error banner is showing one.
+  if (error.value === null) {
+    cameraStatus.value = 'idle'
+    cameraError.value = null
+  }
 }
 
 function loadImage(dataUrl: string): Promise<HTMLImageElement> {
@@ -134,12 +176,17 @@ onUnmounted(() => {
   stopCamera()
 })
 
+// RC-55 additions (`cameraStatus`, `cameraError`) are strictly APPENDED: this is
+// a published component's public API, and every member above it is what existing
+// consumers — including a robot still on an older pin — already bind to.
 defineExpose({
   captureFrame,
   composeBeforeAfter,
   startCamera,
   stopCamera,
   isActive,
+  cameraStatus,
+  cameraError,
 })
 </script>
 

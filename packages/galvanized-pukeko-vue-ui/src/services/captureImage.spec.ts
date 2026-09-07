@@ -9,8 +9,11 @@ import {
   webcamPanelCaptureSource,
   createOnDemandCaptureSource,
   createHttpSnapshotCaptureSource,
+  captureFailureMessage,
+  CAPTURE_IMAGE_FAILED_ERROR,
   type ImageCaptureSource,
 } from './captureImage'
+import type { WebcamStatus } from './webcamStatus'
 
 const JPEG_FRAME = 'data:image/jpeg;base64,/9j/4AAQSkZJRg=='
 
@@ -91,6 +94,94 @@ describe('captureImageResult', () => {
   })
 })
 
+/**
+ * RC-55: a failed capture names its cause when the source can report one.
+ *
+ * The measured problem: after a caller had already waited out a five-second
+ * readiness deadline, the envelope still asked `Is the camera active?` — a
+ * question the model cannot answer and cannot act on.
+ *
+ * The hook is OPT-IN, and that is what keeps the RC-14 frozen contract intact:
+ * a source with no `cameraStatus()` produces the previous bytes exactly, so no
+ * existing consumer's behaviour moved.
+ */
+describe('captureImageResult — naming the cause of a failed capture (RC-55)', () => {
+  /** A source that fails to produce a frame and reports why. */
+  function failingSourceWithStatus(status: WebcamStatus | null): ImageCaptureSource {
+    return source({ captureFrame: () => null, cameraStatus: () => status })
+  }
+
+  const errorOf = async (s: ImageCaptureSource) =>
+    (JSON.parse(await captureImageResult(s)) as { error: string }).error
+
+  it('leaves the frozen message byte-identical for a source with no status hook', async () => {
+    // The control on the whole design: `source()` builds the pre-RC-55 shape.
+    const before = await captureImageResult(source({ captureFrame: () => null }))
+    expect(before).toBe(JSON.stringify({ error: 'Failed to capture frame. Is the camera active?' }))
+    expect(before).toBe(JSON.stringify({ error: CAPTURE_IMAGE_FAILED_ERROR }))
+  })
+
+  it.each([
+    ['denied', 'Failed to capture frame. Camera permission was denied.'],
+    ['no-device', 'Failed to capture frame. No camera device was found.'],
+    ['busy', 'Failed to capture frame. The camera is in use by another application.'],
+    ['starting', 'Failed to capture frame. The camera has not finished starting.'],
+    ['idle', 'Failed to capture frame. The camera is not running.'],
+  ] as ReadonlyArray<readonly [WebcamStatus, string]>)(
+    'names a %s camera in the failure envelope',
+    async (status, expected) => {
+      expect(await errorOf(failingSourceWithStatus(status))).toBe(expected)
+      // Each cause reads differently from the frozen default — the point of RC-55.
+      expect(expected).not.toBe(CAPTURE_IMAGE_FAILED_ERROR)
+    },
+  )
+
+  it('keeps the frozen message for statuses that name no cause', async () => {
+    // `live` (open camera, capture failed anyway) and `error` (unrecognised
+    // rejection) are both "we do not know", which is what the question already
+    // says. A null status — a source whose panel has unmounted — is the same.
+    expect(await errorOf(failingSourceWithStatus('live'))).toBe(CAPTURE_IMAGE_FAILED_ERROR)
+    expect(await errorOf(failingSourceWithStatus('error'))).toBe(CAPTURE_IMAGE_FAILED_ERROR)
+    expect(await errorOf(failingSourceWithStatus(null))).toBe(CAPTURE_IMAGE_FAILED_ERROR)
+  })
+
+  it('keeps `Failed to capture frame.` as the leading sentence in every case', async () => {
+    // Result renderers and log scrapes key on this prefix; only the trailing
+    // question is replaced.
+    for (const status of ['denied', 'no-device', 'busy', 'starting', 'idle', 'live', 'error'] as const) {
+      expect(await errorOf(failingSourceWithStatus(status))).toMatch(/^Failed to capture frame\. /)
+    }
+  })
+
+  it('does not consult the status when the capture SUCCEEDS', async () => {
+    const cameraStatus = vi.fn(() => 'denied' as WebcamStatus)
+    const result = await captureImageResult(source({ cameraStatus }))
+
+    expect(JSON.parse(result)).toEqual({ mimeType: 'image/jpeg', data: '/9j/4AAQSkZJRg==' })
+    expect(cameraStatus).not.toHaveBeenCalled()
+  })
+
+  it('leaves the not-initialized envelope alone even when a status is available', async () => {
+    // `isReady()` semantics are untouched: a not-ready source keeps its own
+    // frozen message rather than being re-routed through the capture-failed one.
+    const result = await captureImageResult(
+      source({ isReady: () => false, cameraStatus: () => 'denied' }),
+    )
+    expect(result).toBe(JSON.stringify({ error: 'Webcam not initialized' }))
+  })
+})
+
+describe('captureFailureMessage', () => {
+  it('falls back to the frozen message for an absent status', () => {
+    expect(captureFailureMessage(null)).toBe(CAPTURE_IMAGE_FAILED_ERROR)
+    expect(captureFailureMessage(undefined)).toBe(CAPTURE_IMAGE_FAILED_ERROR)
+  })
+
+  it('exports the frozen string as the RC-14 bytes, not a paraphrase', () => {
+    expect(CAPTURE_IMAGE_FAILED_ERROR).toBe('Failed to capture frame. Is the camera active?')
+  })
+})
+
 describe('createCaptureImageClientTool (bespoke ChatInterface helper)', () => {
   it('returns the declaration plus a handler wired to the source', async () => {
     const { tool, handler } = createCaptureImageClientTool(source())
@@ -120,6 +211,41 @@ describe('webcamPanelCaptureSource', () => {
   it('captures null when the panel has unmounted again', () => {
     const s = webcamPanelCaptureSource(() => null)
     expect(s.captureFrame()).toBeNull()
+  })
+
+  // RC-55: the adapter is what carries the panel's status into the envelope.
+  it('reports the mounted panel’s status, read fresh on every capture', () => {
+    const panel = { captureFrame: () => null, cameraStatus: 'starting' as WebcamStatus }
+    const s = webcamPanelCaptureSource(() => panel)
+
+    expect(s.cameraStatus?.()).toBe('starting')
+    panel.cameraStatus = 'denied'
+    // Re-read, not cached at construction: the panel's status moves underneath it.
+    expect(s.cameraStatus?.()).toBe('denied')
+  })
+
+  it('reports a null status for a panel too old to expose one, or none at all', () => {
+    // A panel on an older pin satisfies the shape without `cameraStatus`, and must
+    // keep producing the frozen message rather than throwing.
+    const oldPanel = { captureFrame: () => null }
+    expect(webcamPanelCaptureSource(() => oldPanel).cameraStatus?.()).toBeNull()
+    expect(webcamPanelCaptureSource(() => null).cameraStatus?.()).toBeNull()
+  })
+
+  it('turns a denied panel into a failure envelope that names the denial', async () => {
+    const panel = { captureFrame: () => null, cameraStatus: 'denied' as WebcamStatus }
+    const result = await captureImageResult(webcamPanelCaptureSource(() => panel))
+
+    expect(JSON.parse(result)).toEqual({
+      error: 'Failed to capture frame. Camera permission was denied.',
+    })
+  })
+
+  it('still produces the frozen message for a panel that cannot report a status', async () => {
+    const oldPanel = { captureFrame: () => null }
+    const result = await captureImageResult(webcamPanelCaptureSource(() => oldPanel))
+
+    expect(result).toBe(JSON.stringify({ error: CAPTURE_IMAGE_FAILED_ERROR }))
   })
 })
 

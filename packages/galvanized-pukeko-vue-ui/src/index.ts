@@ -66,6 +66,8 @@ export {
   createHttpSnapshotCaptureSource,
   DEFAULT_HTTP_SNAPSHOT_MIME,
   DEFAULT_HTTP_SNAPSHOT_TIMEOUT_MS,
+  captureFailureMessage,
+  CAPTURE_IMAGE_FAILED_ERROR,
 } from './services/captureImage'
 export type {
   ImageEnvelope,
@@ -73,7 +75,15 @@ export type {
   CaptureImageToolOptions,
   OnDemandCaptureOptions,
   HttpSnapshotCaptureOptions,
+  WebcamPanelLike,
 } from './services/captureImage'
+
+// RC-55: the camera-status vocabulary PkWebcamPanel reports through
+// `defineExpose`, and that an ImageCaptureSource optionally reports through
+// `cameraStatus()` so a failed capture can name its cause. Exported so a
+// consumer can branch on the status and implement its own capture source.
+export { webcamStatusFromError } from './services/webcamStatus'
+export type { WebcamStatus, WebcamError } from './services/webcamStatus'
 
 // Per-tool display registry (PLAT-17) — lets a consumer register a bespoke
 // result renderer / summariser / glyph for its own tool WITHOUT patching vue-ui.

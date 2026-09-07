@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { proxyRefs } from 'vue'
 import PkWebcamPanel from './PkWebcamPanel.vue'
+import type { WebcamStatus, WebcamError } from '../services/webcamStatus'
+import { webcamPanelCaptureSource, captureImageResult } from '../services/captureImage'
 
 /**
  * RC-45: the compositing canvas must not die with the camera.
@@ -59,10 +62,44 @@ interface WebcamPanelExposed {
   composeBeforeAfter: (before: string, after: string) => Promise<string | null>
   startCamera: () => Promise<void>
   stopCamera: () => void
+  isActive: boolean
+  cameraStatus: WebcamStatus
+  cameraError: WebcamError | null
 }
 
+/**
+ * The exact list `defineExpose` is called with, in order. The RC-55 members are
+ * APPENDED to the RC-45-era surface; everything before them must stay put,
+ * because this is a published component and consumers are already bound to it.
+ */
+const EXPECTED_EXPOSED_KEYS = [
+  'captureFrame',
+  'composeBeforeAfter',
+  'startCamera',
+  'stopCamera',
+  'isActive',
+  'cameraStatus',
+  'cameraError',
+] as const
+
+/** The raw object handed to `defineExpose`, straight off the component instance. */
+function exposedObject(wrapper: VueWrapper): Record<string, unknown> {
+  const instance = (wrapper.vm as unknown as { $: { exposed: Record<string, unknown> | null } }).$
+  return instance.exposed ?? {}
+}
+
+/**
+ * The panel as a PARENT sees it through a template ref.
+ *
+ * This deliberately goes through `instance.exposed` — wrapped in `proxyRefs`,
+ * exactly as Vue itself wraps it for a parent — rather than through `wrapper.vm`.
+ * That is what makes these cells discriminating: VTU's `vm` proxy also reaches
+ * `<script setup>` bindings that were NEVER exposed, so a cell reading
+ * `wrapper.vm.cameraStatus` would keep passing with the `defineExpose` entry
+ * deleted, and would prove nothing about the public API.
+ */
 function exposed(wrapper: VueWrapper): WebcamPanelExposed {
-  return wrapper.vm as unknown as WebcamPanelExposed
+  return proxyRefs(exposedObject(wrapper)) as unknown as WebcamPanelExposed
 }
 
 /** Undo callbacks for every prototype patch made during a test. */
@@ -281,5 +318,226 @@ describe('PkWebcamPanel — the compositing canvas is independent of the camera 
       expect(wrapper.find('canvas').exists()).toBe(true)
       expect(exposed(wrapper).captureFrame()).toBeNull()
     })
+  })
+})
+
+/**
+ * RC-55: the panel says WHY it has no frames.
+ *
+ * The panel has always known — `getUserMedia` either rejected or has not resolved
+ * yet — but `defineExpose` did not surface it, so every consumer saw only "no
+ * frame". Measured downstream while building RC-53: a capture failure could not
+ * name its cause, and a consumer unable to tell "denied" from "still starting"
+ * had no safe move but to wait, so a denied camera burned the full readiness
+ * deadline on every single call.
+ *
+ * These cells read the status through the PUBLIC surface (see `exposed`), and
+ * assert the rejection/slow-start distinction DIRECTLY rather than inferring it
+ * from a timeout — a timing-derived cell would pass for a panel that simply
+ * never reports anything.
+ */
+describe('PkWebcamPanel — the panel reports why it has no frames (RC-55)', () => {
+  /** A MediaStream stand-in: only `getTracks().stop()` is ever reached. */
+  function fakeStream(): MediaStream {
+    return { getTracks: () => [{ stop: vi.fn() }] } as unknown as MediaStream
+  }
+
+  /** Mount with `getUserMedia` rejecting with a real, named DOMException. */
+  async function mountRejectedWith(name: string, message = 'the browser said so') {
+    const getUserMedia = stubGetUserMedia(() => Promise.reject(new DOMException(message, name)))
+    const wrapper = mount(PkWebcamPanel)
+    await flushPromises()
+    return { wrapper, getUserMedia }
+  }
+
+  /** Mount with `getUserMedia` resolving to an open stream. */
+  async function mountLive() {
+    const getUserMedia = stubGetUserMedia(() => Promise.resolve(fakeStream()))
+    const wrapper = mount(PkWebcamPanel)
+    await flushPromises()
+    return { wrapper, getUserMedia }
+  }
+
+  /** Mount with `getUserMedia` in flight and never settling. */
+  async function mountPending() {
+    const getUserMedia = stubGetUserMedia(() => new Promise<MediaStream>(() => {}))
+    const wrapper = mount(PkWebcamPanel)
+    await flushPromises()
+    return { wrapper, getUserMedia }
+  }
+
+  describe('the exposed surface is additive — nothing existing moved', () => {
+    it('exposes exactly the previous members, in order, plus the two RC-55 ones', async () => {
+      const { wrapper } = await mountPending()
+
+      // Order and membership both: an assertion on membership alone would let a
+      // member be dropped and re-added, and this is a published API.
+      expect(Object.keys(exposedObject(wrapper))).toEqual([...EXPECTED_EXPOSED_KEYS])
+    })
+
+    it('keeps every pre-RC-55 member callable/readable through the public surface', async () => {
+      const { wrapper } = await mountPending()
+      const panel = exposed(wrapper)
+
+      expect(typeof panel.captureFrame).toBe('function')
+      expect(typeof panel.composeBeforeAfter).toBe('function')
+      expect(typeof panel.startCamera).toBe('function')
+      expect(typeof panel.stopCamera).toBe('function')
+      expect(panel.isActive).toBe(false)
+    })
+  })
+
+  describe('a rejection is distinguishable from a slow start', () => {
+    /**
+     * The whole point of the node, asserted head-on: two panels, one still
+     * starting and one already refused, reporting DIFFERENT statuses at the same
+     * observation. Nothing here waits, so the cell cannot pass by timing out.
+     */
+    it('reports starting for an in-flight call and denied for a refused one', async () => {
+      const pending = await mountPending()
+      const refused = await mountRejectedWith('NotAllowedError')
+
+      expect(exposed(pending.wrapper).cameraStatus).toBe('starting')
+      expect(exposed(refused.wrapper).cameraStatus).toBe('denied')
+      expect(exposed(pending.wrapper).cameraStatus).not.toBe(
+        exposed(refused.wrapper).cameraStatus,
+      )
+
+      // Both are equally frameless and equally inactive: the OLD signals cannot
+      // tell them apart, which is why the new one had to exist.
+      expect(exposed(pending.wrapper).isActive).toBe(false)
+      expect(exposed(refused.wrapper).isActive).toBe(false)
+      expect(exposed(pending.wrapper).captureFrame()).toBeNull()
+      expect(exposed(refused.wrapper).captureFrame()).toBeNull()
+    })
+
+    it('leaves no error detail on the still-starting panel', async () => {
+      const { wrapper } = await mountPending()
+
+      expect(exposed(wrapper).cameraStatus).toBe('starting')
+      expect(exposed(wrapper).cameraError).toBeNull()
+    })
+  })
+
+  describe('each cause the consumer must act on differently', () => {
+    const CAUSES: ReadonlyArray<readonly [string, WebcamStatus]> = [
+      ['NotAllowedError', 'denied'],
+      ['NotFoundError', 'no-device'],
+      ['NotReadableError', 'busy'],
+      ['AbortError', 'error'],
+    ]
+
+    it.each(CAUSES)('reports %s as %s, with the detail beside it', async (name, expected) => {
+      const { wrapper } = await mountRejectedWith(name, 'what the browser said')
+      const panel = exposed(wrapper)
+
+      expect(panel.cameraStatus).toBe(expected)
+      expect(panel.cameraError).toEqual({ name, message: 'what the browser said' })
+      expect(panel.isActive).toBe(false)
+    })
+
+    it('reports live once getUserMedia resolves, and is active on the ordinary path', async () => {
+      const { wrapper } = await mountLive()
+      const panel = exposed(wrapper)
+
+      expect(panel.cameraStatus).toBe('live')
+      expect(panel.cameraError).toBeNull()
+      // The invariant a consumer will assume, pinned on the path where it holds:
+      // a normal mount has the video element bound before the stream arrives.
+      expect(panel.isActive).toBe(true)
+    })
+
+    it('carries a serialisable detail — never the raw DOMException', async () => {
+      const { wrapper } = await mountRejectedWith('NotAllowedError', 'Permission dismissed')
+      const detail = exposed(wrapper).cameraError
+
+      expect(detail).not.toBeInstanceOf(DOMException)
+      expect(JSON.parse(JSON.stringify(detail))).toEqual(detail)
+    })
+  })
+
+  describe('stopping the camera', () => {
+    it('goes back to idle and drops the detail once a live camera is stopped', async () => {
+      const { wrapper } = await mountLive()
+      const panel = exposed(wrapper)
+      expect(panel.cameraStatus).toBe('live')
+
+      panel.stopCamera()
+      await flushPromises()
+
+      expect(panel.cameraStatus).toBe('idle')
+      expect(panel.cameraError).toBeNull()
+    })
+
+    it('keeps naming the cause when the camera never opened', async () => {
+      // Stopping a camera that was refused does not un-refuse it. The status must
+      // stay in step with the error banner, which stopCamera does not clear —
+      // otherwise the panel would show a permission error while reporting `idle`.
+      const { wrapper } = await mountRejectedWith('NotAllowedError')
+      const panel = exposed(wrapper)
+
+      panel.stopCamera()
+      await flushPromises()
+
+      expect(wrapper.find('.webcam-error').exists()).toBe(true)
+      expect(panel.cameraStatus).toBe('denied')
+      expect(panel.cameraError).toEqual({
+        name: 'NotAllowedError',
+        message: 'the browser said so',
+      })
+    })
+  })
+
+  /**
+   * The seam between the two halves, end to end: a REAL mounted panel, through
+   * the real adapter, into the real envelope builder.
+   *
+   * Both halves are covered separately — the panel exposes a status, and the
+   * adapter names a cause given one — but only this cell proves they COMPOSE.
+   * `webcamPanelCaptureSource` reads `cameraStatus` as a plain property, so if a
+   * panel ever handed it an unwrapped `Ref` instead of a string, the lookup would
+   * miss, the message would silently fall back to the frozen question, and
+   * nothing would throw or go red. That is precisely the behaviour RC-55 exists
+   * to remove, so it is asserted rather than assumed.
+   */
+  describe('the panel drives the capture_image failure envelope end to end', () => {
+    it('turns a denied camera into an envelope that names the denial', async () => {
+      const { wrapper } = await mountRejectedWith('NotAllowedError', 'Permission dismissed')
+      const source = webcamPanelCaptureSource(() => exposed(wrapper))
+
+      // The panel is mounted, so the source is ready and the capture is attempted.
+      expect(source.isReady()).toBe(true)
+      expect(source.cameraStatus?.()).toBe('denied')
+
+      expect(JSON.parse(await captureImageResult(source))).toEqual({
+        error: 'Failed to capture frame. Camera permission was denied.',
+      })
+    })
+
+    it('says the camera is still starting while the call is in flight', async () => {
+      // The other side of the distinction, at the envelope level: the model is
+      // told to wait here and told not to bother above.
+      const { wrapper } = await mountPending()
+      const source = webcamPanelCaptureSource(() => exposed(wrapper))
+
+      expect(JSON.parse(await captureImageResult(source))).toEqual({
+        error: 'Failed to capture frame. The camera has not finished starting.',
+      })
+    })
+  })
+
+  it('clears a previous failure when a retry starts, before it can succeed or fail', async () => {
+    // Retry's first act is to reset: a consumer polling mid-retry must see
+    // `starting` (waiting will help), not the stale `denied` (it will not).
+    const { wrapper } = await mountRejectedWith('NotAllowedError')
+    const panel = exposed(wrapper)
+    expect(panel.cameraStatus).toBe('denied')
+
+    stubGetUserMedia(() => new Promise<MediaStream>(() => {}))
+    panel.startCamera()
+    await flushPromises()
+
+    expect(panel.cameraStatus).toBe('starting')
+    expect(panel.cameraError).toBeNull()
   })
 })

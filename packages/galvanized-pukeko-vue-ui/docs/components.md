@@ -36,7 +36,7 @@ import '@galvanized-pukeko/vue-ui/style.css'
 | `PkButton` | Action button. |
 | `PkBarChart` / `PkPieChart` | Charts (Chart.js). |
 | `PkTable` | Data table. |
-| `PkWebcamPanel` | Webcam capture panel (e.g. for vision/robotics clients). |
+| `PkWebcamPanel` | Webcam capture panel (e.g. for vision/robotics clients). Exposes `captureFrame()`, `composeBeforeAfter()`, `startCamera()`, `stopCamera()`, `isActive`, and `cameraStatus` / `cameraError` (see [Camera status](#camera-status)) via `defineExpose`. |
 
 ## A2UI surfaces
 
@@ -156,3 +156,43 @@ Frames come from an `ImageCaptureSource`: `webcamPanelCaptureSource` adapts a mo
 `{ description: '…' }` to either factory to tell the model what your camera actually
 shows. No server-side setup is needed with the gaunt-sloth AG-UI backend — the run-input
 declaration alone binds the tool as a client-side interrupt.
+
+## Camera status
+
+`PkWebcamPanel` exposes **why** it does or does not have frames, so a host can fail fast
+instead of waiting out a readiness deadline it has no way to shorten. Read it off the
+component ref:
+
+```ts
+const panel = useTemplateRef('webcam')
+
+if (panel.value?.cameraStatus === 'denied') {
+  // panel.value.cameraError → { name: 'NotAllowedError', message: '…' }
+}
+```
+
+| `cameraStatus` | Meaning | Will waiting help? |
+|----------------|---------|--------------------|
+| `idle` | No capture attempt in flight — before the first start, or after `stopCamera()`. | No — start the camera. |
+| `starting` | A `getUserMedia` call is in flight and has not settled. | **Yes.** The only status where it can. |
+| `live` | `getUserMedia` resolved and the stream is open. | No — capture should already work. |
+| `denied` | Permission was refused. | No — only the user changing a browser permission will. |
+| `no-device` | No camera matched the request. | No. |
+| `busy` | The device is held by another application. | No, though a later retry may succeed. |
+| `error` | Rejected for a reason we cannot name. | No. |
+
+`cameraError` is `{ name, message }` — the browser's own error name and text — or `null`
+when there is no failure. Both members are plain, JSON-serialisable values rather than a
+raw `DOMException`, so they survive a structured clone and a tool envelope.
+
+The status is classified from the rejection's `name`, never its message, which is
+vendor- and locale-dependent. `webcamStatusFromError(err)` is exported if you call
+`getUserMedia` yourself and want the same mapping.
+
+**A failed capture names its cause.** An `ImageCaptureSource` may implement the optional
+`cameraStatus()` method, and `capture_image` then reports the reason instead of asking
+`Is the camera active?` — for example `Failed to capture frame. Camera permission was
+denied.` `webcamPanelCaptureSource` wires this up for you. A source that omits the method
+keeps the original message exactly, so this changes nothing for an existing consumer.
+`captureFailureMessage(status)` and `CAPTURE_IMAGE_FAILED_ERROR` are exported for hosts
+that build their own envelope.

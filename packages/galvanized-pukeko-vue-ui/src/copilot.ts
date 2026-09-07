@@ -48,6 +48,8 @@ export {
   createHttpSnapshotCaptureSource,
   DEFAULT_HTTP_SNAPSHOT_MIME,
   DEFAULT_HTTP_SNAPSHOT_TIMEOUT_MS,
+  captureFailureMessage,
+  CAPTURE_IMAGE_FAILED_ERROR,
 } from './services/captureImage'
 export type {
   ImageEnvelope,
@@ -55,7 +57,13 @@ export type {
   CaptureImageToolOptions,
   OnDemandCaptureOptions,
   HttpSnapshotCaptureOptions,
+  WebcamPanelLike,
 } from './services/captureImage'
+// RC-55: re-exported here too, so a copilot-only consumer implementing an
+// ImageCaptureSource can name the `cameraStatus()` hook's type from the same
+// entry it imports the source interface from.
+export { webcamStatusFromError } from './services/webcamStatus'
+export type { WebcamStatus, WebcamError } from './services/webcamStatus'
 
 // Per-tool display registry (PLAT-17). Re-exported here as well as from the
 // library root so a consumer importing the headless surface from this sub-path
