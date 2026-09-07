@@ -368,8 +368,29 @@ describe('createOnDemandCaptureSource — naming the cause of a failed capture (
     const source = rejectingCamera(new DOMException('camera unavailable', name))
 
     expect(await errorOf(source)).toBe(expected)
-    // Each cause reads differently from the frozen default — the point of RC-57.
-    expect(expected).not.toBe(CAPTURE_IMAGE_FAILED_ERROR)
+  })
+
+  it('does NOT name a cause for a failure after the camera has opened', async () => {
+    // The measured defect this split closes. `getUserMedia` RESOLVES — the user
+    // granted permission — and `play()` then rejects under autoplay policy with
+    // `NotAllowedError`, the name the table maps to `denied`. Classifying
+    // anything past `getUserMedia` therefore reported a refusal for a camera
+    // that had just been allowed. `stop` having been called is what proves the
+    // camera really opened, rather than this being any old failure.
+    const stop = vi.fn()
+    stubGetUserMedia(async () => ({ getTracks: () => [{ stop }] }))
+    stubCaptureDom({ drawImage: vi.fn() })
+    // After stubCaptureDom, which patches `play` to resolve; restores are LIFO.
+    patch(
+      HTMLMediaElement.prototype,
+      'play',
+      vi.fn().mockRejectedValue(new DOMException('autoplay blocked', 'NotAllowedError')),
+    )
+    const source = createOnDemandCaptureSource({ settleMs: 0 })
+
+    expect(await errorOf(source)).toBe(CAPTURE_IMAGE_FAILED_ERROR)
+    expect(source.cameraStatus?.()).toBe('error')
+    expect(stop).toHaveBeenCalled()
   })
 
   it('keeps the frozen message for an OverconstrainedError', async () => {

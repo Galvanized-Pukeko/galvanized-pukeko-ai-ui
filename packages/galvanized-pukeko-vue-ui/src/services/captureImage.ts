@@ -68,13 +68,16 @@ export interface ImageCaptureSource {
    * {@link captureImageResult} falls back to {@link CAPTURE_IMAGE_FAILED_ERROR}
    * byte for byte — which is why the hook is optional rather than required.
    *
-   * It is NOT, however, unused: both sources this library ships implement it,
-   * so panel-backed and headless hosts alike get cause-naming messages.
-   * {@link webcamPanelCaptureSource} answers from the panel it adapts;
-   * {@link createOnDemandCaptureSource} — the default behind the CopilotKit
-   * frontend tool — answers from the rejection its last capture attempt was
-   * refused with. See each function for what changes for such a host, and for
-   * why the two differ in what "current" means.
+   * It is NOT, however, unused: two of the three sources this library ships
+   * implement it. {@link webcamPanelCaptureSource} answers from the panel it
+   * adapts, and {@link createOnDemandCaptureSource} — the default behind the
+   * CopilotKit frontend tool — from the rejection its last capture attempt was
+   * refused with, so panel-backed hosts and the CopilotKit surfaces alike get
+   * cause-naming messages. {@link createHttpSnapshotCaptureSource} does NOT
+   * implement it: it fetches frames over HTTP and has no camera to report on,
+   * so every one of its failures keeps the frozen message. See each function
+   * for what changes for such a host, and for why the two that do supply it
+   * differ in what "current" means.
    */
   cameraStatus?(): WebcamStatus | null | undefined
 }
@@ -222,8 +225,8 @@ export interface WebcamPanelLike {
  * now reads `Failed to capture frame. Camera permission was denied.` rather than
  * {@link CAPTURE_IMAGE_FAILED_ERROR}. A host asserting the old string verbatim
  * will go red on upgrade; updating that assertion is the intended fix, because
- * naming the cause is the whole point of the change. Only a source that omits
- * the hook keeps the frozen message.
+ * naming the cause is the whole point of the change. A source that omits the
+ * hook keeps the frozen message, and so does any status that names no cause.
  */
 export function webcamPanelCaptureSource(
   getPanel: () => WebcamPanelLike | null | undefined,
@@ -304,9 +307,9 @@ async function waitForPaintedFrame(video: HTMLVideoElement): Promise<void> {
  * JPEG data URL, and releases the camera again.
  *
  * A capture that fails returns null AND records why, so the envelope can name
- * the cause (RC-57). A `getUserMedia` rejection is classified through
+ * the cause (RC-57). ONLY the `getUserMedia` rejection is classified, through
  * {@link webcamStatusFromError} — RC-55's shared classifier, the same function
- * `PkWebcamPanel` itself calls, so this source and
+ * `PkWebcamPanel` itself calls, over the same input, so this source and
  * {@link webcamPanelCaptureSource} answer "why are there no frames?" with one
  * vocabulary rather than two. A denied camera therefore reaches the model as
  * `Failed to capture frame. Camera permission was denied.` instead of the
@@ -315,8 +318,10 @@ async function waitForPaintedFrame(video: HTMLVideoElement): Promise<void> {
  * What still yields {@link CAPTURE_IMAGE_FAILED_ERROR} byte for byte: a
  * rejection the vocabulary does not name — `OverconstrainedError` among them,
  * mapped to `error` deliberately, since a camera that could not meet the
- * requested constraints is not an absent one — and every failure that never
- * threw at all (no camera API, zero dimensions, no 2d context).
+ * requested constraints is not an absent one — every failure that never threw
+ * at all (no camera API, zero dimensions, no 2d context), and every failure
+ * AFTER the camera opened, which reports `error` because a camera that opened
+ * was provably not refused.
  */
 export function createOnDemandCaptureSource(opts: OnDemandCaptureOptions = {}): ImageCaptureSource {
   const maxSize = opts.maxSize ?? 640
@@ -352,10 +357,29 @@ export function createOnDemandCaptureSource(opts: OnDemandCaptureOptions = {}): 
     // iOS Safari requires playsinline for an off-screen autoplaying video.
     video.playsInline = true
     try {
+      // This `try` holds exactly ONE statement, and holding it to one is the
+      // whole job: `webcamStatusFromError` states its domain as a
+      // `getUserMedia` rejection, so this scope is the only thing it may ever
+      // see. A flag would read the same today and re-open the defect the next
+      // time an `await` moved above it.
       stream = await mediaDevices.getUserMedia({
         video: { width: { ideal: 640 }, height: { ideal: 480 } },
         audio: false,
       })
+    } catch (err) {
+      // Classify BEFORE discarding the rejection: it is the only thing that
+      // knows why the camera has no frames, and returning a bare null threw
+      // that away (RC-57).
+      lastFailureStatus = webcamStatusFromError(err)
+      // Kept: the status vocabulary is deliberately closed, so it collapses
+      // `OverconstrainedError` and every unrecognised rejection into `error`.
+      // The log is where a developer still sees the browser's own name and
+      // message for exactly the causes the envelope cannot name — which is why
+      // the catch below logs with the same prefix.
+      console.warn('[captureImage] on-demand capture failed:', err)
+      return null
+    }
+    try {
       video.srcObject = stream
       await video.play()
       // Wait until the stream reports real dimensions (first decoded frame).
@@ -389,14 +413,15 @@ export function createOnDemandCaptureSource(opts: OnDemandCaptureOptions = {}): 
       ctx.drawImage(video, 0, 0, width, height)
       return canvas.toDataURL('image/jpeg', quality)
     } catch (err) {
-      // Classify BEFORE discarding the rejection: it is the only thing that
-      // knows why the camera has no frames, and returning a bare null threw
-      // that away (RC-57).
-      lastFailureStatus = webcamStatusFromError(err)
-      // Kept: the status vocabulary is deliberately closed, so it collapses
-      // `OverconstrainedError` and every unrecognised rejection into `error`.
-      // This line is the only place a developer still sees the browser's own
-      // name and message for exactly the causes the envelope cannot name.
+      // The camera OPENED, so nothing here is a permission or device problem
+      // and the classifier must never see it: `play()` rejects
+      // `NotAllowedError` under autoplay policy and `toDataURL` throws
+      // `SecurityError` on a tainted canvas, both of which the table reads as
+      // `denied` — reporting a refusal for a camera the user had just granted.
+      // `error` is the vocabulary's word for a failure it cannot name, and
+      // keeps the frozen message, which is what these paths produced before
+      // RC-57.
+      lastFailureStatus = 'error'
       console.warn('[captureImage] on-demand capture failed:', err)
       return null
     } finally {

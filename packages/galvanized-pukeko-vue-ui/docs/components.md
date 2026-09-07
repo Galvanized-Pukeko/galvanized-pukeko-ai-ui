@@ -203,20 +203,25 @@ asking `Is the camera active?` — for example `Failed to capture frame. Camera 
 was denied.` A source that omits the method keeps `Failed to capture frame. Is the camera
 active?` byte for byte.
 
-**Which sources supply it, and what that changes.** Both sources this library ships
-supply the hook, so **panel-backed and headless consumers alike now receive cause-naming
-messages**. That is a deliberate, visible change for them, not a compatibility accident:
-a host that asserts the old string verbatim will go red when it moves to this version,
-and updating the assertion is the intended fix.
+**Which sources supply it, and what that changes.** `webcamPanelCaptureSource` and
+`createOnDemandCaptureSource()` both supply the hook, so **panel-backed consumers and the
+CopilotKit surfaces alike now receive cause-naming messages**. That is a deliberate,
+visible change for them, not a compatibility accident: a host that asserts the old string
+verbatim will go red when it moves to this version, and updating the assertion is the
+intended fix. `createHttpSnapshotCaptureSource()` does not supply it — it fetches frames
+over HTTP and has no camera to report on — so every one of its failures keeps the frozen
+message unchanged.
 
 `webcamPanelCaptureSource` reports the current status of the panel it adapts.
 `createOnDemandCaptureSource()` — the default behind `createCaptureImageFrontendTool()`,
 so both CopilotKit surfaces — reports why its **last capture attempt** was refused, which
 is not the same thing: it opens and releases the camera around each capture, so it
-reports nothing before the first attempt or after a successful one. Either way the status
-is read at capture time, and a rejection the table above does not name —
-`OverconstrainedError` among them — keeps the frozen message, exactly as a source that
-omits the hook does.
+reports nothing before the first attempt or after a successful one. Only the
+`getUserMedia` rejection itself is classified: a failure *after* the camera has opened
+reports `error`, because a camera that opened was provably not refused. Either way the
+status is read at capture time, and any status that names no cause — `error`, covering
+`OverconstrainedError`, an unrecognised rejection and every post-open failure — keeps the
+frozen message, exactly as a source that omits the hook does.
 
 `captureFailureMessage(status)` and `CAPTURE_IMAGE_FAILED_ERROR` are exported for hosts
 that build their own envelope.
