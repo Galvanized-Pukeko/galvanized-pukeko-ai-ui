@@ -203,13 +203,20 @@ asking `Is the camera active?` — for example `Failed to capture frame. Camera 
 was denied.` A source that omits the method keeps `Failed to capture frame. Is the camera
 active?` byte for byte.
 
-**Which sources supply it, and what that changes.** `webcamPanelCaptureSource` always
-supplies the hook, so **panel-backed consumers now receive cause-naming messages**. That
-is a deliberate, visible change for them, not a compatibility accident: a host that
-asserts the old string verbatim will go red when it moves to this version, and updating
-the assertion is the intended fix. `createOnDemandCaptureSource()` — the default behind
-`createCaptureImageFrontendTool()`, so both CopilotKit surfaces — does not report a
-status, so its failures keep the frozen message unchanged.
+**Which sources supply it, and what that changes.** Both sources this library ships
+supply the hook, so **panel-backed and headless consumers alike now receive cause-naming
+messages**. That is a deliberate, visible change for them, not a compatibility accident:
+a host that asserts the old string verbatim will go red when it moves to this version,
+and updating the assertion is the intended fix.
+
+`webcamPanelCaptureSource` reports the current status of the panel it adapts.
+`createOnDemandCaptureSource()` — the default behind `createCaptureImageFrontendTool()`,
+so both CopilotKit surfaces — reports why its **last capture attempt** was refused, which
+is not the same thing: it opens and releases the camera around each capture, so it
+reports nothing before the first attempt or after a successful one. Either way the status
+is read at capture time, and a rejection the table above does not name —
+`OverconstrainedError` among them — keeps the frozen message, exactly as a source that
+omits the hook does.
 
 `captureFailureMessage(status)` and `CAPTURE_IMAGE_FAILED_ERROR` are exported for hosts
 that build their own envelope.

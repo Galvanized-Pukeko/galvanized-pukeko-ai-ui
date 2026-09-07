@@ -68,10 +68,13 @@ export interface ImageCaptureSource {
    * {@link captureImageResult} falls back to {@link CAPTURE_IMAGE_FAILED_ERROR}
    * byte for byte — which is why the hook is optional rather than required.
    *
-   * It is NOT, however, unused: {@link webcamPanelCaptureSource}, which this
-   * library ships, always supplies it, so a host wired to a `PkWebcamPanel` gets
-   * cause-naming messages from this version onwards. See that function for what
-   * changes for such a host.
+   * It is NOT, however, unused: both sources this library ships implement it,
+   * so panel-backed and headless hosts alike get cause-naming messages.
+   * {@link webcamPanelCaptureSource} answers from the panel it adapts;
+   * {@link createOnDemandCaptureSource} — the default behind the CopilotKit
+   * frontend tool — answers from the rejection its last capture attempt was
+   * refused with. See each function for what changes for such a host, and for
+   * why the two differ in what "current" means.
    */
   cameraStatus?(): WebcamStatus | null | undefined
 }
