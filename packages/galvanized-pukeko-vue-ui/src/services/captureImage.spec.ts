@@ -368,6 +368,12 @@ describe('createOnDemandCaptureSource — naming the cause of a failed capture (
     const source = rejectingCamera(new DOMException('camera unavailable', name))
 
     expect(await errorOf(source)).toBe(expected)
+    // Not a self-comparison: `expected` is this table's literal, but
+    // CAPTURE_IMAGE_FAILED_ERROR is imported from production. This goes red if
+    // the frozen "we do not know" message is ever changed to read like one of
+    // the causes, which the assertion above would not catch — it would keep
+    // passing with both sides moved to the same wrong string.
+    expect(expected).not.toBe(CAPTURE_IMAGE_FAILED_ERROR)
   })
 
   it('does NOT name a cause for a failure after the camera has opened', async () => {
