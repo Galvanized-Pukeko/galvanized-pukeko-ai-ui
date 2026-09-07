@@ -327,11 +327,14 @@ describe('PkWebcamPanel — the compositing canvas is independent of the camera 
 /**
  * RC-54: every `composeBeforeAfter` failure rejects, naming its cause.
  *
- * The function had two shapes of failure and declared only one: a missing canvas
- * and a missing 2D context returned `null`, while an undecodable frame rejected
- * — against a `Promise<string | null>` signature that mentioned neither. These
- * cells pin the uniform protocol: no failure VALUE, an `Error` per path, and a
- * message that says which path it was.
+ * The function had three shapes of failure and declared only one: a missing
+ * canvas and a missing 2D context returned `null`; an undecodable frame
+ * rejected; and a panel unmounted while the two frames were decoding threw a
+ * raw `TypeError` from a re-read of the ref after the await, which TypeScript
+ * could not see because narrowing survives an `await` unsoundly. All three ran
+ * against a `Promise<string | null>` signature that mentioned none of them.
+ * These cells pin the uniform protocol: no failure VALUE, an `Error` per path,
+ * and a message that says which path it was.
  *
  * ## Why the message, and not merely that it threw
  * The consumer is an agent reading a tool result, which turns the rejection into
