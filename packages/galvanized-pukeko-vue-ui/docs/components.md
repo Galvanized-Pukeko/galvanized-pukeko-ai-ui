@@ -173,7 +173,7 @@ if (panel.value?.cameraStatus === 'denied') {
 
 | `cameraStatus` | Meaning | Will waiting help? |
 |----------------|---------|--------------------|
-| `idle` | No capture attempt in flight that can produce frames — before the first start, or after `stopCamera()`, which abandons a start still running. | No — start the camera. |
+| `idle` | No capture attempt in flight that can produce frames — before the first start, or after `stopCamera()`, which abandons a start still running. Stopping a panel that is showing an error keeps that error status instead, so that stopping does not erase why the camera never opened. | No — start the camera. |
 | `starting` | A `getUserMedia` call is in flight and has not settled. | **Yes.** The only status where it can. |
 | `live` | `getUserMedia` resolved and the stream is open. | No — capture should already work. |
 | `denied` | Permission was refused. | No — only the user changing a browser permission will. |

@@ -104,10 +104,13 @@ export const CAPTURE_IMAGE_FAILED_ERROR = 'Failed to capture frame. Is the camer
  * replaced, because asking a model "Is the camera active?" after it has already
  * waited out a readiness deadline tells it nothing it can act on.
  *
- * `live` and `error` are deliberately absent. Neither names a cause: `live`
- * means the camera is open and the capture failed for some other reason, and
- * `error` means the rejection was unrecognised. Both keep the frozen message,
- * which is exactly the "we do not know" the question already expresses.
+ * `live` and `error` are deliberately absent, because neither tells the caller
+ * anything it can act on: `live` means the camera is open and the capture
+ * failed for some other reason, and `error` is the catch-all for a rejection
+ * this vocabulary does not name — including recognised ones such as
+ * `OverconstrainedError`, whose cause is carried in `cameraError` rather than
+ * in the status. Both keep the frozen message, which is the same "we do not
+ * know" the trailing question already expresses.
  */
 const CAPTURE_FAILURE_BY_STATUS: Partial<Record<WebcamStatus, string>> = {
   idle: 'Failed to capture frame. The camera is not running.',

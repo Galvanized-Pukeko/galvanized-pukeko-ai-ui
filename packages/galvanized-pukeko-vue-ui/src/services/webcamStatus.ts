@@ -25,7 +25,10 @@
  *                 abandons a start still running. (`getUserMedia` cannot be
  *                 cancelled, so a call that settles after the stop is discarded
  *                 and its tracks released, rather than returning the panel to
- *                 `live`.) Waiting will NOT help; start the camera.
+ *                 `live`.) One exception: `stopCamera()` on a panel that is
+ *                 showing an error leaves that error state in place, because
+ *                 stopping a camera that never opened must not erase why it
+ *                 never opened. Waiting will NOT help; start the camera.
  * - `starting`  — a `getUserMedia` call is in flight and has not settled.
  *                 Waiting MAY help. This is the only state where it can.
  * - `live`      — `getUserMedia` resolved and the stream is open.

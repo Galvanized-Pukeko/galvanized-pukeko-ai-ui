@@ -137,9 +137,11 @@ describe('captureImageResult — naming the cause of a failed capture (RC-55)', 
   )
 
   it('keeps the frozen message for statuses that name no cause', async () => {
-    // `live` (open camera, capture failed anyway) and `error` (unrecognised
-    // rejection) are both "we do not know", which is what the question already
-    // says. A null status — a source whose panel has unmounted — is the same.
+    // `live` (open camera, capture failed anyway) and `error` (the catch-all
+    // for a rejection this vocabulary does not name, recognised ones such as
+    // OverconstrainedError included) are both "we do not know" as far as the
+    // message is concerned, which is what the question already says. A null
+    // status — a source whose panel has unmounted — is the same.
     expect(await errorOf(failingSourceWithStatus('live'))).toBe(CAPTURE_IMAGE_FAILED_ERROR)
     expect(await errorOf(failingSourceWithStatus('error'))).toBe(CAPTURE_IMAGE_FAILED_ERROR)
     expect(await errorOf(failingSourceWithStatus(null))).toBe(CAPTURE_IMAGE_FAILED_ERROR)
