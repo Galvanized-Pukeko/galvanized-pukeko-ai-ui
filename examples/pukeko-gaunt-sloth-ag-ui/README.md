@@ -60,8 +60,16 @@ absent. It passes the resolved port to `gaunt-sloth-api` as `--port`, which wins
 `commands.api.port` in `.gsloth.config.json`; `--config` names the configuration file outright, so a
 missing one ends the run instead of falling back to whatever the working directory happens to hold.
 
-Setting the variables is how you move the example off the default ports — editing
+Setting `GTH_AGUI_PORT` is how you move the AG-UI server off port 3000 — editing
 `commands.api.port` alone will not, because the flag outranks it.
+
+**`WEB_PORT` moves the web client, but the demo does not yet work anywhere but 5555.**
+`.gsloth.config.json` pins `cors.allowOrigin` to `http://localhost:5555`, and `gaunt-sloth-api`
+exposes no flag or environment override for it. Measured: a preflight sent from
+`Origin: http://localhost:6555` still comes back with `Access-Control-Allow-Origin:
+http://localhost:5555`, so the browser blocks every chat request. Moving `WEB_PORT` therefore
+relocates the client and breaks it, rather than moving the example. Tracked as OPS-16 (dynamic CORS
+origin for the AG-UI server), which needs a change in gaunt-sloth as well as here.
 
 ## How It Works
 
