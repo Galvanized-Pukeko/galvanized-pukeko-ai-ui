@@ -14,11 +14,10 @@ describe('webcamStatusFromError', () => {
   const CASES: ReadonlyArray<readonly [string, WebcamStatus]> = [
     ['NotAllowedError', 'denied'],
     ['PermissionDeniedError', 'denied'],
+    ['PermissionDismissedError', 'denied'],
     ['SecurityError', 'denied'],
     ['NotFoundError', 'no-device'],
     ['DevicesNotFoundError', 'no-device'],
-    ['OverconstrainedError', 'no-device'],
-    ['ConstraintNotSatisfiedError', 'no-device'],
     ['NotReadableError', 'busy'],
     ['TrackStartError', 'busy'],
   ]
@@ -34,6 +33,29 @@ describe('webcamStatusFromError', () => {
       new Set<WebcamStatus>(['denied', 'no-device', 'busy']),
     )
   })
+
+  it('treats a dismissed permission prompt as a denial, like the rest of its family', () => {
+    // The legacy Chrome name for "the user closed the prompt without choosing".
+    // It sat unmapped beside four enumerated siblings, which read as an oversight
+    // rather than a decision — and it is a refusal, so `denied` is what it means.
+    expect(webcamStatusFromError(new DOMException('dismissed', 'PermissionDismissedError'))).toBe(
+      'denied',
+    )
+  })
+
+  it.each(['OverconstrainedError', 'ConstraintNotSatisfiedError'])(
+    'reports %s as error, never as no-device',
+    (name) => {
+      // The name means an attached camera could not satisfy the REQUESTED
+      // CONSTRAINTS — not that no camera exists. `no-device` would have told a
+      // consumer `No camera device was found.` with a camera plugged in, and hidden
+      // the move that works (relax the constraints). Both halves are asserted: the
+      // status it must be, and the status it must NOT be.
+      const status = webcamStatusFromError(new DOMException('cannot satisfy', name))
+      expect(status).toBe('error')
+      expect(status).not.toBe('no-device')
+    },
+  )
 
   it('falls through to error for an unrecognised DOMException name', () => {
     // AbortError is spec'd as "something else went wrong", which is what `error`

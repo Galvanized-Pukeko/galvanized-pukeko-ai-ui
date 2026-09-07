@@ -18,35 +18,58 @@ const isActive = ref(false)
  * what each value means and, for each, whether waiting will help.
  *
  * `cameraStatus` tracks the `getUserMedia` CALL; `isActive` tracks whether the
- * stream reached the video element and a frame can be drawn. They agree on the
- * ordinary path. They can differ for one tick on Retry, where the video element
- * is remounted while the call is already in flight, and `live` is the honest
- * report there: the camera really did open, and a consumer told `starting`
- * would wait for a transition that has already happened.
+ * stream reached the video element and a frame can be drawn. They are separate
+ * because they answer separate questions — "did the camera open?" and "can a
+ * frame be drawn right now?" — and only the first is what a consumer deciding
+ * whether to keep waiting needs.
  */
 const cameraStatus = ref<WebcamStatus>('idle')
 const cameraError = ref<WebcamError | null>(null)
 
+/**
+ * Which start attempt is the current one.
+ *
+ * A `getUserMedia` call cannot be cancelled, so one begun before `stopCamera()`
+ * is still running afterwards and will settle regardless. Every start takes a
+ * generation and `stopCamera` bumps it; a start whose generation is stale when
+ * it settles is ABANDONED — it does not touch the status, does not reach the
+ * video element, and releases the tracks of the stream it was handed. Without
+ * that, a stopped panel drove itself from `idle` back to `live` with no
+ * `startCamera()` in between, so the `idle` it published was not true.
+ */
+let startGeneration = 0
+
 async function startCamera() {
+  const generation = ++startGeneration
+  /** Whether this attempt is still the one the panel is waiting on. */
+  const superseded = () => generation !== startGeneration
   try {
     error.value = null
     cameraError.value = null
     cameraStatus.value = 'starting'
-    stream.value = await navigator.mediaDevices.getUserMedia({
+    const opened = await navigator.mediaDevices.getUserMedia({
       video: { width: { ideal: 640 }, height: { ideal: 480 } },
       audio: false,
     })
-    // The camera is open as of THIS line. Reporting `live` here rather than
-    // inside the `videoRef` guard below is deliberate: on the Retry path the
-    // video element is still being remounted, and a status left at `starting`
-    // would never advance, telling a consumer to keep waiting forever — the
-    // exact stall this signal exists to remove.
+    if (superseded()) {
+      // The caller has since asked for no camera, so this stream must not reach
+      // component state at all — release it here, where it is still in hand.
+      opened.getTracks().forEach((track) => track.stop())
+      return
+    }
+    stream.value = opened
+    // The camera is open as of THIS line, and `cameraStatus` reports the call,
+    // so it is reported here rather than inside the `videoRef` guard below,
+    // which reports the separate question of whether a frame can be drawn yet.
     cameraStatus.value = 'live'
     if (videoRef.value) {
       videoRef.value.srcObject = stream.value
       isActive.value = true
     }
   } catch (err) {
+    // A refusal the caller is no longer waiting on is not news: it stopped the
+    // camera, and the `idle` it asked for is what should stand.
+    if (superseded()) return
     error.value = err instanceof Error ? err.message : 'Failed to access camera'
     // Read structurally rather than through `instanceof Error`, because a
     // DOMException is not an Error subclass under jsdom. `error` above keeps its
@@ -59,6 +82,10 @@ async function startCamera() {
 }
 
 function stopCamera() {
+  // Abandon any start still in flight before touching anything else: the call
+  // cannot be cancelled, so this bump is the only thing that stops it settling
+  // later and driving a stopped panel back to `live`.
+  startGeneration += 1
   if (stream.value) {
     stream.value.getTracks().forEach((track) => track.stop())
     stream.value = null

@@ -489,6 +489,145 @@ describe('PkWebcamPanel — the panel reports why it has no frames (RC-55)', () 
   })
 
   /**
+   * Stopping a start that has not settled — the one transition where the panel
+   * published a status that was not true.
+   *
+   * `getUserMedia` cannot be cancelled, so the call a stopped panel started is
+   * still running and WILL resolve afterwards. The panel used to let that late
+   * resolution drive it: it went `idle` → `live` with no `startCamera()` between
+   * them, reported `isActive: true` for a session the caller had explicitly
+   * stopped, and never released the tracks. `idle` is only honest if a call that
+   * resolves after the stop is abandoned, so these cells pin the abandonment
+   * rather than the wording.
+   */
+  describe('a start still in flight when the camera is stopped', () => {
+    /**
+     * A `getUserMedia` that settles only when the test says so, so the stop lands
+     * strictly between the call and its resolution — the window under test. The
+     * returned `stop` is the track's, counting releases of the opened stream.
+     */
+    function deferredCamera() {
+      const stop = vi.fn()
+      let settle: ((outcome: 'resolve' | 'reject') => void) | null = null
+      const getUserMedia = stubGetUserMedia(
+        () =>
+          new Promise<MediaStream>((resolve, reject) => {
+            settle = (outcome) =>
+              outcome === 'resolve'
+                ? resolve({ getTracks: () => [{ stop }] } as unknown as MediaStream)
+                : reject(new DOMException('the browser said so', 'NotAllowedError'))
+          }),
+      )
+      return {
+        stop,
+        getUserMedia,
+        openCamera: () => settle?.('resolve'),
+        refuseCamera: () => settle?.('reject'),
+      }
+    }
+
+    /** Mount, let the in-flight call reach `starting`, then stop the camera. */
+    async function mountThenStopMidStart() {
+      const camera = deferredCamera()
+      const wrapper = mount(PkWebcamPanel)
+      await flushPromises()
+      const panel = exposed(wrapper)
+
+      // The precondition this whole block depends on: a call really is in flight.
+      expect(panel.cameraStatus).toBe('starting')
+
+      panel.stopCamera()
+      await flushPromises()
+      expect(panel.cameraStatus).toBe('idle')
+
+      return { wrapper, panel, camera }
+    }
+
+    it('stays idle when the abandoned call resolves after the stop', async () => {
+      const { panel, camera } = await mountThenStopMidStart()
+
+      camera.openCamera()
+      await flushPromises()
+
+      // Without abandonment this reads `live` / `true`: a camera the caller
+      // stopped, streaming again with no start in between.
+      expect(panel.cameraStatus).toBe('idle')
+      expect(panel.isActive).toBe(false)
+      expect(panel.cameraError).toBeNull()
+    })
+
+    it('releases the tracks of the stream the abandoned call opened', async () => {
+      const { camera } = await mountThenStopMidStart()
+
+      // Nothing to release yet — the call had not handed over a stream.
+      expect(camera.stop).toHaveBeenCalledTimes(0)
+
+      camera.openCamera()
+      await flushPromises()
+
+      expect(camera.stop).toHaveBeenCalledTimes(1)
+    })
+
+    it('never binds the abandoned stream to the video element', async () => {
+      const { wrapper, camera } = await mountThenStopMidStart()
+
+      camera.openCamera()
+      await flushPromises()
+
+      // `isActive` could be forced false while the srcObject was still assigned,
+      // so the element itself is checked rather than the flag standing in for it.
+      const video = wrapper.find('video')
+      expect(video.exists()).toBe(true)
+      expect(video.element.srcObject).toBeNull()
+    })
+
+    it('raises no error banner when the abandoned call rejects after the stop', async () => {
+      const { wrapper, panel, camera } = await mountThenStopMidStart()
+
+      camera.refuseCamera()
+      await flushPromises()
+
+      // A refusal the caller is no longer waiting on is not the panel's news to
+      // report: it stopped the camera, and `idle` is what it asked for.
+      expect(panel.cameraStatus).toBe('idle')
+      expect(panel.cameraError).toBeNull()
+      expect(wrapper.find('.webcam-error').exists()).toBe(false)
+    })
+
+    it('still reports a rejection that belongs to the CURRENT start', async () => {
+      // The abandonment guard must not become a blanket "never report errors":
+      // this is the same path as the cell above with no stop in between.
+      const camera = deferredCamera()
+      const wrapper = mount(PkWebcamPanel)
+      await flushPromises()
+      const panel = exposed(wrapper)
+
+      camera.refuseCamera()
+      await flushPromises()
+
+      expect(panel.cameraStatus).toBe('denied')
+      expect(panel.cameraError).toEqual({
+        name: 'NotAllowedError',
+        message: 'the browser said so',
+      })
+      expect(wrapper.find('.webcam-error').exists()).toBe(true)
+    })
+
+    it('starts normally again after a stop abandoned an earlier attempt', async () => {
+      // The counter must not latch: a panel that could never reach `live` again
+      // would trade one wrong answer for a worse one.
+      const { panel } = await mountThenStopMidStart()
+
+      stubGetUserMedia(() => Promise.resolve(fakeStream()))
+      await panel.startCamera()
+      await flushPromises()
+
+      expect(panel.cameraStatus).toBe('live')
+      expect(panel.isActive).toBe(true)
+    })
+  })
+
+  /**
    * The seam between the two halves, end to end: a REAL mounted panel, through
    * the real adapter, into the real envelope builder.
    *

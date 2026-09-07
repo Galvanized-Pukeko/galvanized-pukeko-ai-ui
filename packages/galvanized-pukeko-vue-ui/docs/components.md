@@ -173,13 +173,18 @@ if (panel.value?.cameraStatus === 'denied') {
 
 | `cameraStatus` | Meaning | Will waiting help? |
 |----------------|---------|--------------------|
-| `idle` | No capture attempt in flight — before the first start, or after `stopCamera()`. | No — start the camera. |
+| `idle` | No capture attempt in flight that can produce frames — before the first start, or after `stopCamera()`, which abandons a start still running. | No — start the camera. |
 | `starting` | A `getUserMedia` call is in flight and has not settled. | **Yes.** The only status where it can. |
 | `live` | `getUserMedia` resolved and the stream is open. | No — capture should already work. |
 | `denied` | Permission was refused. | No — only the user changing a browser permission will. |
-| `no-device` | No camera matched the request. | No. |
+| `no-device` | No camera device was found — none attached, or none available to this page. | No. |
 | `busy` | The device is held by another application. | No, though a later retry may succeed. |
-| `error` | Rejected for a reason we cannot name. | No. |
+| `error` | Rejected for a reason this table does not name; `cameraError` carries the browser's own. | No. |
+
+`stopCamera()` abandons a `getUserMedia` call that has not settled. The browser cannot
+cancel one, so the panel discards the late result and releases its tracks instead of
+returning to `live` for a session you already stopped — which is what makes `idle` above
+safe to act on.
 
 `cameraError` is `{ name, message }` — the browser's own error name and text — or `null`
 when there is no failure. Both members are plain, JSON-serialisable values rather than a
@@ -187,12 +192,24 @@ raw `DOMException`, so they survive a structured clone and a tool envelope.
 
 The status is classified from the rejection's `name`, never its message, which is
 vendor- and locale-dependent. `webcamStatusFromError(err)` is exported if you call
-`getUserMedia` yourself and want the same mapping.
+`getUserMedia` yourself and want the same mapping. Note that `OverconstrainedError` maps
+to `error`, not `no-device`: it means an attached camera could not satisfy the
+constraints you asked for, so relaxing them is the move — read the name off `cameraError`
+to tell it apart from the other `error` cases.
 
-**A failed capture names its cause.** An `ImageCaptureSource` may implement the optional
-`cameraStatus()` method, and `capture_image` then reports the reason instead of asking
-`Is the camera active?` — for example `Failed to capture frame. Camera permission was
-denied.` `webcamPanelCaptureSource` wires this up for you. A source that omits the method
-keeps the original message exactly, so this changes nothing for an existing consumer.
+**A failed capture can name its cause.** An `ImageCaptureSource` may implement the
+optional `cameraStatus()` method, and `capture_image` then reports the reason instead of
+asking `Is the camera active?` — for example `Failed to capture frame. Camera permission
+was denied.` A source that omits the method keeps `Failed to capture frame. Is the camera
+active?` byte for byte.
+
+**Which sources supply it, and what that changes.** `webcamPanelCaptureSource` always
+supplies the hook, so **panel-backed consumers now receive cause-naming messages**. That
+is a deliberate, visible change for them, not a compatibility accident: a host that
+asserts the old string verbatim will go red when it moves to this version, and updating
+the assertion is the intended fix. `createOnDemandCaptureSource()` — the default behind
+`createCaptureImageFrontendTool()`, so both CopilotKit surfaces — does not report a
+status, so its failures keep the frozen message unchanged.
+
 `captureFailureMessage(status)` and `CAPTURE_IMAGE_FAILED_ERROR` are exported for hosts
 that build their own envelope.

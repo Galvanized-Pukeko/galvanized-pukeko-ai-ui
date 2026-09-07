@@ -65,8 +65,13 @@ export interface ImageCaptureSource {
    * status changes underneath a long-lived source.
    *
    * A source that cannot know its camera's state simply omits this, and
-   * {@link captureImageResult} falls back to the frozen message. That is why the
-   * hook is opt-in: adding it changed no existing source's output.
+   * {@link captureImageResult} falls back to {@link CAPTURE_IMAGE_FAILED_ERROR}
+   * byte for byte — which is why the hook is optional rather than required.
+   *
+   * It is NOT, however, unused: {@link webcamPanelCaptureSource}, which this
+   * library ships, always supplies it, so a host wired to a `PkWebcamPanel` gets
+   * cause-naming messages from this version onwards. See that function for what
+   * changes for such a host.
    */
   cameraStatus?(): WebcamStatus | null | undefined
 }
@@ -205,6 +210,14 @@ export interface WebcamPanelLike {
  * source's envelope from the capture-failed message to `Webcam not initialized`
  * for every existing consumer. The camera's state reaches the model through the
  * capture-failed message instead (RC-55).
+ *
+ * That message CHANGED with RC-55, deliberately and visibly. This adapter always
+ * supplies `cameraStatus()`, so a failed capture from a panel that was refused
+ * now reads `Failed to capture frame. Camera permission was denied.` rather than
+ * {@link CAPTURE_IMAGE_FAILED_ERROR}. A host asserting the old string verbatim
+ * will go red on upgrade; updating that assertion is the intended fix, because
+ * naming the cause is the whole point of the change. Only a source that omits
+ * the hook keeps the frozen message.
  */
 export function webcamPanelCaptureSource(
   getPanel: () => WebcamPanelLike | null | undefined,

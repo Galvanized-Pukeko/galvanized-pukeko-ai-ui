@@ -20,18 +20,27 @@
  * The question a consumer actually asks is **"will waiting help?"**, so each
  * state is documented with that answer. Exactly one state says yes.
  *
- * - `idle`      — no capture attempt is in flight (before the first start, or
- *                 after `stopCamera()`). Waiting will NOT help; start the camera.
+ * - `idle`      — no capture attempt is in flight that can produce frames:
+ *                 before the first start, or after `stopCamera()`, which
+ *                 abandons a start still running. (`getUserMedia` cannot be
+ *                 cancelled, so a call that settles after the stop is discarded
+ *                 and its tracks released, rather than returning the panel to
+ *                 `live`.) Waiting will NOT help; start the camera.
  * - `starting`  — a `getUserMedia` call is in flight and has not settled.
  *                 Waiting MAY help. This is the only state where it can.
  * - `live`      — `getUserMedia` resolved and the stream is open.
  *                 Waiting will not help; capture should already work.
  * - `denied`    — permission was refused. Waiting will NOT help; only the user
  *                 changing a browser permission will.
- * - `no-device` — no camera matched the request. Waiting will NOT help.
+ * - `no-device` — no camera device was found: none is attached, or none is
+ *                 available to this page. Deliberately NOT "no camera matched
+ *                 the request", which is a constraints failure and reports as
+ *                 `error`. Waiting will NOT help.
  * - `busy`      — the device exists but is held by another application. Waiting
  *                 will NOT help, though a later retry may once it is released.
- * - `error`     — rejected for a reason we cannot name. Waiting will NOT help.
+ * - `error`     — rejected for a reason this vocabulary does not name; the
+ *                 browser's own name and message ride along in
+ *                 {@link WebcamError}. Waiting will NOT help.
  *
  * The union is closed and every value is a plain string, so it round-trips
  * through JSON and through an AG-UI tool envelope unchanged.
@@ -75,22 +84,34 @@ const GENERIC_FAILURE_MESSAGE = 'Failed to access camera'
  * it would silently stop working in another browser or another language.
  *
  * The legacy aliases are the pre-standard names older Chrome and Firefox builds
- * still emit. `OverconstrainedError` lands on `no-device` because the consumer's
- * decision is identical — no attached device can serve this request, so waiting
- * cannot change the outcome. `AbortError` is deliberately absent: the spec
- * defines it as "something went wrong that did not fit the other errors", which
- * is precisely what `error` means here.
+ * still emit — including `PermissionDismissedError`, which means the user closed
+ * the permission prompt without choosing. That is a refusal like any other, so
+ * it maps with the rest of the `denied` family.
+ *
+ * `OverconstrainedError` and its legacy alias are listed explicitly on `error`
+ * rather than left to fall through, because the obvious reading is wrong: the
+ * name means an attached camera could not satisfy the requested constraints, NOT
+ * that no camera exists. Calling it `no-device` told a consumer
+ * `No camera device was found.` while a camera was plugged in, and hid the one
+ * move that does work — relaxing the constraints. The vocabulary has no status
+ * for that, so `error` plus the browser's own name and message in
+ * {@link WebcamError} is the honest report.
+ *
+ * `AbortError` is deliberately absent: the spec defines it as "something went
+ * wrong that did not fit the other errors", which is precisely what `error`
+ * means here.
  */
 const STATUS_BY_ERROR_NAME: Readonly<Record<string, WebcamStatus>> = {
   NotAllowedError: 'denied',
   PermissionDeniedError: 'denied', // legacy Chrome/Firefox
+  PermissionDismissedError: 'denied', // legacy Chrome — prompt closed unanswered
   SecurityError: 'denied',
   NotFoundError: 'no-device',
   DevicesNotFoundError: 'no-device', // legacy Chrome
-  OverconstrainedError: 'no-device',
-  ConstraintNotSatisfiedError: 'no-device', // legacy Chrome
   NotReadableError: 'busy',
   TrackStartError: 'busy', // legacy Chrome
+  OverconstrainedError: 'error',
+  ConstraintNotSatisfiedError: 'error', // legacy Chrome
 }
 
 /** Read a string property off an unknown throwable without assuming its type. */
