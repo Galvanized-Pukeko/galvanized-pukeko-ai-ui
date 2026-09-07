@@ -28,7 +28,7 @@
  * redundant as soon as the client declares `capture_image` in the run input.
  */
 import type { Tool } from '@ag-ui/client'
-import type { WebcamStatus } from './webcamStatus'
+import { webcamStatusFromError, type WebcamStatus } from './webcamStatus'
 
 /** The frozen client-tool name (RC-14: renderers + middleware key on it). */
 export const CAPTURE_IMAGE_TOOL_NAME = 'capture_image'
@@ -298,15 +298,49 @@ async function waitForPaintedFrame(video: HTMLVideoElement): Promise<void> {
  * A self-contained capture source for hosts with no visible webcam panel (e.g.
  * the headless chat): on each capture it opens `getUserMedia`, waits for the
  * first real frame, downscales to `maxSize` (PkWebcamPanel parity), encodes a
- * JPEG data URL, and releases the camera again. Returns null (→ the standard
- * "Failed to capture frame" envelope) when the camera is denied or absent.
+ * JPEG data URL, and releases the camera again.
+ *
+ * A capture that fails returns null AND records why, so the envelope can name
+ * the cause (RC-57). A `getUserMedia` rejection is classified through
+ * {@link webcamStatusFromError} — RC-55's shared classifier, the same function
+ * `PkWebcamPanel` itself calls, so this source and
+ * {@link webcamPanelCaptureSource} answer "why are there no frames?" with one
+ * vocabulary rather than two. A denied camera therefore reaches the model as
+ * `Failed to capture frame. Camera permission was denied.` instead of the
+ * question it cannot answer.
+ *
+ * What still yields {@link CAPTURE_IMAGE_FAILED_ERROR} byte for byte: a
+ * rejection the vocabulary does not name — `OverconstrainedError` among them,
+ * mapped to `error` deliberately, since a camera that could not meet the
+ * requested constraints is not an absent one — and every failure that never
+ * threw at all (no camera API, zero dimensions, no 2d context).
  */
 export function createOnDemandCaptureSource(opts: OnDemandCaptureOptions = {}): ImageCaptureSource {
   const maxSize = opts.maxSize ?? 640
   const quality = opts.quality ?? 0.8
   const settleMs = opts.settleMs ?? DEFAULT_SETTLE_MS
 
+  /**
+   * Why the last capture attempt had no frame, or null when there is nothing to
+   * report. Set only where an attempt actually threw, so it stays null before
+   * the first capture, after a successful one, and on the failures that return
+   * null without throwing — each of which keeps the frozen message.
+   *
+   * This is last-ATTEMPT state, not the camera's current state, and that is the
+   * difference from {@link webcamPanelCaptureSource}: the panel adapter reads a
+   * device its panel is still holding, while this source releases the camera in
+   * `grabFrame`'s `finally`, so nothing is open by the time anyone reads this.
+   * Hence a successful capture leaves it null rather than claiming `live` —
+   * which would be false the moment it was read. Same hook, same read timing,
+   * different provenance; two concurrent captures from one source would
+   * overwrite each other's status here, where a panel's could not.
+   */
+  let lastFailureStatus: WebcamStatus | null = null
+
   async function grabFrame(): Promise<string | null> {
+    // Clear before attempting: a status held from an earlier attempt would name
+    // the wrong cause for this one — a denial the user has since granted, say.
+    lastFailureStatus = null
     const mediaDevices = navigator.mediaDevices
     if (!mediaDevices?.getUserMedia) return null
     let stream: MediaStream | null = null
@@ -352,6 +386,14 @@ export function createOnDemandCaptureSource(opts: OnDemandCaptureOptions = {}): 
       ctx.drawImage(video, 0, 0, width, height)
       return canvas.toDataURL('image/jpeg', quality)
     } catch (err) {
+      // Classify BEFORE discarding the rejection: it is the only thing that
+      // knows why the camera has no frames, and returning a bare null threw
+      // that away (RC-57).
+      lastFailureStatus = webcamStatusFromError(err)
+      // Kept: the status vocabulary is deliberately closed, so it collapses
+      // `OverconstrainedError` and every unrecognised rejection into `error`.
+      // This line is the only place a developer still sees the browser's own
+      // name and message for exactly the causes the envelope cannot name.
       console.warn('[captureImage] on-demand capture failed:', err)
       return null
     } finally {
@@ -366,6 +408,10 @@ export function createOnDemandCaptureSource(opts: OnDemandCaptureOptions = {}): 
     // envelope from grabFrame's null.
     isReady: () => typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia,
     captureFrame: () => grabFrame(),
+    // Read per capture, like the panel adapter's: `captureImageResult` consults
+    // this only after `captureFrame` has settled, which is when it describes the
+    // attempt that just failed.
+    cameraStatus: () => lastFailureStatus,
   }
 }
 

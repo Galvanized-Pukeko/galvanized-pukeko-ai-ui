@@ -267,6 +267,189 @@ describe('createOnDemandCaptureSource', () => {
   })
 })
 
+/**
+ * RC-57: the on-demand source held the rejection and threw it away.
+ *
+ * `getUserMedia` rejects with the exact object that says why the camera has no
+ * frames, and `grabFrame` caught it, logged it, and returned an undifferentiated
+ * null — so the envelope fell back to the frozen question and asked the model
+ * something we already knew the answer to. This source is the DEFAULT for both
+ * CopilotKit surfaces (`captureImageFrontendTool`), so that was the common path.
+ *
+ * Every cell asserts on the MESSAGE that reaches `captureImageResult`, never
+ * merely that a capture failed: one cause's failure would otherwise stand in for
+ * another's, which is an assertion that cannot fail in the way that matters.
+ */
+describe('createOnDemandCaptureSource — naming the cause of a failed capture (RC-57)', () => {
+  const DATA_URL = 'data:image/jpeg;base64,PAINTED'
+  const restores: Array<() => void> = []
+  let warn: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    // The catch logs deliberately; keep the suite output clean.
+    warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    while (restores.length) restores.pop()!()
+    warn.mockRestore()
+  })
+
+  /** Install a `navigator.mediaDevices` whose `getUserMedia` runs `impl`. */
+  function stubGetUserMedia(impl: () => Promise<unknown>) {
+    const original = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices')
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia: vi.fn(impl) },
+      configurable: true,
+    })
+    restores.push(() => {
+      if (original) Object.defineProperty(navigator, 'mediaDevices', original)
+      else delete (navigator as unknown as Record<string, unknown>).mediaDevices
+    })
+  }
+
+  function patch(proto: object, key: string, value: unknown) {
+    const target = proto as Record<string, unknown>
+    const original = Object.getOwnPropertyDescriptor(target, key)
+    Object.defineProperty(target, key, { value, configurable: true, writable: true })
+    restores.push(() => {
+      if (original) Object.defineProperty(target, key, original)
+      else delete target[key]
+    })
+  }
+
+  function patchGetter(proto: object, key: string, get: () => unknown) {
+    const target = proto as Record<string, unknown>
+    const original = Object.getOwnPropertyDescriptor(target, key)
+    Object.defineProperty(target, key, { get, configurable: true })
+    restores.push(() => {
+      if (original) Object.defineProperty(target, key, original)
+      else delete target[key]
+    })
+  }
+
+  /**
+   * Stub the DOM the capture path walks once the camera IS open. `context` is
+   * what `getContext('2d')` yields — null fails the draw WITHOUT throwing, the
+   * one failure shape that must not name a cause.
+   */
+  function stubCaptureDom(context: { drawImage: () => void } | null) {
+    patch(HTMLMediaElement.prototype, 'play', vi.fn().mockResolvedValue(undefined))
+    patchGetter(HTMLVideoElement.prototype, 'videoWidth', () => 640)
+    patchGetter(HTMLVideoElement.prototype, 'videoHeight', () => 480)
+    patch(HTMLVideoElement.prototype, 'requestVideoFrameCallback', (cb: () => void) => {
+      cb()
+      return 1
+    })
+    patch(HTMLCanvasElement.prototype, 'getContext', () => context)
+    patch(HTMLCanvasElement.prototype, 'toDataURL', () => DATA_URL)
+  }
+
+  /** A camera that refuses to open, with the browser's own rejection. */
+  function rejectingCamera(err: unknown): ImageCaptureSource {
+    stubGetUserMedia(() => Promise.reject(err))
+    return createOnDemandCaptureSource({ settleMs: 0 })
+  }
+
+  const errorOf = async (s: ImageCaptureSource) =>
+    (JSON.parse(await captureImageResult(s)) as { error: string }).error
+
+  it.each([
+    ['NotAllowedError', 'Failed to capture frame. Camera permission was denied.'],
+    ['NotFoundError', 'Failed to capture frame. No camera device was found.'],
+    ['NotReadableError', 'Failed to capture frame. The camera is in use by another application.'],
+    ['SecurityError', 'Failed to capture frame. Camera permission was denied.'],
+    // The legacy aliases pass only because the mapping is RC-55's shared table
+    // rather than a switch hand-written here, which would have listed the modern
+    // names and stopped.
+    ['PermissionDismissedError', 'Failed to capture frame. Camera permission was denied.'],
+    ['TrackStartError', 'Failed to capture frame. The camera is in use by another application.'],
+  ])('names a %s rejection in the failure envelope', async (name, expected) => {
+    const source = rejectingCamera(new DOMException('camera unavailable', name))
+
+    expect(await errorOf(source)).toBe(expected)
+    // Each cause reads differently from the frozen default — the point of RC-57.
+    expect(expected).not.toBe(CAPTURE_IMAGE_FAILED_ERROR)
+  })
+
+  it('keeps the frozen message for an OverconstrainedError', async () => {
+    // RC-55 maps this to `error` on purpose (webcamStatus.ts): the name means an
+    // ATTACHED camera could not meet the requested constraints, not that no
+    // camera exists. The vocabulary has no word for that, so the honest report
+    // is the frozen "we do not know" question. Naming it here would take a
+    // second, divergent mapping — the failure this pair of nodes exists to close.
+    const source = rejectingCamera(new DOMException('width unsupported', 'OverconstrainedError'))
+
+    expect(await errorOf(source)).toBe('Failed to capture frame. Is the camera active?')
+    expect(await errorOf(source)).toBe(CAPTURE_IMAGE_FAILED_ERROR)
+  })
+
+  it('keeps the frozen message for a rejection the vocabulary does not recognise', async () => {
+    const source = rejectingCamera(new Error('camera frame timeout'))
+
+    expect(await errorOf(source)).toBe('Failed to capture frame. Is the camera active?')
+  })
+
+  it('reports a null status before any capture has been attempted', () => {
+    stubGetUserMedia(() => Promise.reject(new DOMException('refused', 'NotAllowedError')))
+    const source = createOnDemandCaptureSource({ settleMs: 0 })
+
+    // Null, not undefined — the same "nothing to report" the panel adapter's
+    // `?? null` yields for an unmounted panel.
+    expect(source.cameraStatus?.()).toBeNull()
+  })
+
+  it('does not claim a status after a capture SUCCEEDS', async () => {
+    // The camera is released in `finally`, so `live` would be false the moment
+    // it was read. Nothing to report is the truthful answer.
+    stubGetUserMedia(async () => ({ getTracks: () => [{ stop: vi.fn() }] }))
+    stubCaptureDom({ drawImage: vi.fn() })
+    const source = createOnDemandCaptureSource({ settleMs: 0 })
+
+    expect(await source.captureFrame()).toBe(DATA_URL)
+    expect(source.cameraStatus?.()).toBeNull()
+  })
+
+  it('does not carry a status from one capture to the next', async () => {
+    // The sharpest case this guards: a denial the user has SINCE GRANTED.
+    // Capture 1 is refused. Capture 2 opens the camera and fails at the draw
+    // instead — a failure with no nameable cause. Without the per-attempt reset,
+    // capture 2 blames a permission that is no longer denied.
+    let attempt = 0
+    stubGetUserMedia(async () => {
+      if (attempt++ === 0) throw new DOMException('refused', 'NotAllowedError')
+      return { getTracks: () => [{ stop: vi.fn() }] }
+    })
+    stubCaptureDom(null)
+    const source = createOnDemandCaptureSource({ settleMs: 0 })
+
+    expect(await errorOf(source)).toBe('Failed to capture frame. Camera permission was denied.')
+    expect(await errorOf(source)).toBe('Failed to capture frame. Is the camera active?')
+  })
+
+  it('leaves a source that omits the hook producing the frozen bytes', async () => {
+    // The RC-14 contract, unmoved: supplying `cameraStatus` is what turns
+    // cause-naming on, so a source without it is byte-identical to before.
+    const hookless: ImageCaptureSource = { isReady: () => true, captureFrame: () => null }
+
+    expect(hookless.cameraStatus).toBeUndefined()
+    expect(await captureImageResult(hookless)).toBe(
+      JSON.stringify({ error: 'Failed to capture frame. Is the camera active?' }),
+    )
+  })
+
+  it('still logs the rejection, the only place its own name and message survive', async () => {
+    const err = new DOMException('width unsupported', 'OverconstrainedError')
+
+    await captureImageResult(rejectingCamera(err))
+
+    // The status vocabulary is closed, so it collapses this to `error`. Without
+    // the log the browser's own reason would be lost to a developer entirely,
+    // which is why the warn stays.
+    expect(warn).toHaveBeenCalledWith('[captureImage] on-demand capture failed:', err)
+  })
+})
+
 // RC-19: the capture used to draw as soon as the stream reported its DIMENSIONS
 // (`loadedmetadata`), which does not mean a frame has been decoded and painted —
 // so it encoded a well-formed JPEG of pure black. These specs pin the wait for a
