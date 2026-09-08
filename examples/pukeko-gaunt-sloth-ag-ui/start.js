@@ -23,6 +23,12 @@ try { process.loadEnvFile(resolve(ROOT, '.env')); } catch { /* no .env: defaults
 const AGUI_PORT = Number(process.env.GTH_AGUI_PORT) || 3000;
 const WEB_PORT = Number(process.env.WEB_PORT) || 5555;
 const AGUI_URL = `http://localhost:${AGUI_PORT}/agents/default/run`;
+// OPS-16: the origin the browser will send, defaulted from the web client's own port — the
+// shape ADK_CORS_ORIGINS already uses in start-adk.js. `.gsloth.config.json` pins one origin
+// and cannot know which port WEB_PORT moved the client to, so the launcher that resolved the
+// port passes the matching origin down with it.
+const WEB_URL = `http://localhost:${WEB_PORT}`;
+const GTH_CORS_ORIGIN = process.env.GTH_CORS_ORIGIN || WEB_URL;
 const READY_TIMEOUT_MS = 60_000;
 const POLL_INTERVAL_MS = 2_000;
 
@@ -65,14 +71,17 @@ const gthProc = spawnLocalBin(
   GTH_API_BIN,
   [
     'ag-ui',
-    // Both flags take effect. The port precedence is `--port`, then
+    // All three flags take effect. The port precedence is `--port`, then
     // `commands.api.port` from the config, then 3000 — so the flag is what makes
     // an allocated GTH_AGUI_PORT reach the server, over the 3000 the config
-    // states. `--config` names the file outright and refuses the run when it is
-    // missing rather than quietly falling back to discovery. `cwd` below still
-    // matters: it is the project root the guidelines and other project-relative
-    // artifacts are found from.
+    // states. `--cors-origin` does the same for the browser origin, over the
+    // `cors.allowOrigin` in that config: without it a web client on any port but
+    // the pinned one is refused by the preflight. `--config` names the file
+    // outright and refuses the run when it is missing rather than quietly falling
+    // back to discovery. `cwd` below still matters: it is the project root the
+    // guidelines and other project-relative artifacts are found from.
     '--port', String(AGUI_PORT),
+    '--cors-origin', GTH_CORS_ORIGIN,
     '--config', resolve(__dirname, '.gsloth.config.json'),
   ],
   {

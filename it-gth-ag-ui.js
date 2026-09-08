@@ -24,6 +24,11 @@ const WEB_PORT = process.env.WEB_PORT || '5555';
 const GTH_API_HEALTH_URL = `http://localhost:${GTH_AGUI_PORT}/health`;
 const AGUI_URL = `http://localhost:${GTH_AGUI_PORT}/agents/default/run`;
 const WEB_URL = `http://localhost:${WEB_PORT}`;
+// OPS-16: the browser origin playwright will actually load from, defaulted off the same
+// WEB_PORT that gives it its baseURL. Without it a run at any allocated offset but the
+// default is refused by the preflight, which is the parallel-isolation guarantee OPS-8 set
+// out to give this harness.
+const GTH_CORS_ORIGIN = process.env.GTH_CORS_ORIGIN || WEB_URL;
 const READY_TIMEOUT_MS = 60_000;
 const POLL_INTERVAL_MS = 2_000;
 
@@ -44,14 +49,17 @@ function startGthAgUi() {
     GTH_API_BIN,
     [
       'ag-ui',
-      // Both flags take effect. The port precedence is `--port`, then
+      // All three flags take effect. The port precedence is `--port`, then
       // `commands.api.port` from the config, then 3000 — so the flag is what
       // makes an allocated GTH_AGUI_PORT reach the server, over the 3000 the
-      // config states. `--config` names the file outright and refuses the run
-      // when it is missing rather than quietly falling back to discovery. `cwd`
-      // below still matters: it is the project root the guidelines and other
-      // project-relative artifacts are found from.
+      // config states. `--cors-origin` is the same lever for the browser origin,
+      // over the `cors.allowOrigin` the config pins, so a run on a shifted
+      // WEB_PORT is not refused by the preflight. `--config` names the file
+      // outright and refuses the run when it is missing rather than quietly
+      // falling back to discovery. `cwd` below still matters: it is the project
+      // root the guidelines and other project-relative artifacts are found from.
       '--port', GTH_AGUI_PORT,
+      '--cors-origin', GTH_CORS_ORIGIN,
       '--config', resolve(__dirname, 'examples/pukeko-gaunt-sloth-ag-ui/.gsloth.config.json'),
     ],
     {

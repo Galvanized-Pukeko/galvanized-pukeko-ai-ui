@@ -22,6 +22,11 @@ const WEB_PORT = process.env.WEB_PORT || '5555';
 const GTH_API_HEALTH_URL = `http://localhost:${GTH_AGUI_PORT}/health`;
 const AGUI_URL = `http://localhost:${GTH_AGUI_PORT}/agents/default/run`;
 const WEB_URL = `http://localhost:${WEB_PORT}`;
+// OPS-16: the origin the browser will actually send, defaulted from the web client's own
+// resolved URL — the same shape as ADK_CORS_ORIGINS in start-adk.js, an env var with a
+// default that is threaded to the server on its command line. It has to be computed here
+// because WEB_PORT is: the config file pins one origin and cannot know which port vite got.
+const GTH_CORS_ORIGIN = process.env.GTH_CORS_ORIGIN || WEB_URL;
 const READY_TIMEOUT_MS = 60_000;
 const POLL_INTERVAL_MS = 2_000;
 
@@ -42,14 +47,18 @@ function startGthAgUi() {
     GTH_API_BIN,
     [
       'ag-ui',
-      // Both flags take effect. The port precedence is `--port`, then
+      // All three flags take effect. The port precedence is `--port`, then
       // `commands.api.port` from the config, then 3000 — so the flag is what
       // makes an allocated GTH_AGUI_PORT reach the server, over the 3000 the
-      // config states. `--config` names the file outright and refuses the run
-      // when it is missing rather than quietly falling back to discovery. `cwd`
-      // below still matters: it is the project root the guidelines and other
-      // project-relative artifacts are found from.
+      // config states. `--cors-origin` is the same story for the browser origin,
+      // over the `cors.allowOrigin` the same config pins: without it a client on
+      // any port but 5555 is refused by the preflight and every chat request
+      // fails. `--config` names the file outright and refuses the run when it is
+      // missing rather than quietly falling back to discovery. `cwd` below still
+      // matters: it is the project root the guidelines and other project-relative
+      // artifacts are found from.
       '--port', GTH_AGUI_PORT,
+      '--cors-origin', GTH_CORS_ORIGIN,
       '--config', resolve(__dirname, 'examples/pukeko-gaunt-sloth-ag-ui/.gsloth.config.json'),
     ],
     {
@@ -117,6 +126,7 @@ try {
   console.log('\nAll services ready.');
   console.log(`  Gaunt Sloth AG-UI: http://localhost:${GTH_AGUI_PORT}`);
   console.log(`  Web Client       : ${WEB_URL}`);
+  console.log(`  Allowed origin   : ${GTH_CORS_ORIGIN}`);
   console.log('\nPress Ctrl+C to stop.\n');
 } catch (err) {
   console.error(`\nAborted: ${err.message}`);
