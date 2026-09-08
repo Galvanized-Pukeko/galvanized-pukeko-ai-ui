@@ -33,7 +33,7 @@
     "release:bump-and-commit": "node scripts/bump-vue-ui.mjs --commit"
   },
   "dependencies": {
-    "@gaunt-sloth/agent": "2.0.0-beta.6",
+    "@gaunt-sloth/agent": "2.0.0-beta.7",
     "@langchain/openai": "^1.4.7",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/ws": "^8.18.1",

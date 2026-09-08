@@ -15,8 +15,8 @@ importers:
   .:
     dependencies:
       '@gaunt-sloth/agent':
-        specifier: 2.0.0-beta.6
-        version: 2.0.0-beta.6(@bufbuild/protobuf@2.12.0)(@cfworker/json-schema@4.1.1)(@langchain/openai@1.5.1(@langchain/core@1.2.9(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0))(ws@8.21.0))(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0)
+        specifier: 2.0.0-beta.7
+        version: 2.0.0-beta.7(@bufbuild/protobuf@2.12.0)(@cfworker/json-schema@4.1.1)(@langchain/openai@1.5.1(@langchain/core@1.2.9(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0))(ws@8.21.0))(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0)
       '@langchain/openai':
         specifier: ^1.4.7
         version: 1.5.1(@langchain/core@1.2.9(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0))(ws@8.21.0)
@@ -509,12 +509,12 @@ packages:
     resolution: {integrity: sha512-+CNAzxglkrpNf/kKywqQfk74QjtceuOE7Qm+AF8miRvPF/wmmK5+OJOgVh3AVTT3RP2mH3+FOaxlE5v72owk0A==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@gaunt-sloth/agent@2.0.0-beta.6':
-    resolution: {integrity: sha512-T/2ErDXbHzC2A4PzK/OWCIZ69u4kZOIl/fg8YbrK8KzyWjieeR7Y7es3RmmYkM4IThycKlrJ/5qk2ZIIji89IQ==}
+  '@gaunt-sloth/agent@2.0.0-beta.7':
+    resolution: {integrity: sha512-LVZKgfzc6xHy3MTZMIGaftR+LtwZRRqaB2w2cSBxi9D0XtAEmFz/78bCOSWm7U+ILjGsNa/UYCF9znCSZamZ3g==}
     hasBin: true
 
-  '@gaunt-sloth/core@2.0.0-beta.6':
-    resolution: {integrity: sha512-ZxP1fzswT+hxYJeqYlztWSGyQdpVdttl5rORkFKUPppSBMuPIQgpE5cQJib4qlmUWsXu6AibINBLxuvq2P0OUQ==}
+  '@gaunt-sloth/core@2.0.0-beta.7':
+    resolution: {integrity: sha512-OHxm0UygouhbBnq/zwiX7RGH97wPyShnn6VDms5B/XLKrDeqU9ObZkyuk7WI90w/SVjtT6U5IeOxH/ZuPyBDNg==}
     peerDependencies:
       '@langchain/anthropic': ^1.5.0
       '@langchain/deepseek': ^1.1.1
@@ -4015,13 +4015,13 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@gaunt-sloth/agent@2.0.0-beta.6(@bufbuild/protobuf@2.12.0)(@cfworker/json-schema@4.1.1)(@langchain/openai@1.5.1(@langchain/core@1.2.9(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0))(ws@8.21.0))(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0)':
+  '@gaunt-sloth/agent@2.0.0-beta.7(@bufbuild/protobuf@2.12.0)(@cfworker/json-schema@4.1.1)(@langchain/openai@1.5.1(@langchain/core@1.2.9(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0))(ws@8.21.0))(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0)':
     dependencies:
       '@a2a-js/sdk': 1.1.0(@bufbuild/protobuf@2.12.0)(express@5.2.1)
       '@ag-ui/core': 0.0.59
       '@ag-ui/encoder': 0.0.59
       '@agentclientprotocol/sdk': 1.4.0(zod@4.4.3)
-      '@gaunt-sloth/core': 2.0.0-beta.6(@langchain/openai@1.5.1(@langchain/core@1.2.9(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0))(ws@8.21.0))(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0)
+      '@gaunt-sloth/core': 2.0.0-beta.7(@langchain/openai@1.5.1(@langchain/core@1.2.9(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0))(ws@8.21.0))(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0)
       '@langchain/core': 1.2.9(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0)
       '@langchain/langgraph': 1.4.13(@langchain/core@1.2.9(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0))(zod@3.25.76)
       '@langchain/mcp-adapters': 1.1.4(@cfworker/json-schema@4.1.1)(@langchain/core@1.2.9(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0))(@langchain/langgraph@1.4.13(@langchain/core@1.2.9(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0))(zod@4.4.3))
@@ -4053,7 +4053,7 @@ snapshots:
       - supports-color
       - ws
 
-  '@gaunt-sloth/core@2.0.0-beta.6(@langchain/openai@1.5.1(@langchain/core@1.2.9(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0))(ws@8.21.0))(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0)':
+  '@gaunt-sloth/core@2.0.0-beta.7(@langchain/openai@1.5.1(@langchain/core@1.2.9(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0))(ws@8.21.0))(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0)':
     dependencies:
       '@langchain/core': 1.2.9(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0)
       '@langchain/langgraph': 1.4.13(@langchain/core@1.2.9(openai@6.44.0(ws@8.21.0)(zod@3.25.76))(ws@8.21.0))(zod@4.4.3)
