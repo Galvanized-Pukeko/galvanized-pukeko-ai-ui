@@ -6,7 +6,8 @@ This example demonstrates the Galvanized Pukeko web client communicating with Ga
 
 - Node.js 24+
 - npm 11+
-- A configured Gaunt Sloth config (`.gsloth.config.json`) with a valid LLM provider
+- An LLM provider — either an `OPENAI_API_KEY`, or a local [Ollama](https://ollama.com) daemon,
+  which needs no key. See [Choosing a provider](#choosing-a-provider).
 
 ## Quick Start
 
@@ -38,6 +39,14 @@ root. Run its installed binary directly, from this directory:
 ../../node_modules/.bin/gaunt-sloth-api ag-ui
 ```
 
+Started this way it discovers `.gsloth.config.json` from the working directory, so it always runs
+the fallback provider — `GTH_LLM_PROVIDER` is read by the launchers, not by the binary. Name the
+file yourself to run another one:
+
+```bash
+../../node_modules/.bin/gaunt-sloth-api ag-ui --config .gsloth.config.ollama.json
+```
+
 **Terminal 2 — Web client (with AG-UI URL):**
 ```bash
 cd ../../packages/galvanized-pukeko-web-client
@@ -48,9 +57,46 @@ Then open http://localhost:5555 in your browser.
 
 ## Configuration
 
-The example uses the Gaunt Sloth config from this directory (`.gsloth.config.json`). Edit this file to change the LLM provider or model.
+### Choosing a provider
 
-The example ships with an OpenAI configuration. Set `OPENAI_API_KEY` in your environment or update `.gsloth.config.json` for a different provider.
+`GTH_LLM_PROVIDER` picks which of this directory's Gaunt Sloth configurations the launchers run.
+Leave it unset and you get `openai`, the documented fallback — which is the historical behaviour of
+this example and needs an `OPENAI_API_KEY`.
+
+| `GTH_LLM_PROVIDER` | Configuration file | Needs a key |
+|---|---|---|
+| unset, or `openai` | `.gsloth.config.json` | yes — `OPENAI_API_KEY` |
+| `ollama` | `.gsloth.config.ollama.json` | no — a local Ollama daemon |
+
+```bash
+# No API key: run against a local Ollama daemon
+GTH_LLM_PROVIDER=ollama node start.js
+```
+
+The Ollama configuration expects `gemma4:12b` and the daemon on `http://127.0.0.1:11434`; point
+elsewhere with `OLLAMA_HOST`, or edit the `model` in that file.
+
+A provider that names no configuration file ends the run and lists the ones that exist, rather than
+quietly starting on the fallback — a server running a model you did not choose is worse than one
+that refuses to start.
+
+### Adding a provider
+
+Drop a `.gsloth.config.<provider>.json` in this directory and `GTH_LLM_PROVIDER=<provider>` finds it;
+the selection is by convention and no launcher needs editing. Providers other than the two above
+also need their LangChain package installed at the repository root (`@gaunt-sloth/core` declares
+them as peer dependencies and imports them on demand), so add e.g. `@langchain/anthropic` alongside
+the config file.
+
+### Why selection and not interpolation
+
+A Gaunt Sloth JSON config has no environment interpolation, so the provider cannot be a `${VAR}`
+inside `.gsloth.config.json`. A `.gsloth.config.js` module config whose `configure()` reads the
+environment does not work either at the pinned `@gaunt-sloth/agent`: the loader validates a module
+config's return value through a schema before any model is built, and that parse returns a plain
+object — a raw `{ type, model }` spec comes back unrouted, and an already-built model instance comes
+back stripped of its prototype. Only the JSON branch builds a usable client, so the environment
+selects between JSON files. See `scripts/llm-config.mjs`.
 
 ### Ports
 

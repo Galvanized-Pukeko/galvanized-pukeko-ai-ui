@@ -4,6 +4,11 @@ import { createWriteStream } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { resolveLocalBinOrExit, spawnLocalBin } from './scripts/local-bin.mjs';
+import {
+  AG_UI_EXAMPLE_DIR,
+  PROVIDER_ENV_VAR,
+  resolveLlmConfigOrExit,
+} from './scripts/llm-config.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -27,6 +32,12 @@ const WEB_URL = `http://localhost:${WEB_PORT}`;
 // default that is threaded to the server on its command line. It has to be computed here
 // because WEB_PORT is: the config file pins one origin and cannot know which port vite got.
 const GTH_CORS_ORIGIN = process.env.GTH_CORS_ORIGIN || WEB_URL;
+// QA-19: which provider's configuration to run, read from GTH_LLM_PROVIDER with a documented
+// fallback. Resolved before anything starts so an unknown provider ends the run with nothing to
+// tear down. See scripts/llm-config.mjs for why the environment picks a FILE rather than a value
+// interpolated into one.
+const EXAMPLE_DIR = resolve(__dirname, AG_UI_EXAMPLE_DIR);
+const { provider: LLM_PROVIDER, configPath: LLM_CONFIG_PATH } = resolveLlmConfigOrExit(EXAMPLE_DIR);
 const READY_TIMEOUT_MS = 60_000;
 const POLL_INTERVAL_MS = 2_000;
 
@@ -59,10 +70,10 @@ function startGthAgUi() {
       // artifacts are found from.
       '--port', GTH_AGUI_PORT,
       '--cors-origin', GTH_CORS_ORIGIN,
-      '--config', resolve(__dirname, 'examples/pukeko-gaunt-sloth-ag-ui/.gsloth.config.json'),
+      '--config', LLM_CONFIG_PATH,
     ],
     {
-      cwd: resolve(__dirname, 'examples/pukeko-gaunt-sloth-ag-ui'),
+      cwd: EXAMPLE_DIR,
       stdio: ['inherit', 'pipe', 'pipe'],
       detached: true,
     }
@@ -127,6 +138,7 @@ try {
   console.log(`  Gaunt Sloth AG-UI: http://localhost:${GTH_AGUI_PORT}`);
   console.log(`  Web Client       : ${WEB_URL}`);
   console.log(`  Allowed origin   : ${GTH_CORS_ORIGIN}`);
+  console.log(`  LLM provider     : ${LLM_PROVIDER} (set ${PROVIDER_ENV_VAR} to change it)`);
   console.log('\nPress Ctrl+C to stop.\n');
 } catch (err) {
   console.error(`\nAborted: ${err.message}`);

@@ -86,6 +86,17 @@ pnpm install
 pnpm run start-gth-ag-ui   # AG-UI server on :3000 + web client on :5555
 ```
 
+This runs OpenAI and needs an `OPENAI_API_KEY`. For no key at all, point it at a local
+[Ollama](https://ollama.com) daemon:
+
+```bash
+GTH_LLM_PROVIDER=ollama pnpm run start-gth-ag-ui
+```
+
+`GTH_LLM_PROVIDER` selects one of the configurations in
+[examples/pukeko-gaunt-sloth-ag-ui/](examples/pukeko-gaunt-sloth-ag-ui/README.md#choosing-a-provider),
+which is also where you add another provider.
+
 **Option 2 — ADK agent (Java):**
 
 ```bash

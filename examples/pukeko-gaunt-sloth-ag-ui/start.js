@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { resolveLocalBinOrExit, spawnLocalBin } from '../../scripts/local-bin.mjs';
+import { PROVIDER_ENV_VAR, resolveLlmConfigOrExit } from '../../scripts/llm-config.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -29,6 +30,11 @@ const AGUI_URL = `http://localhost:${AGUI_PORT}/agents/default/run`;
 // port passes the matching origin down with it.
 const WEB_URL = `http://localhost:${WEB_PORT}`;
 const GTH_CORS_ORIGIN = process.env.GTH_CORS_ORIGIN || WEB_URL;
+// QA-19: which provider's configuration to run. Resolved before anything starts, so an
+// unknown GTH_LLM_PROVIDER ends the run with nothing to tear down. Unset falls back to the
+// documented default; see scripts/llm-config.mjs for why this is a file choice rather than a
+// value interpolated into one config.
+const { provider: LLM_PROVIDER, configPath: LLM_CONFIG_PATH } = resolveLlmConfigOrExit(__dirname);
 const READY_TIMEOUT_MS = 60_000;
 const POLL_INTERVAL_MS = 2_000;
 
@@ -67,6 +73,7 @@ async function waitForReady(url, label) {
 
 // Start Gaunt Sloth AG-UI server
 console.log(`Starting Gaunt Sloth AG-UI server on port ${AGUI_PORT}...`);
+console.log(`  LLM provider: ${LLM_PROVIDER} (set ${PROVIDER_ENV_VAR} to change it)`);
 const gthProc = spawnLocalBin(
   GTH_API_BIN,
   [
@@ -82,7 +89,7 @@ const gthProc = spawnLocalBin(
     // guidelines and other project-relative artifacts are found from.
     '--port', String(AGUI_PORT),
     '--cors-origin', GTH_CORS_ORIGIN,
-    '--config', resolve(__dirname, '.gsloth.config.json'),
+    '--config', LLM_CONFIG_PATH,
   ],
   {
     cwd: __dirname,

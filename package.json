@@ -18,7 +18,7 @@
     "type-check": "tsc -p tsconfig.tooling.json",
     "build": "pnpm run type-check && pnpm -r run build",
     "lint": "oxlint --ignore-path .gitignore --ignore-pattern \"packages/galvanized-pukeko-agent-adk/src/main/resources/browser/**\" -D correctness .",
-    "test": "node scripts/check-no-bare-launchers.mjs && pnpm run lint && pnpm -r run test",
+    "test": "node scripts/check-no-bare-launchers.mjs && node scripts/check-llm-config.mjs && pnpm run lint && pnpm -r run test",
     "web": "pnpm --filter @galvanized-pukeko/web-client run dev",
     "web-ag-ui": "AGUI_URL=http://localhost:3000/agents/default/run pnpm --filter @galvanized-pukeko/web-client run dev",
     "sink": "pnpm --filter @galvanized-pukeko/web-client run sink",
@@ -34,6 +34,7 @@
   },
   "dependencies": {
     "@gaunt-sloth/agent": "2.0.0-beta.7",
+    "@langchain/ollama": "^1.3.0",
     "@langchain/openai": "^1.4.7",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/ws": "^8.18.1",

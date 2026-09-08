@@ -4,6 +4,11 @@ import { createWriteStream } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { resolveLocalBinOrExit, spawnLocalBin } from './scripts/local-bin.mjs';
+import {
+  AG_UI_EXAMPLE_DIR,
+  PROVIDER_ENV_VAR,
+  resolveLlmConfigOrExit,
+} from './scripts/llm-config.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -29,6 +34,11 @@ const WEB_URL = `http://localhost:${WEB_PORT}`;
 // default is refused by the preflight, which is the parallel-isolation guarantee OPS-8 set
 // out to give this harness.
 const GTH_CORS_ORIGIN = process.env.GTH_CORS_ORIGIN || WEB_URL;
+// QA-19: which provider's configuration this run exercises, read from GTH_LLM_PROVIDER with a
+// documented fallback. Resolved before anything starts so an unknown provider ends the run while
+// there is still nothing to tear down — the same reason the binaries are resolved above.
+const EXAMPLE_DIR = resolve(__dirname, AG_UI_EXAMPLE_DIR);
+const { provider: LLM_PROVIDER, configPath: LLM_CONFIG_PATH } = resolveLlmConfigOrExit(EXAMPLE_DIR);
 const READY_TIMEOUT_MS = 60_000;
 const POLL_INTERVAL_MS = 2_000;
 
@@ -36,6 +46,7 @@ function startGthAgUi() {
   const logPath = resolve(__dirname, 'it-gth-ag-ui.log');
   const bannerLines = [
     '  GAUNT SLOTH AG-UI — STARTING',
+    `  LLM provider: ${LLM_PROVIDER} (${PROVIDER_ENV_VAR})`,
     '  Writing Server Logs to:',
     `  it-gth-ag-ui.log`,
   ];
@@ -60,10 +71,10 @@ function startGthAgUi() {
       // root the guidelines and other project-relative artifacts are found from.
       '--port', GTH_AGUI_PORT,
       '--cors-origin', GTH_CORS_ORIGIN,
-      '--config', resolve(__dirname, 'examples/pukeko-gaunt-sloth-ag-ui/.gsloth.config.json'),
+      '--config', LLM_CONFIG_PATH,
     ],
     {
-      cwd: resolve(__dirname, 'examples/pukeko-gaunt-sloth-ag-ui'),
+      cwd: EXAMPLE_DIR,
       stdio: ['inherit', 'pipe', 'pipe'],
       detached: true,
     }
