@@ -21,7 +21,7 @@
 // Run: node scripts/check-llm-config.mjs   (wired into "pnpm test")
 
 import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   AG_UI_EXAMPLE_DIR,
@@ -37,6 +37,12 @@ const CONFIG_DIR = resolve(ROOT, AG_UI_EXAMPLE_DIR);
 
 const failures = [];
 const fail = (msg) => failures.push(msg);
+
+/** True when `target` is the directory `dir` itself or something beneath it. */
+function isInside(dir, target) {
+  const rel = relative(dir, target);
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+}
 
 const providers = listAvailableProviders(CONFIG_DIR);
 
@@ -113,6 +119,124 @@ for (const provider of providers) {
     fail(
       `An unknown ${PROVIDER_ENV_VAR} was accepted. It must be refused: falling back would ` +
         `start a server against a provider the caller did not ask for.`
+    );
+  }
+}
+
+// A malformed provider name is refused before it reaches the filesystem, so the name that
+// decides the path and the name that appears in the listing are checked the same way.
+//
+// The traversal below is chosen to land on the repository's OWN package.json — a file that really
+// exists. A name that merely fails to exist is refused by the missing-file branch whether or not
+// the name is validated at all, so testing with one would pass against a resolver with no
+// validation in it: the assertion has to be answerable only by the check it is aiming at.
+{
+  const traversal = 'ollama/../../../package';
+  const { error, configPath } = resolveLlmConfig(CONFIG_DIR, { [PROVIDER_ENV_VAR]: traversal });
+  if (!error) {
+    fail(
+      `${PROVIDER_ENV_VAR}="${traversal}" was accepted and resolved to ${configPath}. A name ` +
+        `containing path separators must be rejected as malformed, not resolved outside ` +
+        `${AG_UI_EXAMPLE_DIR}.`
+    );
+  }
+  // The invariant behind that case, independent of the string used to probe it: an accepted
+  // provider never names a file outside the example directory.
+  if (!error && configPath && !isInside(CONFIG_DIR, configPath)) {
+    fail(`Accepted provider "${traversal}" resolved outside the example directory: ${configPath}.`);
+  }
+}
+
+// THE LAUNCHERS ACTUALLY GO THROUGH THE RESOLVER.
+//
+// Everything above tests the resolver module. None of it notices a launcher that stopped calling
+// it: reverting one to the hardcoded `--config .../.gsloth.config.json` it used before leaves
+// every check above green while restoring the very bug this node fixed. So the launchers are
+// checked as sources — the same approach check-no-bare-launchers.mjs takes, and for the same
+// reason: what matters is not reachable by importing the module under test.
+const LAUNCHERS = [
+  'start-gth-ag-ui.js',
+  'it-gth-ag-ui.js',
+  `${AG_UI_EXAMPLE_DIR}/start.js`,
+];
+
+// A quoted `.gsloth.config...` literal in a launcher: the hardcoded path this node removed.
+// The resolver owns those names now, and it is not a launcher.
+const HARDCODED_CONFIG_RE = /['"`][^'"`\n]*\.gsloth\.config[^'"`\n]*['"`]/;
+
+/**
+ * Blank out comments so the scan reads code, not prose.
+ *
+ * These launchers explain in their comments which file pins what, and those sentences quote the
+ * configuration file name in backticks the way ordinary prose does. Scanning raw source therefore
+ * reports a launcher that is wired correctly, which is worse than not scanning: a guard that cries
+ * wolf on correct code gets its finding suppressed rather than read. Tracks string and template
+ * literals so a `//` inside one is not mistaken for a comment.
+ */
+function stripComments(source) {
+  let out = '';
+  let i = 0;
+  let quote = null;
+  while (i < source.length) {
+    const c = source[i];
+    const next = source[i + 1];
+    if (quote) {
+      if (c === '\\') {
+        out += c + (next ?? '');
+        i += 2;
+        continue;
+      }
+      if (c === quote) quote = null;
+      out += c;
+      i += 1;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === '`') {
+      quote = c;
+      out += c;
+      i += 1;
+      continue;
+    }
+    if (c === '/' && next === '/') {
+      while (i < source.length && source[i] !== '\n') i += 1;
+      continue;
+    }
+    if (c === '/' && next === '*') {
+      i += 2;
+      while (i < source.length && !(source[i] === '*' && source[i + 1] === '/')) i += 1;
+      i += 2;
+      continue;
+    }
+    out += c;
+    i += 1;
+  }
+  return out;
+}
+
+for (const rel of LAUNCHERS) {
+  const full = resolve(ROOT, rel);
+  let source;
+  try {
+    source = readFileSync(full, 'utf8');
+  } catch {
+    fail(`Launcher ${rel} is missing; it must resolve its config through scripts/llm-config.mjs.`);
+    continue;
+  }
+
+  if (!source.includes('llm-config.mjs')) {
+    fail(`${rel} does not import scripts/llm-config.mjs, so ${PROVIDER_ENV_VAR} cannot reach it.`);
+  }
+  if (!source.includes('resolveLlmConfigOrExit')) {
+    fail(
+      `${rel} does not call resolveLlmConfigOrExit, so it does not read ${PROVIDER_ENV_VAR} ` +
+        `and an unusable provider would not end the run before services start.`
+    );
+  }
+  const hardcoded = HARDCODED_CONFIG_RE.exec(stripComments(source));
+  if (hardcoded) {
+    fail(
+      `${rel} names a configuration file directly (${hardcoded[0]}). That bypasses ` +
+        `${PROVIDER_ENV_VAR} and pins the provider again — pass the resolver's configPath instead.`
     );
   }
 }

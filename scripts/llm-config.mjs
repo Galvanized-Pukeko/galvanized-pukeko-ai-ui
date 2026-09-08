@@ -6,15 +6,25 @@
 // example ships, or leave it unset and get the documented fallback.
 //
 // WHY SELECTION AND NOT INTERPOLATION. A Gaunt Sloth JSON config has no environment
-// interpolation, so `"type": "${GTH_LLM_PROVIDER}"` is not a thing that resolves. The obvious
-// alternative — a `.gsloth.config.js` module config whose `configure()` reads `process.env` —
-// does not work either at the `@gaunt-sloth/agent` version this repository pins: the loader
-// validates a module config's return value through a zod schema before anything builds a model,
-// and that parse returns a plain-object clone. A raw `{ type, model }` spec comes back
-// unrouted, and an already-built model instance comes back with its prototype gone, so the
-// server has an `llm` with no `invoke`. Only the JSON branch builds a real client, because it
-// routes to the provider module AFTER validation. Selecting between JSON files is therefore the
-// mechanism that actually works here, not a workaround for one we could not be bothered to use.
+// interpolation, so `"type": "${GTH_LLM_PROVIDER}"` is not a thing that resolves. The other
+// option is a `.gsloth.config.js` module config whose `configure()` reads `process.env`. That
+// route does work at the pinned `@gaunt-sloth/agent` — but only if `configure()` returns an
+// already-BUILT model instance, and only on a machine with no global config. Both caveats fail
+// silently, which is why this example does not rely on it:
+//
+//   - Returning a raw `{ type, model }` spec does NOT work: the module branch never provider-
+//     routes, so the spec arrives as a plain object with no `invoke`. Only the JSON branch routes
+//     it. (Filed as CFG-71.)
+//   - Returning a built instance works until the developer has a `~/.gsloth/.gsloth.config.json`.
+//     A global config is deep-merged UNDER the project layer, and that merge walks the built
+//     model into a plain object — prototype gone, `invoke` gone. The JSON branch is immune
+//     because it constructs the model AFTER the merge rather than before it.
+//
+// Neither failure raises; both hand the server an `llm` that is a plain object. Selecting between
+// declarative JSON files keeps the model construction on the branch that gth itself routes and
+// merges correctly, needs no `@gaunt-sloth/core` dependency here, and leaves two files a reviewer
+// can read and diff. That is the reason — simplicity and a path with no silent failure mode, not
+// an inability to express it any other way.
 //
 // Adding a provider is dropping a `.gsloth.config.<provider>.json` next to the others — the
 // resolution below is by convention, so nothing here needs editing. It does need that provider's
@@ -34,6 +44,19 @@ export const PROVIDER_ENV_VAR = 'GTH_LLM_PROVIDER';
  */
 export const DEFAULT_PROVIDER = 'openai';
 
+/**
+ * The provider whose configuration lives in the un-suffixed `.gsloth.config.json`.
+ *
+ * Deliberately a SEPARATE constant from {@link DEFAULT_PROVIDER}, though they name the same
+ * provider today. One is "which provider do we fall back to", the other is "which provider owns
+ * the file name `gth` discovers on its own". Deriving the file name from the fallback instead
+ * couples them, and then changing the fallback silently renames both configurations: the new
+ * fallback would be looked up in `.gsloth.config.json` (which holds the other provider's
+ * settings) and the old one would become unreachable. Keeping them apart makes changing the
+ * fallback the one-line edit it looks like.
+ */
+const UNSUFFIXED_PROVIDER = 'openai';
+
 /** Example directory holding the configurations, relative to the repository root. */
 export const AG_UI_EXAMPLE_DIR = 'examples/pukeko-gaunt-sloth-ag-ui';
 
@@ -45,21 +68,33 @@ export const AG_UI_EXAMPLE_DIR = 'examples/pukeko-gaunt-sloth-ag-ui';
  * this example already uses.
  */
 export function configFileNameFor(provider) {
-  return provider === DEFAULT_PROVIDER
+  return provider === UNSUFFIXED_PROVIDER
     ? '.gsloth.config.json'
     : `.gsloth.config.${provider}.json`;
 }
+
+/**
+ * Shape of a provider name, applied to BOTH the name read from the environment and the names
+ * discovered on disk.
+ *
+ * The two must use one pattern. Discovering with a strict pattern while interpolating the
+ * environment variable raw is the asymmetry that lets `GTH_LLM_PROVIDER=ollama/../../package`
+ * resolve to a file outside the example directory: the listing would never show such a name, but
+ * the resolution would happily reach it. This is the developer's own environment rather than a
+ * security boundary, so the point is that the decision path and the display path agree.
+ */
+const PROVIDER_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
 /** Providers this example ships a configuration for, sorted, derived from what is on disk. */
 export function listAvailableProviders(configDir) {
   const providers = new Set();
   for (const entry of readdirSync(configDir)) {
     if (entry === '.gsloth.config.json') {
-      providers.add(DEFAULT_PROVIDER);
+      providers.add(UNSUFFIXED_PROVIDER);
       continue;
     }
     const match = /^\.gsloth\.config\.([A-Za-z0-9][A-Za-z0-9_-]*)\.json$/.exec(entry);
-    if (match) providers.add(match[1]);
+    if (match && PROVIDER_NAME_RE.test(match[1])) providers.add(match[1]);
   }
   return [...providers].sort();
 }
@@ -77,6 +112,19 @@ export function resolveLlmConfig(configDir, env = process.env) {
   const requested = (env[PROVIDER_ENV_VAR] ?? '').trim();
   const fromEnv = requested.length > 0;
   const provider = fromEnv ? requested : DEFAULT_PROVIDER;
+
+  if (!PROVIDER_NAME_RE.test(provider)) {
+    return {
+      provider,
+      configPath: undefined,
+      fromEnv,
+      error:
+        `${PROVIDER_ENV_VAR}="${provider}" is not a valid provider name.\n` +
+        `Expected letters, digits, "_" or "-", starting with a letter or digit.\n` +
+        `Available: ${listAvailableProviders(configDir).join(', ') || '(none)'}.`,
+    };
+  }
+
   const configPath = resolve(configDir, configFileNameFor(provider));
 
   if (!existsSync(configPath)) {

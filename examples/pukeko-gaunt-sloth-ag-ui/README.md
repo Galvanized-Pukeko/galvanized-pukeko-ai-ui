@@ -91,12 +91,24 @@ the config file.
 ### Why selection and not interpolation
 
 A Gaunt Sloth JSON config has no environment interpolation, so the provider cannot be a `${VAR}`
-inside `.gsloth.config.json`. A `.gsloth.config.js` module config whose `configure()` reads the
-environment does not work either at the pinned `@gaunt-sloth/agent`: the loader validates a module
-config's return value through a schema before any model is built, and that parse returns a plain
-object — a raw `{ type, model }` spec comes back unrouted, and an already-built model instance comes
-back stripped of its prototype. Only the JSON branch builds a usable client, so the environment
-selects between JSON files. See `scripts/llm-config.mjs`.
+inside `.gsloth.config.json`.
+
+The alternative is a `.gsloth.config.js` module config whose `configure()` reads the environment.
+That does work at the pinned `@gaunt-sloth/agent`, but only under two conditions that are easy to
+break and that fail without an error message:
+
+- `configure()` must return an **already-built model instance**. Returning a raw `{ type, model }`
+  spec does not work — the module branch never provider-routes, so the spec arrives as a plain
+  object with no `invoke`, while the JSON branch routes the identical block correctly.
+- The developer must have **no global `~/.gsloth/.gsloth.config.json`**. A global config is
+  deep-merged underneath the project layer, and that merge walks a built model into a plain object,
+  losing its prototype. The JSON branch is unaffected because it builds the model after the merge
+  rather than before it.
+
+Both failures hand the server an `llm` that is a plain object rather than raising, so the symptom
+appears later and elsewhere. Selecting between declarative JSON files keeps model construction on
+the branch Gaunt Sloth itself routes and merges, needs no `@gaunt-sloth/core` dependency here, and
+leaves two short files a reviewer can read and diff. See `scripts/llm-config.mjs`.
 
 ### Ports
 
