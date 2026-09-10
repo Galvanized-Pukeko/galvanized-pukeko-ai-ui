@@ -2,19 +2,24 @@ packages:
   - 'packages/galvanized-pukeko-vue-ui'
   - 'packages/galvanized-pukeko-web-client'
 
-# ONE entry per package name, versions joined with `||`. A second entry naming the
-# same package is silently ignored: pnpm returns on the first rule whose name
-# matches, so a later line for that package is never consulted and the version it
-# names is still refused. Splitting these into a line per version looks tidier and
-# switches the exception off without any error.
+# These are packages we publish ourselves, so they are listed bare (OPS-115): a
+# bare name matches every version, and nothing here needs a hand edit when one of
+# our releases lands.
 #
-# `pnpm install` appends a plain `name@version` line of its own when it meets an
-# immature package, which lands after these and is therefore dead on arrival. When
-# a new gaunt-sloth release is pinned, fold its version into the entry below and
-# delete the appended line.
+# ONE entry per package name. pnpm returns on the first rule whose name matches
+# and never consults a later one, so a second entry for the same package is
+# silently ignored and the exception it names is not in force — including the
+# plain `name@version` line `pnpm install` appends for itself when it meets an
+# immature package, which lands after these and is dead on arrival. Splitting a
+# package's versions into a line per version looks tidier and switches the
+# exception off with no error anywhere.
+#
+# A bare entry already grants every version, so pnpm never has anything to append
+# for our own packages: an appended line here is third-party by construction, and
+# worth a look before it is kept.
 minimumReleaseAgeExclude:
-  - '@gaunt-sloth/agent@2.0.0-beta.6||2.0.0-beta.7'
-  - '@gaunt-sloth/core@2.0.0-beta.6||2.0.0-beta.7'
+  - '@gaunt-sloth/agent'
+  - '@gaunt-sloth/core'
 
 # @gaunt-sloth/agent is consumed from the public npm registry (2.0.0-beta.x);
 # no cross-repo file: redirect is needed — the published package pins its own
