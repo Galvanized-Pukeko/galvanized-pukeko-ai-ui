@@ -7,8 +7,15 @@ import { resolveLocalBinOrExit, spawnLocalBin } from './scripts/local-bin.mjs';
 import {
   AG_UI_EXAMPLE_DIR,
   PROVIDER_ENV_VAR,
+  declaredLlmType,
   resolveLlmConfigOrExit,
 } from './scripts/llm-config.mjs';
+import {
+  LOCAL_GPU_PROVIDERS,
+  createOllamaLock,
+  defaultLockPath,
+  resolveOllamaHost,
+} from './scripts/ollama-gpu-lock.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -123,6 +130,23 @@ function killGroup(proc) {
 }
 
 const playwrightArgs = process.argv.slice(2);
+
+// OPS-118 — serialise this run against every other run driving the same Ollama daemon, including
+// Gaunt Sloth's own integration harness in its own repository. The lock is a file keyed by the
+// daemon address, so two separate implementations exclude each other; see
+// scripts/ollama-gpu-lock.mjs for the contract they share and why it is not a shared import.
+//
+// Taken ONLY when the configuration about to be launched declares a local-GPU provider: a hosted
+// provider has no card to contend for, and locking it would queue an OpenAI run behind an Ollama
+// one for no reason. Taken BEFORE anything starts, so a waiting run has nothing running while it
+// waits, and released from a single 'exit' hook, which covers the normal path, the abort path and
+// both signal handlers below (each ends in process.exit).
+if (LOCAL_GPU_PROVIDERS.includes(declaredLlmType(LLM_CONFIG_PATH))) {
+  const lock = createOllamaLock({ lockPath: defaultLockPath(resolveOllamaHost()) });
+  const release = await lock.acquire(); // blocks until acquired, or throws loud at the deadline
+  process.on('exit', release);
+  console.log(`==> ollama GPU lock acquired (${lock.lockPath})`);
+}
 
 const gthProc = startGthAgUi();
 const webProc = startWebClient();

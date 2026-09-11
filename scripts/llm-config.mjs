@@ -31,7 +31,7 @@
 // LangChain package to be installed, because `@gaunt-sloth/core` imports it on demand and
 // declares them all as peers; the repository ships the two it depends on.
 
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /** The environment variable that names the provider. */
@@ -156,4 +156,29 @@ export function resolveLlmConfigOrExit(configDir, env = process.env) {
     process.exit(1);
   }
   return resolved;
+}
+
+/**
+ * The provider a resolved configuration file actually declares — its `llm.type`.
+ *
+ * OPS-118 needs this to decide whether a run is about to contend for the local GPU, and it asks
+ * the FILE rather than trusting the file's name. `llm.type` is the field `gth` itself routes on,
+ * so a run locks exactly when the model it is about to construct is a local one. The two agree
+ * for everything this example ships — `check-llm-config.mjs` fails the build when a shipped
+ * configuration's `llm.type` disagrees with the provider its name promises — but agreeing by
+ * guard is a reason to prefer the authoritative field, not a reason to treat them as
+ * interchangeable: a file dropped in by a developer is selectable the moment it exists, whereas
+ * the guard only speaks when someone runs the test.
+ *
+ * Returns `undefined` for a file that cannot be read or parsed, or that declares no type. That
+ * means no lock, which is the right way to fail here: such a config cannot start a server at all,
+ * so there is no run to serialise, and refusing to launch over it would replace a clear error from
+ * `gth` with a confusing one from a lock.
+ */
+export function declaredLlmType(configPath) {
+  try {
+    return JSON.parse(readFileSync(configPath, 'utf8'))?.llm?.type;
+  } catch {
+    return undefined;
+  }
 }

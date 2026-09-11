@@ -76,6 +76,13 @@ GTH_LLM_PROVIDER=ollama node start.js
 The Ollama configuration expects `gemma4:12b` and the daemon on `http://127.0.0.1:11434`; point
 elsewhere with `OLLAMA_HOST`, or edit the `model` in that file.
 
+`OLLAMA_HOST` also keys the GPU lock that the `it-gth-ag-ui` harness takes before it drives a local
+model, so two runs against one daemon queue rather than collide — including a run in another
+repository that shares the daemon. Two daemons at different addresses do not block each other. The
+interactive `start.js` above does not take that lock: its session has no end, and a lock sized for
+a test run would be reclaimed out from under it. If you are running a demo and a test at the same
+time against one card, expect them to fight; that is the case the lock cannot cover.
+
 A provider that names no configuration file ends the run and lists the ones that exist, rather than
 quietly starting on the fallback — a server running a model you did not choose is worse than one
 that refuses to start.

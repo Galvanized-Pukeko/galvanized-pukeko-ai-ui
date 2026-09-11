@@ -31,6 +31,8 @@ import {
   listAvailableProviders,
   resolveLlmConfig,
 } from './llm-config.mjs';
+// Shared with check-ollama-gpu-lock.mjs, which scans the same launchers for a different property.
+import { stripComments } from './source-scan.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CONFIG_DIR = resolve(ROOT, AG_UI_EXAMPLE_DIR);
@@ -163,55 +165,6 @@ const LAUNCHERS = [
 // A quoted `.gsloth.config...` literal in a launcher: the hardcoded path this node removed.
 // The resolver owns those names now, and it is not a launcher.
 const HARDCODED_CONFIG_RE = /['"`][^'"`\n]*\.gsloth\.config[^'"`\n]*['"`]/;
-
-/**
- * Blank out comments so the scan reads code, not prose.
- *
- * These launchers explain in their comments which file pins what, and those sentences quote the
- * configuration file name in backticks the way ordinary prose does. Scanning raw source therefore
- * reports a launcher that is wired correctly, which is worse than not scanning: a guard that cries
- * wolf on correct code gets its finding suppressed rather than read. Tracks string and template
- * literals so a `//` inside one is not mistaken for a comment.
- */
-function stripComments(source) {
-  let out = '';
-  let i = 0;
-  let quote = null;
-  while (i < source.length) {
-    const c = source[i];
-    const next = source[i + 1];
-    if (quote) {
-      if (c === '\\') {
-        out += c + (next ?? '');
-        i += 2;
-        continue;
-      }
-      if (c === quote) quote = null;
-      out += c;
-      i += 1;
-      continue;
-    }
-    if (c === '"' || c === "'" || c === '`') {
-      quote = c;
-      out += c;
-      i += 1;
-      continue;
-    }
-    if (c === '/' && next === '/') {
-      while (i < source.length && source[i] !== '\n') i += 1;
-      continue;
-    }
-    if (c === '/' && next === '*') {
-      i += 2;
-      while (i < source.length && !(source[i] === '*' && source[i + 1] === '/')) i += 1;
-      i += 2;
-      continue;
-    }
-    out += c;
-    i += 1;
-  }
-  return out;
-}
 
 for (const rel of LAUNCHERS) {
   const full = resolve(ROOT, rel);
