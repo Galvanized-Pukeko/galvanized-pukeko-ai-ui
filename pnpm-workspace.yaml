@@ -2,6 +2,21 @@ packages:
   - 'packages/galvanized-pukeko-vue-ui'
   - 'packages/galvanized-pukeko-web-client'
 
+# Strict mode: refuse an immature package outright rather than install it and
+# append an exception here. A refusal is this guard working, not a broken build.
+#
+# Remedies, in order of preference: wait out the 24-hour window and install
+# again; pin the older mature version deliberately; or, only if it is genuinely
+# urgent, have a HUMAN add a reviewed and explicitly temporary exclusion and
+# remove it once the version has aged. It is never "add the package so the build
+# goes green" — that is the behaviour strict mode exists to stop.
+#
+# It looks inert at first: the flag is not part of pnpm's lockfile-verification
+# cache key, so where this lockfile is already verified the check is skipped and
+# an install exits 0 in about 200 ms having checked nothing. It starts biting
+# when the lockfile next changes.
+minimumReleaseAgeStrict: true
+
 # These are packages we publish ourselves, so they are listed bare (OPS-115): a
 # bare name matches every version, and nothing here needs a hand edit when one of
 # our releases lands.
