@@ -81,11 +81,29 @@ test.describe('Chat Interface (Gaunt Sloth AG-UI, headless default, no ?ui)', ()
 
         // Expanding the badge shows the client-fulfilled result — the image
         // envelope produced by the fake camera (headless attach-gap closed).
+        //
+        // RC-19 registered CaptureImageResult.vue for this tool, so the result
+        // renders as an inline <img> of the frame instead of the generic view's
+        // raw `{mimeType, data: <base64>}` JSON. Assert on the image itself.
+        //
+        // The `.tool-call-body` scope is load-bearing twice over: it proves the
+        // expand actually happened, and it keeps the live PkWebcamPanel preview
+        // elsewhere on the page from satisfying an image check that is supposed
+        // to be about the tool result. Together with the accessible name, an
+        // empty badge, a missing image, or a fall-through to the generic view
+        // all fail this.
         await badge.locator('.tool-call-header').click();
-        await expect(badge.locator('.tool-call-body')).toContainText('mimeType', {
-            timeout: 15000,
-        });
-        await expect(badge.locator('.tool-call-body')).toContainText('image/jpeg');
+        const capturedFrame = badge
+            .locator('.tool-call-body')
+            .getByRole('img', { name: 'Captured camera frame' });
+        await expect(capturedFrame).toBeVisible({ timeout: 15000 });
+
+        // And it carries the fake camera's real payload rather than a
+        // placeholder: the envelope's mime type and base64 frame, re-assembled
+        // into a data URL by parseImageEnvelope. Compared as a 16-character
+        // slice so a mismatch prints a readable prefix instead of dumping the
+        // whole base64 blob into the run log.
+        expect((await capturedFrame.getAttribute('src'))?.slice(0, 16)).toBe('data:image/jpeg;');
     });
 
     // BE-5's A2UI render coverage is machine-checkable and lives outside this file:
