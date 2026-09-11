@@ -25,6 +25,30 @@ test.use({
 // chat-gth-stock.spec.ts for stock).
 //
 // Selectors are the data-testids on HeadlessChat.vue.
+//
+// QA-30 — WHERE THE TIMEOUTS IN THIS FILE COME FROM. Each per-assertion budget below is a
+// measured step latency times a stated margin, and the sum of one test's budgets fits inside
+// the `timeout` in playwright.config.ts, which is what makes them reachable rather than
+// decorative. Measured in this repository on 2026-09-12 against the keyless local ollama path
+// (gemma4:12b), model warm and serialised behind the OPS-118 GPU lock, n=4:
+//
+//   send → tool-call badge        3.6 / 5.1 / 5.3 / 5.3 s
+//   badge → resume text part     13.9 / 14.4 / 15.9 / 21.1 s
+//   send → resume text part      19.2 / 19.4 / 19.7 / 26.2 s
+//   send → agent run ends        20.7 / 22.0 / 22.2 / 28.2 s
+//
+// Those are STEP latencies inside the round-trip. The cell's own wall time, which is what a
+// budget actually has to cover, is larger — it adds the navigation in beforeEach and the
+// badge-expand and image assertions afterwards. Over five runs of the full suite, same
+// conditions:
+//
+//   capture round-trip, cell wall time    18.5 / 19.5 / 23.1 / 28.2 / 31.2 s
+//
+// Read that last number before widening OR narrowing anything. **31.2 s is a run that passed**:
+// warm model, GPU lock held, nothing else on the card, the resume correct and every assertion
+// green — and it is over the 30 000 ms default this suite used to run under. Two of those five
+// are at or past that default. So the old budget was not merely thin, it was crossed by a
+// healthy run, and QA-29's "2 of 5 first attempts red" needs no contention to explain it.
 test.describe('Chat Interface (Gaunt Sloth AG-UI, headless default, no ?ui)', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/');
@@ -46,9 +70,10 @@ test.describe('Chat Interface (Gaunt Sloth AG-UI, headless default, no ?ui)', ()
         ).toBeVisible({ timeout: 15000 });
 
         // Assistant bubble appears and accumulates non-empty streamed text.
+        // 30 000 ms: this whole test was measured at 1.3–6.1 s end to end.
         const assistant = page.locator('[data-testid="pk-headless-assistant"]').last();
-        await expect(assistant).toBeVisible({ timeout: 60000 });
-        await expect(assistant).toContainText(/pukeko/i, { timeout: 60000 });
+        await expect(assistant).toBeVisible({ timeout: 30000 });
+        await expect(assistant).toContainText(/pukeko/i, { timeout: 30000 });
     });
 
     // PLAT-18: the shared `capture_image` client tool, registered from vue-ui
@@ -70,14 +95,44 @@ test.describe('Chat Interface (Gaunt Sloth AG-UI, headless default, no ?ui)', ()
         await page.locator('[data-testid="pk-headless-send"]').click();
 
         // The tool call surfaces as a badge in the transcript.
+        // 30 000 ms against a measured 3.6–5.3 s: deliberately the most generous margin in
+        // this file, because a run that starts after ollama has evicted the model pays the
+        // model LOAD inside this first turn. If this budget is ever the one that fires, warm
+        // the model (as the QA-29 sweep harness does) rather than widening it further.
         const badge = page.locator('.tool-call-badge', { hasText: 'capture_image' });
-        await expect(badge).toBeVisible({ timeout: 60000 });
+        await expect(badge).toBeVisible({ timeout: 30000 });
 
         // The agent RESUMES past the interrupt: a non-empty assistant text
         // follows the tool call (the model's description of the frame).
+        //
+        // QA-30 — 45 000 ms, and READ THIS BEFORE DIAGNOSING A FAILURE HERE.
+        //
+        // The margin: this step was measured at 13.9–21.1 s directly, and the 31.2 s run in the
+        // table above implies about 23–24 s for it once its navigation and trailing assertions
+        // are subtracted. So 45 000 is a little under 2x the largest value actually observed —
+        // sized against that, not against the probe's smaller maximum, and not against green.
+        //
+        // `element(s) not found` on this locator does NOT
+        // mean the resume emitted nothing. `.text-part` is rendered by HeadlessChat.vue only
+        // where a text part EXISTS, so the locator has nothing to match until the resume's
+        // answer begins — and the answer is gated behind a reasoning stream whose length the
+        // model samples (this config runs at temperature 0.7). A long one leaves this locator
+        // unmatched while the run is perfectly healthy: the page snapshot from a measured
+        // budget crossing shows the badge present, the reasoning already describing the frame
+        // mid-stream, and the Stop button still up.
+        //
+        // So the two cases are told apart by the SNAPSHOT, not by this message: read
+        // `error-context.md` in the test-results dir the failure names. Reasoning still
+        // streaming and the run in flight is a budget crossing; a finished run with no text
+        // part is the real defect this assertion is for.
+        //
+        // There is deliberately no finer assertion on the reasoning part to split those two
+        // automatically: the provider is chosen by GTH_LLM_PROVIDER, a model that does not
+        // stream reasoning renders no `.thinking-part` at all, and an assertion on one would
+        // red on a healthy run under any such provider.
         await expect(
             page.locator('[data-testid="pk-headless-assistant"] .text-part').last()
-        ).not.toBeEmpty({ timeout: 60000 });
+        ).not.toBeEmpty({ timeout: 45000 });
 
         // Expanding the badge shows the client-fulfilled result — the image
         // envelope produced by the fake camera (headless attach-gap closed).

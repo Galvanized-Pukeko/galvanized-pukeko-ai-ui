@@ -16,6 +16,7 @@ import {
   defaultLockPath,
   resolveOllamaHost,
 } from './scripts/ollama-gpu-lock.mjs';
+import { DEFAULT_REPORT_PATH, reportFirstAttemptRate } from './scripts/first-attempt-rate.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -185,6 +186,21 @@ try {
     testProc.on('close', resolve);
     testProc.on('error', err => { console.error(`Playwright: ${err.message}`); resolve(1); });
   });
+
+  // QA-30 — print the FIRST-ATTEMPT pass rate. `retries: 3` means this run can print a
+  // confident `7 passed` and exit 0 over a suite where a live defect fired on the first attempt
+  // and a retry absorbed it, which is how two defects stayed invisible across five green runs.
+  // The exit code is deliberately left alone: the suite's verdict is the suite's to give, and
+  // retries are legitimate for genuinely ambient flakiness. What was missing was not a stricter
+  // gate but the number itself, so a regression can no longer hide behind a retry unread.
+  try {
+    const { lines } = reportFirstAttemptRate(resolve(__dirname, DEFAULT_REPORT_PATH));
+    console.log(`\n${lines.join('\n')}`);
+  } catch (err) {
+    // Loud rather than silent: a missing report is the facility being broken, and an absent
+    // rate must never read as a clean one.
+    console.warn(`\nWARNING: first-attempt rate unavailable — ${err.message}`);
+  }
 } catch (err) {
   console.error(`\nAborted: ${err.message}`);
 } finally {
